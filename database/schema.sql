@@ -76,10 +76,11 @@ CREATE TABLE public.reporting_hierarchy (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     employee_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     manager_id UUID NOT NULL REFERENCES public.users(id) ON DELETE RESTRICT,
-    relationship_type VARCHAR(20) NOT NULL DEFAULT 'DIRECT' CHECK (relationship_type IN ('DIRECT', 'DOTTED')),
+    relationship_type VARCHAR(20) NOT NULL DEFAULT 'DIRECT' CHECK (relationship_type IN ('DIRECT', 'DOTTED_LINE', 'DOTTED')),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     effective_from DATE NOT NULL DEFAULT CURRENT_DATE,
     effective_to DATE,
+    assigned_by UUID REFERENCES public.users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_no_self_reporting CHECK (employee_id <> manager_id)
 );

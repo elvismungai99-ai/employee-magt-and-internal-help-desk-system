@@ -164,3 +164,54 @@ Content-Type: application/json
     "email": "john.doe@company.com",
     "password": "WrongPassword!"
 }
+
+### ==============================================================================
+### 6. PHASE 2: ORGANIZATION HIERARCHY (REPORTING LINES)
+### ==============================================================================
+
+### 6.1 HR Admin Assigns Manager to Employee (POST /api/identity/hierarchy/assign)
+# @name assignHierarchy
+POST {{baseUrl}}/api/identity/hierarchy/assign
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+    "employeeId": "{{employeeUserId}}",
+    "managerId": "{{managerId}}",
+    "relationshipType": "DIRECT"
+}
+
+### 6.2 Caller's Current Manager (GET /api/identity/hierarchy/my-manager)
+### IDOR-safe: Derives employee ID strictly from JWT
+GET {{baseUrl}}/api/identity/hierarchy/my-manager
+Authorization: Bearer {{employeeToken}}
+
+### 6.3 Caller's Direct Reports (GET /api/identity/hierarchy/my-subordinates)
+### Called by Manager -> Returns employee list
+GET {{baseUrl}}/api/identity/hierarchy/my-subordinates
+Authorization: Bearer {{employeeToken}}
+
+### 6.4 HR Admin Views Any User's Direct Reports (GET /api/identity/hierarchy/{userId}/subordinates)
+GET {{baseUrl}}/api/identity/hierarchy/{{managerId}}/subordinates
+Authorization: Bearer {{adminToken}}
+
+### 6.5 Test Validation: Reject Self-Reporting (Expect HTTP 400 Bad Request)
+POST {{baseUrl}}/api/identity/hierarchy/assign
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+    "employeeId": "{{employeeUserId}}",
+    "managerId": "{{employeeUserId}}"
+}
+
+### 6.6 Test Validation: Reject Assignment from Non-Admin (Expect HTTP 403 Forbidden)
+POST {{baseUrl}}/api/identity/hierarchy/assign
+Authorization: Bearer {{employeeToken}}
+Content-Type: application/json
+
+{
+    "employeeId": "{{employeeUserId}}",
+    "managerId": "{{managerId}}"
+}
+

@@ -87,7 +87,7 @@ public class UserService {
             ReportingHierarchy hierarchy = ReportingHierarchy.builder()
                     .employee(savedUser)
                     .manager(manager)
-                    .relationshipType("DIRECT")
+                    .relationshipType(RelationshipType.DIRECT)
                     .isActive(true)
                     .effectiveFrom(LocalDate.now())
                     .build();
@@ -107,7 +107,7 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("Manager user not found with ID: " + managerId));
 
         // Deactivate any existing active hierarchy for this employee
-        List<ReportingHierarchy> activeList = hierarchyRepository.findActiveHierarchyForEmployee(employeeId, LocalDate.now());
+        List<ReportingHierarchy> activeList = hierarchyRepository.findActiveDirectRowsForEmployee(employeeId);
         for (ReportingHierarchy rh : activeList) {
             rh.setIsActive(false);
             rh.setEffectiveTo(LocalDate.now());
@@ -117,7 +117,7 @@ public class UserService {
         ReportingHierarchy hierarchy = ReportingHierarchy.builder()
                 .employee(employee)
                 .manager(manager)
-                .relationshipType("DIRECT")
+                .relationshipType(RelationshipType.DIRECT)
                 .isActive(true)
                 .effectiveFrom(LocalDate.now())
                 .build();
@@ -162,7 +162,7 @@ public class UserService {
                     .id(manager.getId())
                     .fullName(manager.getFullName())
                     .email(manager.getEmail())
-                    .relationshipType(hierarchyOpt.get().getRelationshipType())
+                    .relationshipType(hierarchyOpt.get().getRelationshipType() != null ? hierarchyOpt.get().getRelationshipType().name() : null)
                     .effectiveFrom(hierarchyOpt.get().getEffectiveFrom())
                     .build();
         }

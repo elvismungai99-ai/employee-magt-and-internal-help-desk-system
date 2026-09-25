@@ -45,8 +45,10 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
-                // HR Admin only: Admin-created accounts (POST /api/identity/users)
+                // HR Admin only: Admin-created accounts & hierarchy assignment
                 .requestMatchers(HttpMethod.POST, "/api/identity/users").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/identity/hierarchy/assign").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
+                .requestMatchers("/api/identity/hierarchy/*/subordinates").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
                 // All other requests require authentication
                 .anyRequest().authenticated()
             )

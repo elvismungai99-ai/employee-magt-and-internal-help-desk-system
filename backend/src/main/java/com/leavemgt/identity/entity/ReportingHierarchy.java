@@ -30,8 +30,9 @@ public class ReportingHierarchy {
     private User manager;
 
     @Builder.Default
+    @Enumerated(EnumType.STRING)
     @Column(name = "relationship_type", nullable = false, length = 20)
-    private String relationshipType = "DIRECT";
+    private RelationshipType relationshipType = RelationshipType.DIRECT;
 
     @Builder.Default
     @Column(name = "is_active", nullable = false)
@@ -43,6 +44,10 @@ public class ReportingHierarchy {
 
     @Column(name = "effective_to")
     private LocalDate effectiveTo;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_by")
+    private User assignedBy;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

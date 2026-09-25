@@ -1,0 +1,19 @@
+{
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.compile.nullAnalysis.mode": "automatic",
+    "spring-boot.ls.check.jvm": true,
+    "sqltools.connections": [
+        {
+            "name": "leave_mgt_db (Local PostgreSQL)",
+            "dialect": "PostgreSQL",
+            "server": "localhost",
+            "port": 5432,
+            "database": "leave_mgt_db",
+            "username": "postgres",
+            "askForPassword": false
+        }
+    ],
+    "database-client.autoSync": true,
+    "files.autoSave": "afterDelay",
+    "editor.formatOnSave": true
+}

@@ -1,0 +1,166 @@
+### ==============================================================================
+### PHASE 1: AUTHENTICATION, USERS & RBAC (Shared Core API)
+### Run directly inside VS Code by clicking "Send Request" above each endpoint
+### ==============================================================================
+
+@baseUrl = http://localhost:8080
+
+### ------------------------------------------------------------------------------
+### 1. SEED DATA & DEPARTMENTS
+### ------------------------------------------------------------------------------
+
+### 1.1 List All Departments (Public / Authenticated)
+# @name listDepartments
+GET {{baseUrl}}/api/identity/departments
+Content-Type: application/json
+
+### ------------------------------------------------------------------------------
+### 2. EMPLOYEE REGISTRATION & AUTHENTICATION
+### ------------------------------------------------------------------------------
+
+### 2.1 Register New Employee (Role is strictly locked to EMPLOYEE)
+# @name registerEmployee
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "john.doe@company.com",
+    "password": "Password123!",
+    "jobTitle": "Software Engineer",
+    "phone": "+254711000111",
+    "departmentId": "{{listDepartments.response.body.data[1].id}}"
+}
+
+### 2.2 Login as Registered Employee
+# @name employeeLogin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+    "email": "john.doe@company.com",
+    "password": "Password123!"
+}
+
+### Store Employee Tokens
+@employeeToken = {{employeeLogin.response.body.data.accessToken}}
+@employeeRefreshToken = {{employeeLogin.response.body.data.refreshToken}}
+@employeeUserId = {{employeeLogin.response.body.data.userId}}
+
+### 2.3 Get Current Employee Profile & Hierarchy (/me)
+GET {{baseUrl}}/api/identity/users/me
+Authorization: Bearer {{employeeToken}}
+
+### 2.4 Verify RBAC: Employee Cannot Create Users (Expect HTTP 403 Forbidden)
+POST {{baseUrl}}/api/identity/users
+Authorization: Bearer {{employeeToken}}
+Content-Type: application/json
+
+{
+    "firstName": "Hacker",
+    "lastName": "Admin",
+    "email": "hacker@company.com",
+    "password": "Password123!",
+    "roleName": "HR_ADMIN"
+}
+
+### ------------------------------------------------------------------------------
+### 3. HR ADMINISTRATOR WORKFLOW
+### ------------------------------------------------------------------------------
+
+### 3.1 Login as Default Seeded HR Admin
+# @name hrAdminLogin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+    "email": "hr.admin@company.com",
+    "password": "Admin123!"
+}
+
+### Store HR Admin Token
+@adminToken = {{hrAdminLogin.response.body.data.accessToken}}
+
+### 3.2 List All Users (HR Admin only)
+GET {{baseUrl}}/api/identity/users
+Authorization: Bearer {{adminToken}}
+
+### 3.3 HR Admin Creates a Line Manager Account
+# @name createManager
+POST {{baseUrl}}/api/identity/users
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+    "firstName": "Alice",
+    "lastName": "Smith",
+    "email": "alice.manager@company.com",
+    "password": "Password123!",
+    "roleName": "LINE_MANAGER",
+    "jobTitle": "Engineering Lead",
+    "phone": "+254722000222",
+    "departmentId": "{{listDepartments.response.body.data[1].id}}"
+}
+
+### Store Manager ID
+@managerId = {{createManager.response.body.data.id}}
+
+### 3.4 HR Admin Assigns Line Manager to Employee
+PUT {{baseUrl}}/api/identity/users/{{employeeUserId}}/manager
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+    "managerId": "{{managerId}}"
+}
+
+### 3.5 Re-check Employee Profile (Now reflects assigned manager in reporting_hierarchy)
+GET {{baseUrl}}/api/identity/users/me
+Authorization: Bearer {{employeeToken}}
+
+### ------------------------------------------------------------------------------
+### 4. TOKEN ROTATION & REVOCATION (Opaque Refresh Tokens)
+### ------------------------------------------------------------------------------
+
+### 4.1 Rotate Refresh Token (Generates new access token + new refresh token)
+# @name refreshToken
+POST {{baseUrl}}/api/auth/refresh
+Content-Type: application/json
+
+{
+    "refreshToken": "{{employeeRefreshToken}}"
+}
+
+### Store Rotated Token
+@newRefreshToken = {{refreshToken.response.body.data.refreshToken}}
+
+### 4.2 Logout (Revokes Refresh Token)
+POST {{baseUrl}}/api/auth/logout
+Content-Type: application/json
+
+{
+    "refreshToken": "{{newRefreshToken}}"
+}
+
+### 4.3 Attempt Refresh with Revoked Token (Expect HTTP 401 Unauthorized)
+POST {{baseUrl}}/api/auth/refresh
+Content-Type: application/json
+
+{
+    "refreshToken": "{{newRefreshToken}}"
+}
+
+### ------------------------------------------------------------------------------
+### 5. RATE LIMITING (5 Failed Attempts -> 15 min Lockout)
+### ------------------------------------------------------------------------------
+
+### Test 5 Failed Attempts (returns 401: "Invalid email or password")
+### 6th Attempt returns 429 Too Many Requests: "Too many failed login attempts..."
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+    "email": "john.doe@company.com",
+    "password": "WrongPassword!"
+}

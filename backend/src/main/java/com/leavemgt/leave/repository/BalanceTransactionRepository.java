@@ -1,0 +1,18 @@
+package com.leavemgt.leave.repository;
+
+import com.leavemgt.leave.entity.BalanceTransaction;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.UUID;
+
+@Repository
+public interface BalanceTransactionRepository extends JpaRepository<BalanceTransaction, UUID> {
+    List<BalanceTransaction> findByLeaveBalanceIdOrderByCreatedAtDesc(UUID leaveBalanceId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Query("DELETE FROM BalanceTransaction bt WHERE bt.leaveBalance.id IN (SELECT lb.id FROM LeaveBalance lb WHERE lb.user.id IN :userIds) OR bt.createdBy.id IN :userIds")
+    void deleteAllByRelatedUserIds(@org.springframework.data.repository.query.Param("userIds") java.util.Collection<UUID> userIds);
+}

@@ -243,19 +243,21 @@ CREATE TABLE public.queue_members (
     agent_user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     assigned_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    assigned_by UUID REFERENCES public.users(id),
     PRIMARY KEY (queue_id, agent_user_id)
 );
 
 -- SLA Policies (SLA Monitoring Engine)
 CREATE TABLE public.sla_policies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(100) NOT NULL,
-    priority VARCHAR(20) NOT NULL CHECK (priority IN ('LOW', 'MEDIUM', 'HIGH', 'URGENT')),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    priority VARCHAR(20) NOT NULL UNIQUE CHECK (priority IN ('LOW', 'MEDIUM', 'HIGH', 'URGENT')),
     first_response_target_minutes INT NOT NULL,
     resolution_target_minutes INT NOT NULL,
     escalation_rule_json JSONB,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_response_before_resolution CHECK (first_response_target_minutes < resolution_target_minutes)
 );
 
 -- Tickets (Triage & Lifecycle)

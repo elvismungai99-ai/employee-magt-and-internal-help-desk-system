@@ -34,6 +34,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
     private final LoginRateLimiter loginRateLimiter;
+    private final com.leavemgt.leave.service.LeaveBalanceService leaveBalanceService;
 
     @Value("${jwt.access-token-expiration-ms:900000}")
     private long accessTokenExpirationMs;
@@ -44,7 +45,8 @@ public class AuthService {
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
                        RefreshTokenService refreshTokenService,
-                       LoginRateLimiter loginRateLimiter) {
+                       LoginRateLimiter loginRateLimiter,
+                       com.leavemgt.leave.service.LeaveBalanceService leaveBalanceService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.departmentRepository = departmentRepository;
@@ -52,6 +54,7 @@ public class AuthService {
         this.jwtService = jwtService;
         this.refreshTokenService = refreshTokenService;
         this.loginRateLimiter = loginRateLimiter;
+        this.leaveBalanceService = leaveBalanceService;
     }
 
     @Transactional
@@ -91,7 +94,12 @@ public class AuthService {
                 .roles(new HashSet<>(Collections.singletonList(employeeRole)))
                 .build();
 
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        // Initialize current-year leave balances for active leave types
+        leaveBalanceService.initializeBalancesForUser(savedUser, java.time.Year.now().getValue());
+
+        return savedUser;
     }
 
     @Transactional

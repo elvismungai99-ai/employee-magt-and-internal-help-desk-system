@@ -160,7 +160,8 @@ CREATE TABLE public.leave_balances (
     pending_days NUMERIC(5,2) NOT NULL DEFAULT 0.00,
     carried_over_days NUMERIC(5,2) NOT NULL DEFAULT 0.00,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_user_leave_year UNIQUE (user_id, leave_type_id, year)
+    CONSTRAINT uq_user_leave_year UNIQUE (user_id, leave_type_id, year),
+    CONSTRAINT chk_balance_integrity CHECK (used_days <= accrued_days + carried_over_days)
 );
 
 -- Balance Ledger / Accrual Transactions
@@ -183,7 +184,7 @@ CREATE TABLE public.leave_requests (
     end_date DATE NOT NULL,
     total_days NUMERIC(5,2) NOT NULL,
     reason TEXT NOT NULL,
-    status VARCHAR(30) NOT NULL DEFAULT 'SUBMITTED' CHECK (status IN ('DRAFT', 'SUBMITTED', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'CANCELLED', 'REVOKED')),
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'DRAFT', 'SUBMITTED', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'CANCELLED', 'REVOKED')),
     attachment_url TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -244,19 +245,21 @@ CREATE TABLE public.queue_members (
     agent_user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     assigned_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    assigned_by UUID REFERENCES public.users(id),
     PRIMARY KEY (queue_id, agent_user_id)
 );
 
 -- SLA Policies (SLA Monitoring Engine)
 CREATE TABLE public.sla_policies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(100) NOT NULL,
-    priority VARCHAR(20) NOT NULL CHECK (priority IN ('LOW', 'MEDIUM', 'HIGH', 'URGENT')),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    priority VARCHAR(20) NOT NULL UNIQUE CHECK (priority IN ('LOW', 'MEDIUM', 'HIGH', 'URGENT')),
     first_response_target_minutes INT NOT NULL,
     resolution_target_minutes INT NOT NULL,
     escalation_rule_json JSONB,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_response_before_resolution CHECK (first_response_target_minutes < resolution_target_minutes)
 );
 
 -- Tickets (Triage & Lifecycle)

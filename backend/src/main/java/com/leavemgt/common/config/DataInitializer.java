@@ -1,5 +1,12 @@
 package com.leavemgt.common.config;
 
+import com.leavemgt.helpdesk.entity.SlaPolicy;
+import com.leavemgt.helpdesk.entity.SupportQueue;
+import com.leavemgt.helpdesk.entity.TicketCategory;
+import com.leavemgt.helpdesk.entity.TicketPriority;
+import com.leavemgt.helpdesk.repository.SlaPolicyRepository;
+import com.leavemgt.helpdesk.repository.SupportQueueRepository;
+import com.leavemgt.helpdesk.repository.TicketCategoryRepository;
 import com.leavemgt.identity.entity.Department;
 import com.leavemgt.identity.entity.Permission;
 import com.leavemgt.identity.entity.Role;
@@ -8,6 +15,11 @@ import com.leavemgt.identity.repository.DepartmentRepository;
 import com.leavemgt.identity.repository.PermissionRepository;
 import com.leavemgt.identity.repository.RoleRepository;
 import com.leavemgt.identity.repository.UserRepository;
+import com.leavemgt.leave.entity.LeavePolicy;
+import com.leavemgt.leave.entity.LeaveType;
+import com.leavemgt.leave.repository.LeavePolicyRepository;
+import com.leavemgt.leave.repository.LeaveTypeRepository;
+import com.leavemgt.leave.service.LeaveBalanceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
@@ -15,6 +27,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.Year;
 import java.util.*;
 
 @Component
@@ -27,23 +41,41 @@ public class DataInitializer implements CommandLineRunner {
     private final DepartmentRepository departmentRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final LeaveTypeRepository leaveTypeRepository;
+    private final LeavePolicyRepository leavePolicyRepository;
+    private final LeaveBalanceService leaveBalanceService;
+    private final TicketCategoryRepository ticketCategoryRepository;
+    private final SupportQueueRepository supportQueueRepository;
+    private final SlaPolicyRepository slaPolicyRepository;
 
     public DataInitializer(RoleRepository roleRepository,
                            PermissionRepository permissionRepository,
                            DepartmentRepository departmentRepository,
                            UserRepository userRepository,
-                           PasswordEncoder passwordEncoder) {
+                           PasswordEncoder passwordEncoder,
+                           LeaveTypeRepository leaveTypeRepository,
+                           LeavePolicyRepository leavePolicyRepository,
+                           LeaveBalanceService leaveBalanceService,
+                           TicketCategoryRepository ticketCategoryRepository,
+                           SupportQueueRepository supportQueueRepository,
+                           SlaPolicyRepository slaPolicyRepository) {
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
         this.departmentRepository = departmentRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.leaveTypeRepository = leaveTypeRepository;
+        this.leavePolicyRepository = leavePolicyRepository;
+        this.leaveBalanceService = leaveBalanceService;
+        this.ticketCategoryRepository = ticketCategoryRepository;
+        this.supportQueueRepository = supportQueueRepository;
+        this.slaPolicyRepository = slaPolicyRepository;
     }
 
     @Override
     @Transactional
     public void run(String... args) {
-        log.info("Starting identity seed data initialization...");
+        log.info("Starting seed data initialization...");
 
         // 1. Seed Permissions
         Map<String, Permission> permissions = initPermissions();
@@ -55,9 +87,20 @@ public class DataInitializer implements CommandLineRunner {
         Map<String, Department> departments = initDepartments();
 
         // 4. Seed Default HR Admin
-        initAdminUser(roles.get("HR_ADMIN"), departments.get("HR"));
+        User adminUser = initAdminUser(roles.get("HR_ADMIN"), departments.get("HR"));
 
-        log.info("Identity seed data initialization completed successfully.");
+        // 5. Seed Kenyan Statutory Leave Types & Policies
+        initLeaveTypesAndPolicies();
+
+        // 6. Seed Help Desk Taxonomy (Queues, Categories, SLA Policies)
+        initHelpdeskTaxonomy();
+
+        // 7. Initialize balances for Admin User
+        if (adminUser != null) {
+            leaveBalanceService.initializeBalancesForUser(adminUser, Year.now().getValue());
+        }
+
+        log.info("Seed data initialization completed successfully.");
     }
 
     private Map<String, Permission> initPermissions() {
@@ -173,26 +216,210 @@ public class DataInitializer implements CommandLineRunner {
         return map;
     }
 
-    private void initAdminUser(Role adminRole, Department hrDept) {
+    private User initAdminUser(Role adminRole, Department hrDept) {
         String adminEmail = "hr.admin@company.com";
-        if (userRepository.findByEmail(adminEmail).isEmpty()) {
-            User admin = User.builder()
-                    .employeeCode("EMP-00001")
-                    .email(adminEmail)
-                    .passwordHash(passwordEncoder.encode("Admin123!"))
-                    .firstName("System")
-                    .lastName("Admin")
-                    .jobTitle("HR Administrator")
-                    .phone("+254700000000")
-                    .department(hrDept)
-                    .status("ACTIVE")
-                    .roles(new HashSet<>(Collections.singletonList(adminRole)))
-                    .build();
-
-            userRepository.save(admin);
-            log.info("Default HR Admin user created: {}", adminEmail);
+        Optional<User> existing = userRepository.findByEmail(adminEmail);
+        if (existing.isPresent()) {
+            return existing.get();
         }
+
+        User admin = User.builder()
+                .employeeCode("EMP-00001")
+                .email(adminEmail)
+                .passwordHash(passwordEncoder.encode("Admin123!"))
+                .firstName("System")
+                .lastName("Admin")
+                .jobTitle("HR Administrator")
+                .phone("+254700000000")
+                .department(hrDept)
+                .status("ACTIVE")
+                .roles(new HashSet<>(Collections.singletonList(adminRole)))
+                .build();
+
+        User saved = userRepository.save(admin);
+        log.info("Default HR Admin user created: {}", adminEmail);
+        return saved;
+    }
+
+    private void initLeaveTypesAndPolicies() {
+        int currentYear = Year.now().getValue();
+
+        List<LeaveTypeSeedDefinition> seeds = List.of(
+                new LeaveTypeSeedDefinition(
+                        "ANNUAL",
+                        "Annual Leave",
+                        "Statutory annual leave entitlement under Employment Act 2007 (21 working days per year)",
+                        true,
+                        false,
+                        "Standard Annual Leave Policy",
+                        new BigDecimal("21.00"),
+                        new BigDecimal("1.75"),
+                        new BigDecimal("7.00"),
+                        3
+                ),
+                new LeaveTypeSeedDefinition(
+                        "SICK",
+                        "Sick Leave",
+                        "Statutory sick leave entitlement under Employment Act 2007 (up to 30 days)",
+                        true,
+                        true,
+                        "Standard Statutory Sick Leave Policy",
+                        new BigDecimal("30.00"),
+                        BigDecimal.ZERO,
+                        BigDecimal.ZERO,
+                        0
+                ),
+                new LeaveTypeSeedDefinition(
+                        "MATERNITY",
+                        "Maternity Leave",
+                        "Statutory maternity leave under Employment Act 2007 (3 calendar months / 90 days fully paid)",
+                        true,
+                        true,
+                        "Statutory Maternity Leave Policy",
+                        new BigDecimal("90.00"),
+                        BigDecimal.ZERO,
+                        BigDecimal.ZERO,
+                        0
+                ),
+                new LeaveTypeSeedDefinition(
+                        "PATERNITY",
+                        "Paternity Leave",
+                        "Statutory paternity leave under Employment Act 2007 (2 weeks / 14 calendar days fully paid)",
+                        true,
+                        false,
+                        "Statutory Paternity Leave Policy",
+                        new BigDecimal("14.00"),
+                        BigDecimal.ZERO,
+                        BigDecimal.ZERO,
+                        0
+                ),
+                new LeaveTypeSeedDefinition(
+                        "CASUAL",
+                        "Casual Leave",
+                        "Short duration leave for urgent personal or family emergencies",
+                        true,
+                        false,
+                        "Company Casual Leave Policy",
+                        new BigDecimal("10.00"),
+                        BigDecimal.ZERO,
+                        BigDecimal.ZERO,
+                        0
+                )
+        );
+
+        for (LeaveTypeSeedDefinition seed : seeds) {
+            LeaveType leaveType = leaveTypeRepository.findByCode(seed.code()).orElseGet(() ->
+                    leaveTypeRepository.save(LeaveType.builder()
+                            .code(seed.code())
+                            .name(seed.name())
+                            .description(seed.description())
+                            .isPaid(seed.isPaid())
+                            .requiresAttachment(seed.requiresAttachment())
+                            .isActive(true)
+                            .build())
+            );
+
+            // Check if active policy already exists for this type and year
+            Optional<LeavePolicy> existingPolicy = leavePolicyRepository.findByLeaveTypeIdAndEffectiveYearAndIsActiveTrue(leaveType.getId(), currentYear);
+            if (existingPolicy.isEmpty()) {
+                LeavePolicy policy = LeavePolicy.builder()
+                        .leaveType(leaveType)
+                        .policyName(seed.policyName())
+                        .annualAllowance(seed.annualAllowance())
+                        .monthlyAccrualRate(seed.monthlyAccrualRate())
+                        .maxCarryoverDays(seed.maxCarryoverDays())
+                        .carryoverExpiryMonths(seed.carryoverExpiryMonths())
+                        .effectiveYear(currentYear)
+                        .isActive(true)
+                        .build();
+
+                leavePolicyRepository.save(policy);
+            }
+        }
+        log.info("Initialized Kenyan statutory leave types and policies for year {}", currentYear);
+    }
+
+    private void initHelpdeskTaxonomy() {
+        // 1. Support Queues
+        List<QueueDefinition> queueDefs = List.of(
+                new QueueDefinition("Tier 1 Support", "General helpdesk triage and Tier 1 customer queries", "tier1-support@company.com"),
+                new QueueDefinition("IT Networks & Infrastructure", "Core networks, VPN, Wi-Fi, and connectivity", "networks@company.com"),
+                new QueueDefinition("Hardware Support", "Laptops, monitors, peripherals, and repair", "hardware@company.com"),
+                new QueueDefinition("Access & Identity Management", "Single sign-on, account provisioning, and access permissions", "access-mgmt@company.com")
+        );
+        for (QueueDefinition def : queueDefs) {
+            if (!supportQueueRepository.existsByName(def.name())) {
+                supportQueueRepository.save(SupportQueue.builder()
+                        .name(def.name())
+                        .description(def.description())
+                        .emailAlias(def.emailAlias())
+                        .isActive(true)
+                        .build());
+            }
+        }
+
+        // 2. Ticket Categories
+        List<CategoryDefinition> catDefs = List.of(
+                new CategoryDefinition("IT Hardware & Peripherals", "IT_HARDWARE", "Issues related to laptops, monitors, chargers, and workstation hardware", TicketPriority.HIGH),
+                new CategoryDefinition("Access & Permissions Request", "ACCESS_REQUEST", "System access, role changes, credentials, and software license grants", TicketPriority.MEDIUM),
+                new CategoryDefinition("Software Bug & Application Issues", "SOFTWARE_ISSUE", "Software malfunctions, crashes, and internal tooling bugs", TicketPriority.MEDIUM),
+                new CategoryDefinition("Network & Connectivity", "NETWORK", "Office Wi-Fi, VPN connectivity, internet outages, and LAN issues", TicketPriority.HIGH),
+                new CategoryDefinition("HR & Payroll Queries", "HR_QUERY", "General human resources, benefits, payroll, and workplace queries", TicketPriority.LOW)
+        );
+        for (CategoryDefinition def : catDefs) {
+            if (!ticketCategoryRepository.existsByCode(def.code())) {
+                ticketCategoryRepository.save(TicketCategory.builder()
+                        .name(def.name())
+                        .code(def.code())
+                        .description(def.description())
+                        .defaultPriority(def.defaultPriority())
+                        .isActive(true)
+                        .build());
+            }
+        }
+
+        // 3. SLA Policies
+        List<SlaDefinition> slaDefs = List.of(
+                new SlaDefinition("Critical / Urgent SLA", TicketPriority.URGENT, 15, 120,
+                        "{\"warnAtPercent\": 75, \"escalateToRole\": \"SUPPORT_LEAD\", \"notifyChannels\": [\"EMAIL\", \"IN_APP\", \"SLACK\"]}"),
+                new SlaDefinition("High Priority SLA", TicketPriority.HIGH, 60, 480,
+                        "{\"warnAtPercent\": 80, \"escalateToRole\": \"SUPPORT_LEAD\", \"notifyChannels\": [\"EMAIL\", \"IN_APP\"]}"),
+                new SlaDefinition("Standard Medium SLA", TicketPriority.MEDIUM, 240, 1440,
+                        "{\"warnAtPercent\": 85, \"escalateToRole\": \"SUPPORT_AGENT\", \"notifyChannels\": [\"EMAIL\"]}"),
+                new SlaDefinition("Low Priority SLA", TicketPriority.LOW, 480, 2880,
+                        "{\"warnAtPercent\": 90, \"escalateToRole\": \"SUPPORT_AGENT\", \"notifyChannels\": [\"EMAIL\"]}")
+        );
+        for (SlaDefinition def : slaDefs) {
+            if (!slaPolicyRepository.existsByPriority(def.priority())) {
+                slaPolicyRepository.save(SlaPolicy.builder()
+                        .name(def.name())
+                        .priority(def.priority())
+                        .firstResponseTargetMinutes(def.firstResponseMinutes())
+                        .resolutionTargetMinutes(def.resolutionMinutes())
+                        .escalationRuleJson(def.escalationRuleJson())
+                        .isActive(true)
+                        .build());
+            }
+        }
+        log.info("Initialized Help Desk queues, categories, and SLA policies.");
     }
 
     private record PermissionDefinition(String code, String domain, String description) {}
+
+    private record LeaveTypeSeedDefinition(
+            String code,
+            String name,
+            String description,
+            boolean isPaid,
+            boolean requiresAttachment,
+            String policyName,
+            BigDecimal annualAllowance,
+            BigDecimal monthlyAccrualRate,
+            BigDecimal maxCarryoverDays,
+            int carryoverExpiryMonths
+    ) {}
+
+    private record QueueDefinition(String name, String description, String emailAlias) {}
+    private record CategoryDefinition(String name, String code, String description, TicketPriority defaultPriority) {}
+    private record SlaDefinition(String name, TicketPriority priority, int firstResponseMinutes, int resolutionMinutes, String escalationRuleJson) {}
 }

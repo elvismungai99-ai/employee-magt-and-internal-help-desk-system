@@ -40,6 +40,13 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setContentType("application/json");
+                    response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
+                    response.getWriter().write("{\"success\":false,\"message\":\"Unauthorized: Missing or invalid token\"}");
+                })
+            )
             .authorizeHttpRequests(auth -> auth
                 // Public authentication endpoints
                 .requestMatchers("/api/auth/**").permitAll()
@@ -49,6 +56,16 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/identity/users").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/identity/hierarchy/assign").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
                 .requestMatchers("/api/identity/hierarchy/*/subordinates").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
+                // HR Admin only: Leave catalog & policy administration, balance adjustments
+                .requestMatchers(HttpMethod.POST, "/api/leave/types").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
+                .requestMatchers(HttpMethod.PATCH, "/api/leave/types/**").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/leave/policies").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
+                .requestMatchers("/api/leave/balances/user/**").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
+                .requestMatchers("/api/leave/balances/*/adjust").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
+                // HR Admin only: Helpdesk taxonomy administration
+                .requestMatchers(HttpMethod.POST, "/api/helpdesk/**").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
+                .requestMatchers(HttpMethod.PATCH, "/api/helpdesk/**").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/helpdesk/**").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
                 // All other requests require authentication
                 .anyRequest().authenticated()
             )

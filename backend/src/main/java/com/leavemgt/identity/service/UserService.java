@@ -20,17 +20,20 @@ public class UserService {
     private final DepartmentRepository departmentRepository;
     private final ReportingHierarchyRepository hierarchyRepository;
     private final PasswordEncoder passwordEncoder;
+    private final com.leavemgt.leave.service.LeaveBalanceService leaveBalanceService;
 
     public UserService(UserRepository userRepository,
                        RoleRepository roleRepository,
                        DepartmentRepository departmentRepository,
                        ReportingHierarchyRepository hierarchyRepository,
-                       PasswordEncoder passwordEncoder) {
+                       PasswordEncoder passwordEncoder,
+                       com.leavemgt.leave.service.LeaveBalanceService leaveBalanceService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.departmentRepository = departmentRepository;
         this.hierarchyRepository = hierarchyRepository;
         this.passwordEncoder = passwordEncoder;
+        this.leaveBalanceService = leaveBalanceService;
     }
 
     @Transactional(readOnly = true)
@@ -78,6 +81,9 @@ public class UserService {
                 .build();
 
         User savedUser = userRepository.save(user);
+
+        // Initialize current-year leave balances for all active leave types
+        leaveBalanceService.initializeBalancesForUser(savedUser, java.time.Year.now().getValue());
 
         // Assign manager via reporting_hierarchy if provided
         if (request.getManagerId() != null) {

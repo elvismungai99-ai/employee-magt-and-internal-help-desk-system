@@ -215,3 +215,329 @@ Content-Type: application/json
     "managerId": "{{managerId}}"
 }
 
+### ==============================================================================
+### 7. PHASE 3: LEAVE POLICIES & BALANCES CATALOG
+### ==============================================================================
+
+### 7.1 List Active Leave Types (Any authenticated user)
+# @name listLeaveTypes
+GET {{baseUrl}}/api/leave/types
+Authorization: Bearer {{employeeToken}}
+
+### 7.2 List Active Leave Policies (Any authenticated user)
+GET {{baseUrl}}/api/leave/policies
+Authorization: Bearer {{employeeToken}}
+
+### 7.3 Get Current Employee's Leave Balances (/me)
+### IDOR-Safe: Strictly derives identity from JWT token
+# @name myBalances
+GET {{baseUrl}}/api/leave/balances/me
+Authorization: Bearer {{employeeToken}}
+
+### 7.4 HR Admin: Inspect Specific Employee's Balances
+GET {{baseUrl}}/api/leave/balances/user/{{employeeUserId}}
+Authorization: Bearer {{adminToken}}
+
+### 7.5 HR Admin: Create Custom Leave Type (POST /api/leave/types)
+# @name createLeaveType
+POST {{baseUrl}}/api/leave/types
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+    "code": "VOLUNTEER",
+    "name": "Community Volunteer Leave",
+    "description": "Paid leave for participating in registered community service initiatives",
+    "isPaid": true,
+    "requiresAttachment": false
+}
+
+### Store Volunteer Type ID
+@volunteerTypeId = {{createLeaveType.response.body.data.id}}
+
+### 7.6 HR Admin: Create/Update Policy for Leave Type (Closes prior active policy)
+POST {{baseUrl}}/api/leave/policies
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+    "leaveTypeId": "{{volunteerTypeId}}",
+    "policyName": "Volunteer Leave 2026",
+    "annualAllowance": 5.0,
+    "monthlyAccrualRate": 0.0,
+    "maxCarryoverDays": 0.0,
+    "carryoverExpiryMonths": 0,
+    "effectiveYear": 2026
+}
+
+### 7.7 HR Admin: Manual Balance Adjustment (Audited via balance_transactions)
+@annualBalanceId = {{myBalances.response.body.data[0].id}}
+
+POST {{baseUrl}}/api/leave/balances/{{annualBalanceId}}/adjust
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+    "transactionType": "MANUAL_ADJUSTMENT",
+    "amountDays": 5.0,
+    "description": "Mid-year discretionary performance bonus days"
+}
+
+### 7.8 Test Validation: Employee Attempting Policy Creation (Expect HTTP 403 Forbidden)
+POST {{baseUrl}}/api/leave/policies
+Authorization: Bearer {{employeeToken}}
+Content-Type: application/json
+
+{
+    "leaveTypeId": "{{volunteerTypeId}}",
+    "policyName": "Unauthorized Policy",
+    "annualAllowance": 100.0,
+    "effectiveYear": 2026
+}
+
+### ==============================================================================
+### PHASE 4: LEAVE REQUEST & APPROVAL STATE MACHINE
+### ==============================================================================
+
+### ------------------------------------------------------------------------------
+### 8. LEAVE REQUEST SUBMISSION & EMPLOYEE ACTIONS
+### ------------------------------------------------------------------------------
+
+### 8.1 Employee Submits a Leave Request (3 working days)
+### Hold vs. Deduct: pending_days increases, used_days is NOT touched.
+# @name submitLeaveRequest
+POST {{baseUrl}}/api/leave/requests
+Authorization: Bearer {{employeeToken}}
+Content-Type: application/json
+
+{
+    "leaveTypeId": "{{listLeaveTypes.response.body.data[0].id}}",
+    "startDate": "2026-10-05",
+    "endDate": "2026-10-07",
+    "reason": "Family vacation",
+    "attachmentUrl": null
+}
+
+### Store Leave Request ID
+@leaveRequestId = {{submitLeaveRequest.response.body.data.id}}
+
+### 8.2 Get Current Employee's Leave Request History (/my-requests)
+### Anti-IDOR: Identity derived strictly from authenticated JWT principal
+GET {{baseUrl}}/api/leave/requests/my-requests
+Authorization: Bearer {{employeeToken}}
+
+### 8.3 Get Single Leave Request Details
+GET {{baseUrl}}/api/leave/requests/{{leaveRequestId}}
+Authorization: Bearer {{employeeToken}}
+
+### ------------------------------------------------------------------------------
+### 9. APPROVAL WORKFLOW & RELATIONSHIP-BASED RBAC
+### ------------------------------------------------------------------------------
+
+### 9.1 Line Manager: Inspect Pending Approvals
+### Shows only leave requests routed to caller via active direct reporting line
+GET {{baseUrl}}/api/leave/requests/pending-approvals
+Authorization: Bearer {{managerToken}}
+
+### 9.2 Relationship-based RBAC: Unassigned Manager Attempts Approval (Expect HTTP 403 Forbidden)
+POST {{baseUrl}}/api/leave/requests/{{leaveRequestId}}/approve
+Authorization: Bearer {{otherManagerToken}}
+Content-Type: application/json
+
+{
+    "comments": "Unauthorized approval attempt"
+}
+
+### 9.3 Assigned Line Manager Approves Leave Request
+### Atomic update: pending_days decrements, used_days increments, DEDUCTION transaction written
+POST {{baseUrl}}/api/leave/requests/{{leaveRequestId}}/approve
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+    "comments": "Approved. Enjoy your time off!"
+}
+
+### 9.4 State Machine Conflict: Attempt Duplicate Approval on Terminal State (Expect HTTP 409 Conflict)
+POST {{baseUrl}}/api/leave/requests/{{leaveRequestId}}/approve
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+    "comments": "Duplicate approval attempt"
+}
+
+### ------------------------------------------------------------------------------
+### 10. REJECTION & SELF-SERVICE CANCELLATION
+### ------------------------------------------------------------------------------
+
+### 10.1 Employee Submits a Second Leave Request
+# @name submitSecondRequest
+POST {{baseUrl}}/api/leave/requests
+Authorization: Bearer {{employeeToken}}
+Content-Type: application/json
+
+{
+    "leaveTypeId": "{{listLeaveTypes.response.body.data[0].id}}",
+    "startDate": "2026-10-12",
+    "endDate": "2026-10-13",
+    "reason": "Personal errands"
+}
+
+@secondRequestId = {{submitSecondRequest.response.body.data.id}}
+
+### 10.2 Line Manager Rejects Request
+### Pending hold released back to 0.00; used_days untouched
+POST {{baseUrl}}/api/leave/requests/{{secondRequestId}}/reject
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+    "comments": "Cannot approve due to critical sprint release"
+}
+
+### 10.3 Employee Submits a Third Leave Request
+# @name submitThirdRequest
+POST {{baseUrl}}/api/leave/requests
+Authorization: Bearer {{employeeToken}}
+Content-Type: application/json
+
+{
+    "leaveTypeId": "{{listLeaveTypes.response.body.data[0].id}}",
+    "startDate": "2026-10-19",
+    "endDate": "2026-10-20",
+    "reason": "Doctor appointment"
+}
+
+@thirdRequestId = {{submitThirdRequest.response.body.data.id}}
+
+### 10.4 Employee Cancels Own Pending Request
+### Pending hold released back to 0.00; status transitions to CANCELLED
+POST {{baseUrl}}/api/leave/requests/{{thirdRequestId}}/cancel
+Authorization: Bearer {{employeeToken}}
+
+### 10.5 HR Admin Override Approval (Audited on behalf of absent manager)
+# @name submitFourthRequest
+POST {{baseUrl}}/api/leave/requests
+Authorization: Bearer {{employeeToken}}
+Content-Type: application/json
+
+{
+    "leaveTypeId": "{{listLeaveTypes.response.body.data[0].id}}",
+    "startDate": "2026-10-26",
+    "endDate": "2026-10-27",
+    "reason": "Emergency leave"
+}
+
+@fourthRequestId = {{submitFourthRequest.response.body.data.id}}
+
+POST {{baseUrl}}/api/leave/requests/{{fourthRequestId}}/approve
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+    "comments": "Approved by HR Admin on behalf of absent manager"
+}
+
+### ==============================================================================
+### PHASE 5: HELP DESK TAXONOMY (Categories, Queues & SLA Policies)
+### ==============================================================================
+
+### ------------------------------------------------------------------------------
+### 11. TICKET CATEGORIES
+### ------------------------------------------------------------------------------
+
+### 11.1 List All Active Categories (Authenticated)
+# @name listCategories
+GET {{baseUrl}}/api/helpdesk/categories
+Authorization: Bearer {{employeeToken}}
+
+### 11.2 Create Category (HR Admin only)
+# @name createCategory
+POST {{baseUrl}}/api/helpdesk/categories
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+    "name": "Cloud Infrastructure & DevOps",
+    "code": "CLOUD_INFRA",
+    "description": "AWS, GCP, Kubernetes, CI/CD pipeline issues and environment requests",
+    "defaultPriority": "HIGH"
+}
+
+### Store Custom Category ID
+@cloudCategoryId = {{createCategory.response.body.data.id}}
+
+### 11.3 Employee Attempts Category Creation (Expect HTTP 403 Forbidden)
+POST {{baseUrl}}/api/helpdesk/categories
+Authorization: Bearer {{employeeToken}}
+Content-Type: application/json
+
+{
+    "name": "Hacker Category",
+    "code": "HACKER_CAT"
+}
+
+### ------------------------------------------------------------------------------
+### 12. SUPPORT QUEUES & MEMBERSHIP
+### ------------------------------------------------------------------------------
+
+### 12.1 List All Active Queues (Authenticated)
+# @name listQueues
+GET {{baseUrl}}/api/helpdesk/queues
+Authorization: Bearer {{employeeToken}}
+
+### 12.2 Create Support Queue (HR Admin only)
+# @name createQueue
+POST {{baseUrl}}/api/helpdesk/queues
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+    "name": "DevOps & Cloud Reliability",
+    "description": "Cloud infrastructure incident response and platform reliability team",
+    "emailAlias": "devops-support@company.com"
+}
+
+### Store Queue ID
+@devopsQueueId = {{createQueue.response.body.data.id}}
+
+### 12.3 Add Support Agent to Queue (HR Admin only - sets assigned_by & assigned_at)
+POST {{baseUrl}}/api/helpdesk/queues/{{devopsQueueId}}/members
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+    "agentUserId": "{{adminUserId}}"
+}
+
+### 12.4 List Queue Members (Authenticated)
+GET {{baseUrl}}/api/helpdesk/queues/{{devopsQueueId}}/members
+Authorization: Bearer {{employeeToken}}
+
+### ------------------------------------------------------------------------------
+### 13. SLA POLICIES
+### ------------------------------------------------------------------------------
+
+### 13.1 List All Active SLA Policies (Authenticated)
+GET {{baseUrl}}/api/helpdesk/sla-policies
+Authorization: Bearer {{employeeToken}}
+
+### 13.2 Create SLA Policy with Escalation Contract (HR Admin only)
+POST {{baseUrl}}/api/helpdesk/sla-policies
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+    "name": "Executive VIP SLA",
+    "priority": "URGENT",
+    "firstResponseTargetMinutes": 10,
+    "resolutionTargetMinutes": 60,
+    "escalationRule": {
+        "warnAtPercent": 70,
+        "escalateToRole": "SUPPORT_LEAD",
+        "notifyChannels": ["EMAIL", "SMS", "SLACK"]
+    }
+}
+
+

@@ -20,6 +20,9 @@ public interface QueueMemberRepository extends JpaRepository<QueueMember, QueueM
 
     List<QueueMember> findByAgentUserIdAndIsActiveTrue(UUID agentUserId);
 
+    @Query("SELECT CASE WHEN COUNT(qm) > 0 THEN TRUE ELSE FALSE END FROM QueueMember qm WHERE qm.id.queueId = :queueId AND qm.id.agentUserId = :agentUserId AND qm.isActive = true")
+    boolean isAgentActiveInQueue(@Param("queueId") UUID queueId, @Param("agentUserId") UUID agentUserId);
+
     @Modifying
     @Transactional
     @Query("DELETE FROM QueueMember qm WHERE qm.agentUser.id IN :userIds OR (qm.assignedBy IS NOT NULL AND qm.assignedBy.id IN :userIds)")

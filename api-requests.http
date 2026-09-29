@@ -540,4 +540,120 @@ Content-Type: application/json
     }
 }
 
+### ==============================================================================
+### 14. PHASE 6: TICKET LIFECYCLE & COLLABORATION
+### ==============================================================================
+
+### 14.1 Employee Creates Ticket (POST /api/helpdesk/tickets)
+### Generates TICK-xxxx via sequence, calculates sla_due_at, sets status NEW
+# @name createTicket
+POST {{baseUrl}}/api/helpdesk/tickets
+Authorization: Bearer {{employeeToken}}
+Content-Type: application/json
+
+{
+    "categoryId": "{{cloudCategoryId}}",
+    "queueId": "{{devopsQueueId}}",
+    "title": "Production Kubernetes Pod CrashLoopBackOff",
+    "description": "Billing service microservice pods are constantly failing health check probes.",
+    "priority": "HIGH"
+}
+
+### Store Generated Ticket ID
+@ticketId = {{createTicket.response.body.data.id}}
+
+### 14.2 Caller's Own Tickets (GET /api/helpdesk/tickets/my-tickets)
+### IDOR-Safe: Identity from JWT; internal notes completely stripped
+GET {{baseUrl}}/api/helpdesk/tickets/my-tickets
+Authorization: Bearer {{employeeToken}}
+
+### 14.3 Support Agent Queue View (GET /api/helpdesk/tickets/queue)
+### Scoped strictly to queues the calling agent is an active member of
+GET {{baseUrl}}/api/helpdesk/tickets/queue
+Authorization: Bearer {{adminToken}}
+
+### 14.4 View Ticket Details (GET /api/helpdesk/tickets/{id})
+GET {{baseUrl}}/api/helpdesk/tickets/{{ticketId}}
+Authorization: Bearer {{employeeToken}}
+
+### 14.5 Assign Ticket to Queue Member Agent (POST /api/helpdesk/tickets/{id}/assign)
+### Validates agent is active member of queue; transitions status to ASSIGNED; logs routing history
+POST {{baseUrl}}/api/helpdesk/tickets/{{ticketId}}/assign
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+    "agentUserId": "{{adminUserId}}",
+    "reason": "INITIAL_TRIAGE"
+}
+
+### 14.6 Agent Posts Internal Note (isInternal: true)
+### Visible only to support agents and HR Admins; never exposed to requester
+POST {{baseUrl}}/api/helpdesk/tickets/{{ticketId}}/comments
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+    "content": "Root cause identified: OOMKilled due to JVM heap limit mismatch in Helm values.",
+    "isInternal": true
+}
+
+### 14.7 Agent Posts Public Reply (isInternal: false)
+### Visible to requester; auto-advances ticket status to IN_PROGRESS
+POST {{baseUrl}}/api/helpdesk/tickets/{{ticketId}}/comments
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+    "content": "We have increased memory limits and restarted the deployment. Please verify service health.",
+    "isInternal": false
+}
+
+### 14.8 Agent Resolves Ticket (POST /api/helpdesk/tickets/{id}/resolve)
+### State machine validation: Rejects resolution if still in NEW status
+POST {{baseUrl}}/api/helpdesk/tickets/{{ticketId}}/resolve
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+    "resolutionNotes": "Updated Helm values memory limits to 2Gi. Verified 0 restarts across all replicas."
+}
+
+### 14.9 Requester Closes Resolved Ticket (POST /api/helpdesk/tickets/{id}/close)
+### Moves status to CLOSED and stamps closedAt timestamp
+POST {{baseUrl}}/api/helpdesk/tickets/{{ticketId}}/close
+Authorization: Bearer {{employeeToken}}
+Content-Type: application/json
+
+{
+    "feedback": "Confirmed resolved! Billing API is responsive and healthy."
+}
+
+### 14.10 Requester Reopens Resolved Ticket (POST /api/helpdesk/tickets/{id}/reopen)
+### Used if an issue recurs before final closure; moves status back to IN_PROGRESS
+POST {{baseUrl}}/api/helpdesk/tickets/{{ticketId}}/reopen
+Authorization: Bearer {{employeeToken}}
+Content-Type: application/json
+
+{
+    "reason": "Sporadic pod restart observed again under peak load"
+}
+
+### 14.11 Add File Attachment Metadata (POST /api/helpdesk/tickets/{id}/attachments)
+### Validates file size <= 10MB and prohibits executable extensions (.exe, .bat, .sh)
+POST {{baseUrl}}/api/helpdesk/tickets/{{ticketId}}/attachments
+Authorization: Bearer {{employeeToken}}
+Content-Type: application/json
+
+{
+    "fileName": "crash_dump_stacktrace.log",
+    "fileSizeBytes": 512000,
+    "mimeType": "text/plain"
+}
+
+### 14.12 View Ticket Routing History (GET /api/helpdesk/tickets/{id}/history)
+GET {{baseUrl}}/api/helpdesk/tickets/{{ticketId}}/history
+Authorization: Bearer {{adminToken}}
+
+
 

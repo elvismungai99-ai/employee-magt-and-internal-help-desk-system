@@ -47,6 +47,7 @@ public class DataInitializer implements CommandLineRunner {
     private final TicketCategoryRepository ticketCategoryRepository;
     private final SupportQueueRepository supportQueueRepository;
     private final SlaPolicyRepository slaPolicyRepository;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     public DataInitializer(RoleRepository roleRepository,
                            PermissionRepository permissionRepository,
@@ -58,7 +59,8 @@ public class DataInitializer implements CommandLineRunner {
                            LeaveBalanceService leaveBalanceService,
                            TicketCategoryRepository ticketCategoryRepository,
                            SupportQueueRepository supportQueueRepository,
-                           SlaPolicyRepository slaPolicyRepository) {
+                           SlaPolicyRepository slaPolicyRepository,
+                           org.springframework.jdbc.core.JdbcTemplate jdbcTemplate) {
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
         this.departmentRepository = departmentRepository;
@@ -70,6 +72,7 @@ public class DataInitializer implements CommandLineRunner {
         this.ticketCategoryRepository = ticketCategoryRepository;
         this.supportQueueRepository = supportQueueRepository;
         this.slaPolicyRepository = slaPolicyRepository;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Override
@@ -340,6 +343,13 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void initHelpdeskTaxonomy() {
+        // Ensure ticket number sequence exists
+        try {
+            jdbcTemplate.execute("CREATE SEQUENCE IF NOT EXISTS helpdesk.ticket_number_seq START WITH 1001 INCREMENT BY 1");
+        } catch (Exception e) {
+            log.warn("Ticket sequence creation check returned: {}", e.getMessage());
+        }
+
         // 1. Support Queues
         List<QueueDefinition> queueDefs = List.of(
                 new QueueDefinition("Tier 1 Support", "General helpdesk triage and Tier 1 customer queries", "tier1-support@company.com"),

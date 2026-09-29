@@ -261,6 +261,8 @@ CREATE TABLE public.sla_policies (
 );
 
 -- Tickets (Triage & Lifecycle)
+CREATE SEQUENCE IF NOT EXISTS helpdesk.ticket_number_seq START WITH 1001 INCREMENT BY 1;
+
 CREATE TABLE public.tickets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     ticket_number VARCHAR(50) NOT NULL UNIQUE,
@@ -271,7 +273,7 @@ CREATE TABLE public.tickets (
     sla_policy_id UUID REFERENCES public.sla_policies(id) ON DELETE SET NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
-    status VARCHAR(30) NOT NULL DEFAULT 'NEW' CHECK (status IN ('NEW', 'TRIAGED', 'IN_PROGRESS', 'PENDING_USER', 'RESOLVED', 'CLOSED', 'REOPENED')),
+    status VARCHAR(30) NOT NULL DEFAULT 'NEW' CHECK (status IN ('NEW', 'ASSIGNED', 'TRIAGED', 'IN_PROGRESS', 'PENDING_USER', 'RESOLVED', 'CLOSED', 'REOPENED')),
     priority VARCHAR(20) NOT NULL DEFAULT 'MEDIUM' CHECK (priority IN ('LOW', 'MEDIUM', 'HIGH', 'URGENT')),
     sla_due_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -309,7 +311,7 @@ CREATE TABLE public.ticket_routing_history (
     ticket_id UUID NOT NULL REFERENCES public.tickets(id) ON DELETE CASCADE,
     previous_agent_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
     new_agent_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
-    reason VARCHAR(50) NOT NULL CHECK (reason IN ('INITIAL_TRIAGE', 'MANUAL_REASSIGN', 'OOO_REROUTE', 'ESCALATION')),
+    reason VARCHAR(50) NOT NULL CHECK (reason IN ('INITIAL_TRIAGE', 'MANUAL_REASSIGN', 'MANUAL', 'OOO_REROUTE', 'ESCALATION')),
     changed_by_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

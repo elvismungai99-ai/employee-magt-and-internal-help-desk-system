@@ -18,6 +18,8 @@ public interface SlaPolicyRepository extends JpaRepository<SlaPolicy, UUID> {
 
     Optional<SlaPolicy> findByPriority(TicketPriority priority);
 
+    Optional<SlaPolicy> findByPriorityAndIsActiveTrue(TicketPriority priority);
+
     Optional<SlaPolicy> findByName(String name);
 
     boolean existsByPriority(TicketPriority priority);

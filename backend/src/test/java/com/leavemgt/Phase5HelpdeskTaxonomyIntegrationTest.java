@@ -80,6 +80,9 @@ class Phase5HelpdeskTaxonomyIntegrationTest {
 
     @BeforeAll
     void setupTestData() throws Exception {
+        // Clear all queue memberships for test isolation
+        queueMemberRepository.deleteAll();
+
         // Clean test users in topological cascade order
         List<String> emailsToClean = List.of(
                 "p5.emp@company.com",

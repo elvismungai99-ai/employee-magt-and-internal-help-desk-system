@@ -63,9 +63,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/leave/balances/user/**").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
                 .requestMatchers("/api/leave/balances/*/adjust").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
                 // HR Admin only: Helpdesk taxonomy administration
-                .requestMatchers(HttpMethod.POST, "/api/helpdesk/**").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
-                .requestMatchers(HttpMethod.PATCH, "/api/helpdesk/**").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/helpdesk/**").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/helpdesk/categories/**", "/api/helpdesk/queues/**", "/api/helpdesk/sla-policies/**").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
+                .requestMatchers(HttpMethod.PATCH, "/api/helpdesk/categories/**", "/api/helpdesk/queues/**", "/api/helpdesk/sla-policies/**").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/helpdesk/categories/**", "/api/helpdesk/queues/**", "/api/helpdesk/sla-policies/**").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
                 // All other requests require authentication
                 .anyRequest().authenticated()
             )

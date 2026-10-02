@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -36,6 +37,7 @@ public class RegisterRequest {
     private String jobTitle;
     private UUID departmentId;
 
-    // Explicitly ignored on self-registration; always assigned EMPLOYEE
+    // Optional user-dictated role or roles (e.g. EMPLOYEE, LINE_MANAGER, SUPPORT_AGENT, HR_ADMIN)
     private String role;
+    private List<String> roles;
 }

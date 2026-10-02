@@ -63,13 +63,35 @@ public class AuthService {
             throw new IllegalArgumentException("Email already in use");
         }
 
-        // Always resolve and assign the EMPLOYEE role (ignore any role sent in request body)
-        Role employeeRole = roleRepository.findByName("EMPLOYEE")
-                .orElseGet(() -> roleRepository.save(Role.builder()
-                        .name("EMPLOYEE")
-                        .description("Standard employee role")
-                        .isSystemRole(true)
-                        .build()));
+        // Resolve and assign user-dictated role(s)
+        Set<String> requestedRoleNames = new LinkedHashSet<>();
+        if (request.getRoles() != null && !request.getRoles().isEmpty()) {
+            requestedRoleNames.addAll(request.getRoles());
+        }
+        if (request.getRole() != null && !request.getRole().isBlank()) {
+            for (String r : request.getRole().split(",")) {
+                if (!r.isBlank()) {
+                    requestedRoleNames.add(r.trim());
+                }
+            }
+        }
+
+        // Default to EMPLOYEE role if no role was dictated
+        if (requestedRoleNames.isEmpty()) {
+            requestedRoleNames.add("EMPLOYEE");
+        }
+
+        Set<Role> assignedRoles = new HashSet<>();
+        for (String rName : requestedRoleNames) {
+            String cleanName = rName.toUpperCase().replace("ROLE_", "").trim();
+            Role resolvedRole = roleRepository.findByName(cleanName)
+                    .orElseGet(() -> roleRepository.save(Role.builder()
+                            .name(cleanName)
+                            .description(cleanName + " role")
+                            .isSystemRole(true)
+                            .build()));
+            assignedRoles.add(resolvedRole);
+        }
 
         Department department = null;
         if (request.getDepartmentId() != null) {
@@ -90,16 +112,11 @@ public class AuthService {
                 .jobTitle(request.getJobTitle() != null ? request.getJobTitle() : "Employee")
                 .phone(request.getPhone())
                 .department(department)
-                .status("ACTIVE")
-                .roles(new HashSet<>(Collections.singletonList(employeeRole)))
+                .status("PENDING_APPROVAL")
+                .roles(assignedRoles)
                 .build();
 
-        User savedUser = userRepository.save(user);
-
-        // Initialize current-year leave balances for active leave types
-        leaveBalanceService.initializeBalancesForUser(savedUser, java.time.Year.now().getValue());
-
-        return savedUser;
+        return userRepository.save(user);
     }
 
     @Transactional
@@ -120,6 +137,12 @@ public class AuthService {
         User user = userOpt.get();
 
         if (!"ACTIVE".equalsIgnoreCase(user.getStatus())) {
+            if ("PENDING_APPROVAL".equalsIgnoreCase(user.getStatus())) {
+                throw new BadCredentialsException("Your account registration is pending HR approval. Please wait for an HR administrator to verify and activate your account.");
+            }
+            if ("REJECTED".equalsIgnoreCase(user.getStatus())) {
+                throw new BadCredentialsException("Your registration request was not approved. Please contact HR for assistance.");
+            }
             throw new BadCredentialsException("User account is inactive or suspended");
         }
 

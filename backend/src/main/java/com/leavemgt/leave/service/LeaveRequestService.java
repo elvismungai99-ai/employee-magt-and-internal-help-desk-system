@@ -15,6 +15,7 @@ import com.leavemgt.leave.repository.LeaveApprovalRepository;
 import com.leavemgt.leave.repository.LeaveBalanceRepository;
 import com.leavemgt.leave.repository.LeaveRequestRepository;
 import com.leavemgt.leave.repository.LeaveTypeRepository;
+import com.leavemgt.platform.service.EventPublisherService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
@@ -26,6 +27,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -41,6 +43,7 @@ public class LeaveRequestService {
     private final BalanceTransactionRepository transactionRepository;
     private final ReportingHierarchyRepository reportingHierarchyRepository;
     private final UserRepository userRepository;
+    private final EventPublisherService eventPublisherService;
 
     public LeaveRequestService(LeaveRequestRepository leaveRequestRepository,
                                LeaveApprovalRepository leaveApprovalRepository,
@@ -48,7 +51,8 @@ public class LeaveRequestService {
                                LeaveTypeRepository leaveTypeRepository,
                                BalanceTransactionRepository transactionRepository,
                                ReportingHierarchyRepository reportingHierarchyRepository,
-                               UserRepository userRepository) {
+                               UserRepository userRepository,
+                               EventPublisherService eventPublisherService) {
         this.leaveRequestRepository = leaveRequestRepository;
         this.leaveApprovalRepository = leaveApprovalRepository;
         this.leaveBalanceRepository = leaveBalanceRepository;
@@ -56,6 +60,7 @@ public class LeaveRequestService {
         this.transactionRepository = transactionRepository;
         this.reportingHierarchyRepository = reportingHierarchyRepository;
         this.userRepository = userRepository;
+        this.eventPublisherService = eventPublisherService;
     }
 
     @Transactional
@@ -248,6 +253,19 @@ public class LeaveRequestService {
 
         log.info("Leave request {} APPROVED by user {} (isHrAdmin={})", requestId, caller.getEmail(), isHrAdmin);
 
+        // Publish LeaveApproved event in the same transaction
+        eventPublisherService.publishEvent(
+                "LeaveApproved",
+                "LEAVE",
+                Map.of(
+                        "leaveRequestId", updated.getId().toString(),
+                        "employeeId", updated.getUser().getId().toString(),
+                        "employeeName", updated.getUser().getFullName(),
+                        "startDate", updated.getStartDate().toString(),
+                        "endDate", updated.getEndDate().toString()
+                )
+        );
+
         return mapToResponse(updated);
     }
 
@@ -317,27 +335,56 @@ public class LeaveRequestService {
             throw new AccessDeniedException("You are only permitted to cancel your own leave requests");
         }
 
-        if (request.getStatus() != LeaveRequestStatus.PENDING) {
-            throw new IllegalStateException("Cannot cancel leave request: Only PENDING requests can be cancelled (current status: " + request.getStatus() + ")");
+        if (request.getStatus() != LeaveRequestStatus.PENDING && request.getStatus() != LeaveRequestStatus.APPROVED) {
+            throw new IllegalStateException("Cannot cancel leave request: Only PENDING or APPROVED requests can be cancelled (current status: " + request.getStatus() + ")");
         }
 
-        // Release pending hold on balance
         int year = request.getStartDate().getYear();
         leaveBalanceRepository.findByUserIdAndLeaveTypeIdAndYearWithLock(
                 request.getUser().getId(), request.getLeaveType().getId(), year)
                 .ifPresent(balance -> {
-                    BigDecimal newPending = balance.getPendingDays().subtract(request.getTotalDays());
-                    if (newPending.compareTo(BigDecimal.ZERO) < 0) {
-                        newPending = BigDecimal.ZERO;
+                    if (request.getStatus() == LeaveRequestStatus.APPROVED) {
+                        BigDecimal newUsed = balance.getUsedDays().subtract(request.getTotalDays());
+                        if (newUsed.compareTo(BigDecimal.ZERO) < 0) {
+                            newUsed = BigDecimal.ZERO;
+                        }
+                        balance.setUsedDays(newUsed);
+                        leaveBalanceRepository.save(balance);
+
+                        BalanceTransaction tx = BalanceTransaction.builder()
+                                .leaveBalance(balance)
+                                .transactionType(TransactionType.REVERSAL)
+                                .amountDays(request.getTotalDays())
+                                .description("Reversal due to cancellation of approved leave request " + requestId)
+                                .createdBy(request.getUser())
+                                .build();
+                        transactionRepository.save(tx);
+                    } else {
+                        BigDecimal newPending = balance.getPendingDays().subtract(request.getTotalDays());
+                        if (newPending.compareTo(BigDecimal.ZERO) < 0) {
+                            newPending = BigDecimal.ZERO;
+                        }
+                        balance.setPendingDays(newPending);
+                        leaveBalanceRepository.save(balance);
                     }
-                    balance.setPendingDays(newPending);
-                    leaveBalanceRepository.save(balance);
                 });
 
         request.setStatus(LeaveRequestStatus.CANCELLED);
         LeaveRequest updated = leaveRequestRepository.save(request);
 
         log.info("Leave request {} CANCELLED by employee {}", requestId, callerId);
+
+        // Publish LeaveCancelled event in the same transaction
+        eventPublisherService.publishEvent(
+                "LeaveCancelled",
+                "LEAVE",
+                Map.of(
+                        "leaveRequestId", updated.getId().toString(),
+                        "employeeId", updated.getUser().getId().toString(),
+                        "startDate", updated.getStartDate().toString(),
+                        "endDate", updated.getEndDate().toString()
+                )
+        );
 
         return mapToResponse(updated);
     }

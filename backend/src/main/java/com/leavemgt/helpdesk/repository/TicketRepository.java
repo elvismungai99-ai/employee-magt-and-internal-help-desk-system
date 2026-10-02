@@ -27,4 +27,14 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID> {
     String generateNextTicketNumber();
 
     boolean existsByTicketNumber(String ticketNumber);
+
+    @Query("SELECT t FROM Ticket t WHERE t.assignedAgent.id = :agentId AND t.status NOT IN :terminalStatuses")
+    List<Ticket> findOpenTicketsByAssignedAgentId(@Param("agentId") UUID agentId, @Param("terminalStatuses") Collection<com.leavemgt.helpdesk.entity.TicketStatus> terminalStatuses);
+
+    @Query("SELECT t FROM Ticket t WHERE t.slaDueAt < :now AND t.status NOT IN :terminalStatuses AND (t.slaBreached IS NULL OR t.slaBreached = false)")
+    List<Ticket> findBreachedTickets(@Param("now") java.time.OffsetDateTime now, @Param("terminalStatuses") Collection<com.leavemgt.helpdesk.entity.TicketStatus> terminalStatuses);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE Ticket t SET t.slaBreached = true WHERE t.id = :ticketId AND (t.slaBreached IS NULL OR t.slaBreached = false)")
+    int markSlaBreachedIfUnmarked(@Param("ticketId") UUID ticketId);
 }

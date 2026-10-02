@@ -27,15 +27,19 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<Map<String, Object>>> register(@Valid @RequestBody RegisterRequest request) {
         User registeredUser = authService.register(request);
+        java.util.List<String> roleNames = registeredUser.getRoles().stream()
+                .map(com.leavemgt.identity.entity.Role::getName)
+                .toList();
         return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(ApiResponse.success(
                 Map.of(
                         "id", registeredUser.getId().toString(),
                         "employeeCode", registeredUser.getEmployeeCode(),
                         "email", registeredUser.getEmail(),
-                        "roles", java.util.List.of("EMPLOYEE"),
-                        "assignedRole", "EMPLOYEE"
+                        "status", registeredUser.getStatus(),
+                        "roles", roleNames,
+                        "assignedRole", roleNames.isEmpty() ? "EMPLOYEE" : roleNames.get(0)
                 ),
-                "Employee registered successfully. You may now log in."
+                "Registration submitted successfully. Your account is pending HR verification and will be activated once approved by HR."
         ));
     }
 

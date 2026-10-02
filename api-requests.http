@@ -18,7 +18,7 @@ Content-Type: application/json
 ### 2. EMPLOYEE REGISTRATION & AUTHENTICATION
 ### ------------------------------------------------------------------------------
 
-### 2.1 Register New Employee (Role is strictly locked to EMPLOYEE)
+### 2.1 Register New Employee (Specify "role": "EMPLOYEE")
 # @name registerEmployee
 POST {{baseUrl}}/api/auth/register
 Content-Type: application/json
@@ -30,6 +30,7 @@ Content-Type: application/json
     "password": "Password123!",
     "jobTitle": "Software Engineer",
     "phone": "+254711000111",
+    "role": "EMPLOYEE",
     "departmentId": "{{listDepartments.response.body.data[1].id}}"
 }
 
@@ -66,17 +67,33 @@ Content-Type: application/json
 }
 
 ### ------------------------------------------------------------------------------
-### 3. HR ADMINISTRATOR WORKFLOW
+### 3. HR ADMINISTRATOR WORKFLOW (Self-Registered Profile)
 ### ------------------------------------------------------------------------------
 
-### 3.1 Login as Default Seeded HR Admin
+### 3.1 Register HR Administrator Account (Self-Service with role: HR_ADMIN)
+# @name registerHrAdmin
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+    "firstName": "Sarah",
+    "lastName": "Admin",
+    "email": "sarah.admin@company.com",
+    "password": "Password123!",
+    "jobTitle": "HR Director",
+    "phone": "+254700112233",
+    "role": "HR_ADMIN",
+    "departmentId": "{{listDepartments.response.body.data[0].id}}"
+}
+
+### 3.2 Login as HR Admin
 # @name hrAdminLogin
 POST {{baseUrl}}/api/auth/login
 Content-Type: application/json
 
 {
-    "email": "hr.admin@company.com",
-    "password": "Admin123!"
+    "email": "sarah.admin@company.com",
+    "password": "Password123!"
 }
 
 ### Store HR Admin Token
@@ -654,6 +671,44 @@ Content-Type: application/json
 ### 14.12 View Ticket Routing History (GET /api/helpdesk/tickets/{id}/history)
 GET {{baseUrl}}/api/helpdesk/tickets/{{ticketId}}/history
 Authorization: Bearer {{adminToken}}
+
+### ==============================================================================
+### PHASE 7: BACKGROUND SCHEDULED ENGINES & EVENT OUTBOX PIPELINE
+### ==============================================================================
+
+### 15.1 Get Last Accrual Run Status (GET /api/admin/jobs/accrual/last-run)
+### Monitored by HR Admin: users processed, balances accrued, and failures
+GET {{baseUrl}}/api/admin/jobs/accrual/last-run
+Authorization: Bearer {{adminToken}}
+
+### 15.2 Get Last SLA Breach Sweep Status (GET /api/admin/jobs/sla-monitor/last-run)
+### Monitored by HR Admin: tickets checked and breaches detected
+GET {{baseUrl}}/api/admin/jobs/sla-monitor/last-run
+Authorization: Bearer {{adminToken}}
+
+### 15.3 Inspect Recent Event Outbox Records (GET /api/admin/events)
+### Full visibility into asynchronous transactional event pipeline
+GET {{baseUrl}}/api/admin/events?page=0&size=10
+Authorization: Bearer {{adminToken}}
+
+### 15.4 Filter Event Outbox by Status (GET /api/admin/events?status=PUBLISHED)
+GET {{baseUrl}}/api/admin/events?status=PUBLISHED&page=0&size=10
+Authorization: Bearer {{adminToken}}
+
+### 15.5 Manually Trigger Monthly Accrual (POST /api/admin/jobs/accrual/trigger)
+### Idempotency-safe: duplicate triggers in same month skip already credited balances
+POST {{baseUrl}}/api/admin/jobs/accrual/trigger
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+    "year": 2026,
+    "month": 10
+}
+
+### 15.6 Security Enforcement: Employee Cannot Access Admin Endpoints (Expect 403 Forbidden)
+GET {{baseUrl}}/api/admin/events
+Authorization: Bearer {{employeeToken}}
 
 
 

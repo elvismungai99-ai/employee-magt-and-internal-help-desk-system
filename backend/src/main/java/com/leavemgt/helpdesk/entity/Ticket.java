@@ -66,6 +66,10 @@ public class Ticket {
     @Column(name = "sla_due_at")
     private OffsetDateTime slaDueAt;
 
+    @Column(name = "sla_breached", nullable = false)
+    @Builder.Default
+    private Boolean slaBreached = false;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;

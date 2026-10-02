@@ -39,3 +39,10 @@ build/
 ### Local secrets & logs ###
 *.log
 src/main/resources/application-local.yml
+
+### Frontend ###
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+

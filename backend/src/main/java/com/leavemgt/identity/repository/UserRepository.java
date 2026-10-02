@@ -13,4 +13,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmployeeCode(String employeeCode);
     boolean existsByEmail(String email);
     boolean existsByEmployeeCode(String employeeCode);
+
+    @org.springframework.data.jpa.repository.Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = :roleName OR r.name = CONCAT('ROLE_', :roleName)")
+    java.util.List<User> findByRoleName(@org.springframework.data.repository.query.Param("roleName") String roleName);
+
+    java.util.List<User> findByStatusOrderByCreatedAtDesc(String status);
 }

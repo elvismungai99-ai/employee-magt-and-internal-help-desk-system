@@ -52,6 +52,9 @@ class Phase1IntegrationTest {
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
     private String employeeAccessToken;
     private String employeeRefreshToken;
     private UUID employeeId;
@@ -61,18 +64,42 @@ class Phase1IntegrationTest {
 
     @BeforeAll
     void cleanupTestData() {
-        List<String> testEmails = List.of(
+        purgeUsers(List.of(
                 "john.doe@company.com",
                 "alice.manager@company.com",
                 "unauthorized.create@company.com"
-        );
-        for (String email : testEmails) {
+        ));
+    }
+
+    @AfterAll
+    void teardownTestData() {
+        purgeUsers(List.of(
+                "john.doe@company.com",
+                "alice.manager@company.com",
+                "unauthorized.create@company.com",
+                "hr.admin@company.com"
+        ));
+    }
+
+    private void purgeUsers(List<String> emails) {
+        for (String email : emails) {
             userRepository.findByEmail(email).ifPresent(user -> {
+                UUID uid = user.getId();
+                jdbcTemplate.execute("DELETE FROM platform.notifications WHERE recipient_id = '" + uid + "'");
+                jdbcTemplate.execute("DELETE FROM leave.out_of_office_records WHERE user_id = '" + uid + "'");
+                jdbcTemplate.execute("DELETE FROM helpdesk.ticket_comments WHERE author_id = '" + uid + "'");
+                jdbcTemplate.execute("DELETE FROM helpdesk.ticket_routing_history WHERE changed_by_id = '" + uid + "' OR previous_agent_id = '" + uid + "' OR new_agent_id = '" + uid + "'");
+                jdbcTemplate.execute("DELETE FROM helpdesk.tickets WHERE requester_id = '" + uid + "' OR assigned_agent_id = '" + uid + "'");
+                jdbcTemplate.execute("DELETE FROM helpdesk.queue_members WHERE agent_user_id = '" + uid + "'");
+                jdbcTemplate.execute("DELETE FROM leave.balance_transactions WHERE leave_balance_id IN (SELECT id FROM leave.leave_balances WHERE user_id = '" + uid + "')");
+                jdbcTemplate.execute("DELETE FROM leave.leave_approvals WHERE approver_id = '" + uid + "' OR leave_request_id IN (SELECT id FROM leave.leave_requests WHERE user_id = '" + uid + "')");
+                jdbcTemplate.execute("DELETE FROM leave.leave_requests WHERE user_id = '" + uid + "'");
+                jdbcTemplate.execute("DELETE FROM leave.leave_balances WHERE user_id = '" + uid + "'");
                 hierarchyRepository.deleteAll(hierarchyRepository.findAll().stream()
-                        .filter(h -> h.getEmployee().getId().equals(user.getId()) || h.getManager().getId().equals(user.getId()))
+                        .filter(h -> h.getEmployee().getId().equals(uid) || h.getManager().getId().equals(uid))
                         .toList());
                 refreshTokenRepository.deleteAll(refreshTokenRepository.findAll().stream()
-                        .filter(rt -> rt.getUser().getId().equals(user.getId()))
+                        .filter(rt -> rt.getUser().getId().equals(uid))
                         .toList());
                 userRepository.delete(user);
             });

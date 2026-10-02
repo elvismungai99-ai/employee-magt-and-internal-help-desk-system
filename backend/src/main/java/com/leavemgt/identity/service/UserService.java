@@ -140,6 +140,58 @@ public class UserService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<UserProfileResponse> getPendingRegistrations() {
+        return userRepository.findByStatusOrderByCreatedAtDesc("PENDING_APPROVAL").stream()
+                .map(this::mapToUserProfileResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public UserProfileResponse approveUserRegistration(UUID userId, UUID managerId, UUID departmentId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
+
+        if (!"PENDING_APPROVAL".equalsIgnoreCase(user.getStatus())) {
+            throw new IllegalStateException("User " + user.getEmail() + " is not in PENDING_APPROVAL status (current: " + user.getStatus() + ")");
+        }
+
+        user.setStatus("ACTIVE");
+
+        if (departmentId != null) {
+            Department dept = departmentRepository.findById(departmentId).orElse(null);
+            if (dept != null) {
+                user.setDepartment(dept);
+            }
+        }
+
+        User savedUser = userRepository.save(user);
+
+        // Assign line manager if provided
+        if (managerId != null) {
+            assignManager(savedUser.getId(), managerId);
+        }
+
+        // Initialize current-year leave balances for active leave types
+        leaveBalanceService.initializeBalancesForUser(savedUser, java.time.Year.now().getValue());
+
+        return mapToUserProfileResponse(savedUser);
+    }
+
+    @Transactional
+    public UserProfileResponse rejectUserRegistration(UUID userId, String reason) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
+
+        if (!"PENDING_APPROVAL".equalsIgnoreCase(user.getStatus())) {
+            throw new IllegalStateException("User " + user.getEmail() + " is not in PENDING_APPROVAL status (current: " + user.getStatus() + ")");
+        }
+
+        user.setStatus("REJECTED");
+        User savedUser = userRepository.save(user);
+        return mapToUserProfileResponse(savedUser);
+    }
+
     private UserProfileResponse mapToUserProfileResponse(User user) {
         UserProfileResponse.DepartmentDto deptDto = null;
         if (user.getDepartment() != null) {

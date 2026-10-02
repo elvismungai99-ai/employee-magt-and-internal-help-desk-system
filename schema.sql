@@ -61,7 +61,7 @@ CREATE TABLE public.users (
     department_id UUID REFERENCES public.departments(id) ON DELETE SET NULL,
     job_title VARCHAR(100),
     phone VARCHAR(50),
-    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE', 'SUSPENDED')),
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE', 'SUSPENDED', 'PENDING_APPROVAL', 'REJECTED')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -209,7 +209,8 @@ CREATE TABLE public.out_of_office_records (
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
     sync_status VARCHAR(30) NOT NULL DEFAULT 'SYNCED' CHECK (sync_status IN ('PENDING', 'SYNCED', 'REVOKED', 'FAILED')),
-    synced_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    synced_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    source_event_id UUID UNIQUE
 );
 
 -- ==============================================================================
@@ -276,6 +277,7 @@ CREATE TABLE public.tickets (
     status VARCHAR(30) NOT NULL DEFAULT 'NEW' CHECK (status IN ('NEW', 'ASSIGNED', 'TRIAGED', 'IN_PROGRESS', 'PENDING_USER', 'RESOLVED', 'CLOSED', 'REOPENED')),
     priority VARCHAR(20) NOT NULL DEFAULT 'MEDIUM' CHECK (priority IN ('LOW', 'MEDIUM', 'HIGH', 'URGENT')),
     sla_due_at TIMESTAMPTZ,
+    sla_breached BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     resolved_at TIMESTAMPTZ,
@@ -352,3 +354,34 @@ CREATE INDEX IF NOT EXISTS idx_tickets_sla_due ON public.tickets(sla_due_at) WHE
 CREATE INDEX IF NOT EXISTS idx_comments_ticket ON public.ticket_comments(ticket_id);
 CREATE INDEX IF NOT EXISTS idx_routing_history_ticket ON public.ticket_routing_history(ticket_id);
 CREATE INDEX IF NOT EXISTS idx_sla_breach_ticket ON public.sla_breach_logs(ticket_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_sla_breached ON public.tickets(sla_due_at) WHERE status NOT IN ('RESOLVED', 'CLOSED') AND sla_breached = false;
+
+-- ==============================================================================
+-- 4. PLATFORM DOMAIN (Asynchronous Event Outbox & Notifications)
+-- ==============================================================================
+
+CREATE TABLE IF NOT EXISTS platform.event_outbox (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_type VARCHAR(100) NOT NULL,
+    source_domain VARCHAR(20) NOT NULL CHECK (source_domain IN ('LEAVE', 'HELPDESK', 'IDENTITY')),
+    payload JSONB NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PROCESSING', 'PUBLISHED', 'FAILED')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    published_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS platform.notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    recipient_id UUID NOT NULL REFERENCES identity.users(id),
+    event_id UUID REFERENCES platform.event_outbox(id),
+    channel VARCHAR(20) NOT NULL CHECK (channel IN ('EMAIL', 'SLACK')),
+    message TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'SENT', 'FAILED')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    sent_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_outbox_pending ON platform.event_outbox(created_at) WHERE status = 'PENDING';
+CREATE INDEX IF NOT EXISTS idx_notifications_event ON platform.notifications(event_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_recipient ON platform.notifications(recipient_id);
+

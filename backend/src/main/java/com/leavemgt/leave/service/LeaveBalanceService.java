@@ -62,12 +62,28 @@ public class LeaveBalanceService {
                 entitledDays = policyOpt.get().getAnnualAllowance();
             }
 
+            BigDecimal initialAccrued = BigDecimal.ZERO;
+            if (policyOpt.isPresent()) {
+                BigDecimal accrualRate = policyOpt.get().getMonthlyAccrualRate();
+                if (accrualRate == null || accrualRate.compareTo(BigDecimal.ZERO) <= 0) {
+                    // For lump-sum/event-based leaves (e.g. Maternity 90d, Sick 30d, Paternity 14d, Casual 10d),
+                    // the annual allowance is granted upfront upon initialization.
+                    initialAccrued = entitledDays;
+                } else {
+                    // For monthly-accruing leaves (e.g. Annual Leave 21d with 1.75/month rate):
+                    // Credit accrued days up to the current calendar month of registration.
+                    int currentMonth = java.time.LocalDate.now().getMonthValue();
+                    BigDecimal proratedAccrual = accrualRate.multiply(BigDecimal.valueOf(currentMonth));
+                    initialAccrued = proratedAccrual.min(entitledDays);
+                }
+            }
+
             LeaveBalance balance = LeaveBalance.builder()
                     .user(user)
                     .leaveType(leaveType)
                     .year(year)
                     .entitledDays(entitledDays)
-                    .accruedDays(BigDecimal.ZERO)
+                    .accruedDays(initialAccrued)
                     .usedDays(BigDecimal.ZERO)
                     .pendingDays(BigDecimal.ZERO)
                     .carriedOverDays(BigDecimal.ZERO)
@@ -82,19 +98,54 @@ public class LeaveBalanceService {
                 .collect(Collectors.toList());
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<LeaveBalanceResponse> getMyBalances(UUID userId, int year) {
-        return balanceRepository.findByUserIdAndYear(userId, year).stream()
+        List<LeaveBalance> balances = balanceRepository.findByUserIdAndYear(userId, year);
+        if (balances.isEmpty()) {
+            User user = userRepository.findById(userId).orElse(null);
+            if (user != null) {
+                return initializeBalancesForUser(user, year);
+            }
+        }
+
+        // Self-heal any zero-accrual records that were registered prior to full policy initialization
+        for (LeaveBalance b : balances) {
+            if (b.getAccruedDays().compareTo(BigDecimal.ZERO) == 0
+                    && b.getUsedDays().compareTo(BigDecimal.ZERO) == 0
+                    && b.getPendingDays().compareTo(BigDecimal.ZERO) == 0) {
+                Optional<LeavePolicy> policyOpt = policyRepository.findByLeaveTypeIdAndEffectiveYearAndIsActiveTrue(b.getLeaveType().getId(), year);
+                if (policyOpt.isEmpty()) {
+                    policyOpt = policyRepository.findFirstByLeaveTypeIdAndIsActiveTrueOrderByEffectiveYearDesc(b.getLeaveType().getId());
+                }
+                if (policyOpt.isPresent()) {
+                    BigDecimal rate = policyOpt.get().getMonthlyAccrualRate();
+                    if (rate == null || rate.compareTo(BigDecimal.ZERO) <= 0) {
+                        b.setAccruedDays(b.getEntitledDays());
+                        balanceRepository.save(b);
+                    } else {
+                        int currentMonth = java.time.LocalDate.now().getMonthValue();
+                        BigDecimal prorated = rate.multiply(BigDecimal.valueOf(currentMonth)).min(b.getEntitledDays());
+                        b.setAccruedDays(prorated);
+                        balanceRepository.save(b);
+                    }
+                }
+            }
+        }
+
+        return balances.stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<LeaveBalanceResponse> getUserBalances(UUID userId, int year) {
-        if (!userRepository.existsById(userId)) {
-            throw new IllegalArgumentException("User not found with ID: " + userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
+        List<LeaveBalance> balances = balanceRepository.findByUserIdAndYear(userId, year);
+        if (balances.isEmpty()) {
+            return initializeBalancesForUser(user, year);
         }
-        return balanceRepository.findByUserIdAndYear(userId, year).stream()
+        return balances.stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }

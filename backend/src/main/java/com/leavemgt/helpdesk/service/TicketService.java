@@ -239,8 +239,11 @@ public class TicketService {
             throw new IllegalArgumentException("Cannot assign ticket to an inactive user");
         }
 
-        // Validate target agent is active member of ticket's queue
-        if (ticket.getQueue() != null && !queueMemberRepository.isAgentActiveInQueue(ticket.getQueue().getId(), targetAgent.getId())) {
+        // Validate target agent is active member of ticket's queue (or HR Admin with global queue authority)
+        boolean isTargetHrAdmin = targetAgent.getRoles().stream()
+                .anyMatch(r -> "HR_ADMIN".equalsIgnoreCase(r.getName()) || "ROLE_HR_ADMIN".equalsIgnoreCase(r.getName()));
+
+        if (ticket.getQueue() != null && !isTargetHrAdmin && !queueMemberRepository.isAgentActiveInQueue(ticket.getQueue().getId(), targetAgent.getId())) {
             throw new IllegalArgumentException("Target user " + targetAgent.getEmail()
                     + " is not an active member of queue '" + ticket.getQueue().getName() + "'");
         }
@@ -258,27 +261,37 @@ public class TicketService {
             ticket.setStatus(TicketStatus.ASSIGNED);
         }
 
-        String reason = request.getReason();
-        if (reason == null || reason.isBlank()) {
-            reason = previousAgent == null ? "INITIAL_TRIAGE" : "MANUAL_REASSIGN";
+        String rawReason = request.getReason();
+        RoutingReason routingReason = null;
+        if (rawReason != null && !rawReason.isBlank()) {
+            try {
+                routingReason = RoutingReason.valueOf(rawReason.trim().toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+                // Free-text reason from client (e.g., 'Self-assigned from queue') safely mapped to canonical enum
+            }
+        }
+
+        if (routingReason == null) {
+            routingReason = (previousAgent == null) ? RoutingReason.INITIAL_TRIAGE : RoutingReason.MANUAL_REASSIGN;
         }
 
         TicketRoutingHistory history = TicketRoutingHistory.builder()
                 .ticket(ticket)
                 .previousAgent(previousAgent)
                 .newAgent(targetAgent)
-                .reason(reason)
+                .reason(routingReason.name())
                 .changedBy(caller)
                 .build();
 
         ticketRoutingHistoryRepository.save(history);
         Ticket saved = ticketRepository.save(ticket);
 
-        log.info("Assigned ticket {}: previous={}, new={}, reason={}, by={}",
+        log.info("Assigned ticket {}: previous={}, new={}, reason={}, rawNote={}, by={}",
                 saved.getTicketNumber(),
                 previousAgent != null ? previousAgent.getEmail() : "NONE",
                 targetAgent.getEmail(),
-                reason,
+                routingReason.name(),
+                rawReason,
                 caller != null ? caller.getEmail() : "SYSTEM");
 
         return mapTicket(saved, Collections.emptyList());

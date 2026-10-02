@@ -1,26 +1,110 @@
 import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { Navbar } from './components/Navbar';
+import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { LeavePortalPage } from './pages/LeavePortalPage';
+import { ManagerApprovalsPage } from './pages/ManagerApprovalsPage';
+import { HelpDeskPage } from './pages/HelpDeskPage';
+import { AgentQueuePage } from './pages/AgentQueuePage';
+import { AdminDashboardPage } from './pages/AdminDashboardPage';
+
+const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+    <Navbar />
+    <main className="flex-1 pb-12">{children}</main>
+    <footer className="border-t border-gray-200 bg-white py-4 text-center text-xs text-gray-500">
+      Employee Management &amp; Internal Help Desk System &bull; Phase 8 Enterprise UI
+    </footer>
+  </div>
+);
 
 export default function App() {
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
-      <h1>Employee Management &amp; Internal Help Desk System</h1>
-      <p style={{ color: '#666' }}>
-        Frontend initialized and ready for development. Connected to Spring Boot backend on port 8080.
-      </p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '2rem' }}>
-        <div style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '1rem' }}>
-          <h3>Identity &amp; RBAC</h3>
-          <p style={{ fontSize: '0.9rem', color: '#555' }}>Users, roles, departments, and reporting hierarchy.</p>
-        </div>
-        <div style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '1rem' }}>
-          <h3>Leave Domain</h3>
-          <p style={{ fontSize: '0.9rem', color: '#555' }}>Leave requests, balance tracking, and approval workflows.</p>
-        </div>
-        <div style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '1rem' }}>
-          <h3>Help Desk Domain</h3>
-          <p style={{ fontSize: '0.9rem', color: '#555' }}>Incident tickets, triage queues, and SLA monitoring.</p>
-        </div>
-      </div>
-    </div>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <AuthProvider>
+        <Routes>
+          {/* Public Authentication Routes */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+
+          {/* Authenticated Application Routes */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <DashboardPage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/leave"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <LeavePortalPage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/helpdesk"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <HelpDeskPage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Role-Restricted Manager Approvals Route */}
+          <Route
+            path="/approvals"
+            element={
+              <ProtectedRoute allowedRoles={['LINE_MANAGER', 'HR_ADMIN']}>
+                <AppLayout>
+                  <ManagerApprovalsPage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Role-Restricted Support Agent Queue Route */}
+          <Route
+            path="/agent-queue"
+            element={
+              <ProtectedRoute allowedRoles={['SUPPORT_AGENT', 'HR_ADMIN']}>
+                <AppLayout>
+                  <AgentQueuePage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Role-Restricted Admin Monitoring Route */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allowedRoles={['HR_ADMIN']}>
+                <AppLayout>
+                  <AdminDashboardPage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Fallback to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }

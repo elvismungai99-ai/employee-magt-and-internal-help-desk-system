@@ -1,6 +1,7 @@
 package com.leavemgt.identity.controller;
 
 import com.leavemgt.common.dto.ApiResponse;
+import com.leavemgt.identity.dto.ApproveRegistrationRequest;
 import com.leavemgt.identity.dto.CreateUserRequest;
 import com.leavemgt.identity.dto.UserProfileResponse;
 import com.leavemgt.identity.service.UserService;
@@ -36,6 +37,33 @@ public class UserController {
     @PreAuthorize("hasAnyAuthority('ROLE_HR_ADMIN', 'HR_ADMIN')")
     public ResponseEntity<ApiResponse<java.util.List<UserProfileResponse>>> getAllUsers() {
         return ResponseEntity.ok(ApiResponse.success(userService.getAllUsers()));
+    }
+
+    @GetMapping("/pending-approvals")
+    @PreAuthorize("hasAnyAuthority('ROLE_HR_ADMIN', 'HR_ADMIN')")
+    public ResponseEntity<ApiResponse<java.util.List<UserProfileResponse>>> getPendingApprovals() {
+        return ResponseEntity.ok(ApiResponse.success(userService.getPendingRegistrations()));
+    }
+
+    @PostMapping("/{id}/approve")
+    @PreAuthorize("hasAnyAuthority('ROLE_HR_ADMIN', 'HR_ADMIN')")
+    public ResponseEntity<ApiResponse<UserProfileResponse>> approveUser(
+            @PathVariable("id") UUID userId,
+            @RequestBody(required = false) ApproveRegistrationRequest request) {
+        UUID managerId = request != null ? request.getManagerId() : null;
+        UUID deptId = request != null ? request.getDepartmentId() : null;
+        UserProfileResponse profile = userService.approveUserRegistration(userId, managerId, deptId);
+        return ResponseEntity.ok(ApiResponse.success(profile, "User registration approved and account activated successfully"));
+    }
+
+    @PostMapping("/{id}/reject")
+    @PreAuthorize("hasAnyAuthority('ROLE_HR_ADMIN', 'HR_ADMIN')")
+    public ResponseEntity<ApiResponse<UserProfileResponse>> rejectUser(
+            @PathVariable("id") UUID userId,
+            @RequestBody(required = false) java.util.Map<String, String> request) {
+        String reason = request != null ? request.get("reason") : null;
+        UserProfileResponse profile = userService.rejectUserRegistration(userId, reason);
+        return ResponseEntity.ok(ApiResponse.success(profile, "User registration rejected"));
     }
 
     @PostMapping

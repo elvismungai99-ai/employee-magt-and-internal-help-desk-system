@@ -48,6 +48,8 @@ public class DataInitializer implements CommandLineRunner {
     private final SupportQueueRepository supportQueueRepository;
     private final SlaPolicyRepository slaPolicyRepository;
     private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+    @org.springframework.beans.factory.annotation.Value("${app.seed-admin-user:false}")
+    private boolean seedAdminUser;
 
     public DataInitializer(RoleRepository roleRepository,
                            PermissionRepository permissionRepository,
@@ -89,19 +91,19 @@ public class DataInitializer implements CommandLineRunner {
         // 3. Seed Departments
         Map<String, Department> departments = initDepartments();
 
-        // 4. Seed Default HR Admin
-        User adminUser = initAdminUser(roles.get("HR_ADMIN"), departments.get("HR"));
+        // 4. Seed Default HR Admin (Only if explicitly enabled via app.seed-admin-user; disabled by default)
+        if (seedAdminUser) {
+            User adminUser = initAdminUser(roles.get("HR_ADMIN"), departments.get("HR"));
+            if (adminUser != null) {
+                leaveBalanceService.initializeBalancesForUser(adminUser, Year.now().getValue());
+            }
+        }
 
         // 5. Seed Kenyan Statutory Leave Types & Policies
         initLeaveTypesAndPolicies();
 
         // 6. Seed Help Desk Taxonomy (Queues, Categories, SLA Policies)
         initHelpdeskTaxonomy();
-
-        // 7. Initialize balances for Admin User
-        if (adminUser != null) {
-            leaveBalanceService.initializeBalancesForUser(adminUser, Year.now().getValue());
-        }
 
         log.info("Seed data initialization completed successfully.");
     }

@@ -48,8 +48,9 @@ public class SecurityConfig {
                 })
             )
             .authorizeHttpRequests(auth -> auth
-                // Public authentication endpoints
+                // Public authentication and onboarding endpoints
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/identity/departments").permitAll()
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 // HR Admin only: Admin-created accounts & hierarchy assignment
@@ -66,6 +67,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/helpdesk/categories/**", "/api/helpdesk/queues/**", "/api/helpdesk/sla-policies/**").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
                 .requestMatchers(HttpMethod.PATCH, "/api/helpdesk/categories/**", "/api/helpdesk/queues/**", "/api/helpdesk/sla-policies/**").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/helpdesk/categories/**", "/api/helpdesk/queues/**", "/api/helpdesk/sla-policies/**").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
+                // HR Admin only: Background jobs & Event Outbox monitoring / trigger
+                .requestMatchers("/api/admin/**").hasAnyAuthority("ROLE_HR_ADMIN", "HR_ADMIN")
                 // All other requests require authentication
                 .anyRequest().authenticated()
             )

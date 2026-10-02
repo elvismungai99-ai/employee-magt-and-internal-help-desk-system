@@ -30,6 +30,12 @@ public class TicketService {
     private final SlaPolicyRepository slaPolicyRepository;
     private final UserRepository userRepository;
 
+    @org.springframework.beans.factory.annotation.Value("${app.helpdesk.max-attachment-size-bytes:10485760}")
+    private long maxAttachmentSizeBytes;
+
+    @org.springframework.beans.factory.annotation.Value("${app.helpdesk.allowed-attachment-extensions:pdf,png,jpg,jpeg,gif,webp,txt,csv,doc,docx,xls,xlsx,zip}")
+    private String allowedAttachmentExtensions;
+
     public TicketService(TicketRepository ticketRepository,
                          TicketCommentRepository ticketCommentRepository,
                          TicketAttachmentRepository ticketAttachmentRepository,
@@ -479,18 +485,58 @@ public class TicketService {
 
     @Transactional
     public TicketAttachmentResponse addAttachment(UUID ticketId, AddAttachmentRequest request, UUID callerId) {
+        return addAttachment(ticketId, request, callerId, false, false);
+    }
+
+    @Transactional
+    public TicketAttachmentResponse addAttachment(UUID ticketId, AddAttachmentRequest request, UUID callerId, boolean isHrAdmin, boolean isSupportAgent) {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found with ID: " + ticketId));
 
-        // Max 10MB file limit
-        if (request.getFileSizeBytes() > 10 * 1024 * 1024) {
-            throw new IllegalArgumentException("Attachment file size exceeds maximum limit of 10MB");
+        // Authorization check: Requester, assigned agent, queue member, or HR Admin
+        boolean isRequester = ticket.getRequester().getId().equals(callerId);
+        boolean isAssigned = ticket.getAssignedAgent() != null && ticket.getAssignedAgent().getId().equals(callerId);
+        boolean isQueueMember = ticket.getQueue() != null && queueMemberRepository.isAgentActiveInQueue(ticket.getQueue().getId(), callerId);
+
+        if (!isRequester && !isAssigned && !isQueueMember && !isHrAdmin) {
+            throw new AccessDeniedException("Not authorized to upload attachments to ticket " + ticket.getTicketNumber());
         }
 
-        // Basic extension restriction
-        String fileName = request.getFileName().toLowerCase();
-        if (fileName.endsWith(".exe") || fileName.endsWith(".bat") || fileName.endsWith(".sh") || fileName.endsWith(".dll")) {
+        // Configurable file size limit
+        if (request.getFileSizeBytes() > maxAttachmentSizeBytes) {
+            long maxMb = maxAttachmentSizeBytes / (1024 * 1024);
+            throw new IllegalArgumentException("Attachment file size exceeds maximum limit of " + maxMb + "MB");
+        }
+
+        // Validate and sanitize file name
+        if (request.getFileName() == null || request.getFileName().isBlank()) {
+            throw new IllegalArgumentException("Attachment file name cannot be blank");
+        }
+
+        // Sanitize against directory traversal (e.g., ../ or ..\)
+        String rawFileName = request.getFileName().trim();
+        String baseName = java.nio.file.Paths.get(rawFileName).getFileName().toString();
+        String sanitizedFileName = baseName.replaceAll("[^a-zA-Z0-9._-]", "_");
+
+        String lowerName = sanitizedFileName.toLowerCase();
+        if (lowerName.endsWith(".exe") || lowerName.endsWith(".bat") || lowerName.endsWith(".sh") || lowerName.endsWith(".dll") || lowerName.endsWith(".cmd")) {
             throw new IllegalArgumentException("Executable file types are strictly prohibited");
+        }
+
+        int dotIndex = sanitizedFileName.lastIndexOf('.');
+        if (dotIndex <= 0 || dotIndex == sanitizedFileName.length() - 1) {
+            throw new IllegalArgumentException("File must have a valid extension");
+        }
+
+        Set<String> permittedExtensions = Arrays.stream(allowedAttachmentExtensions.split(","))
+                .map(String::trim)
+                .map(String::toLowerCase)
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.toSet());
+
+        String extension = sanitizedFileName.substring(dotIndex + 1).toLowerCase();
+        if (!permittedExtensions.contains(extension)) {
+            throw new IllegalArgumentException("File extension ." + extension + " is not permitted. Permitted types: " + String.join(", ", permittedExtensions));
         }
 
         User uploader = userRepository.findById(callerId)
@@ -501,19 +547,21 @@ public class TicketService {
             comment = ticketCommentRepository.findById(request.getCommentId()).orElse(null);
         }
 
-        String securePath = "tickets/" + ticketId + "/" + UUID.randomUUID() + "_" + request.getFileName();
+        String securePath = "tickets/" + ticketId + "/" + UUID.randomUUID() + "_" + sanitizedFileName;
 
         TicketAttachment attachment = TicketAttachment.builder()
                 .ticket(ticket)
                 .comment(comment)
                 .uploadedBy(uploader)
-                .fileName(request.getFileName())
+                .fileName(sanitizedFileName)
                 .filePath(securePath)
                 .fileSizeBytes(request.getFileSizeBytes())
                 .mimeType(request.getMimeType())
                 .build();
 
         TicketAttachment saved = ticketAttachmentRepository.save(attachment);
+        log.info("Attachment uploaded for ticket {}: fileName={}, size={} bytes, uploadedBy={}",
+                ticket.getTicketNumber(), sanitizedFileName, request.getFileSizeBytes(), uploader.getEmail());
         return mapAttachment(saved);
     }
 

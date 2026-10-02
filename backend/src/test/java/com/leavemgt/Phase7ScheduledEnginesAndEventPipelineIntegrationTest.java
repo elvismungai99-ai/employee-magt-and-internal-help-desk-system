@@ -33,6 +33,7 @@ import com.leavemgt.platform.handler.OooSyncHandler;
 import com.leavemgt.platform.repository.EventOutboxRepository;
 import com.leavemgt.platform.repository.NotificationRepository;
 import com.leavemgt.identity.entity.Role;
+import com.leavemgt.identity.repository.ReportingHierarchyRepository;
 import com.leavemgt.identity.repository.RoleRepository;
 import com.leavemgt.leave.service.LeaveBalanceService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -77,6 +78,9 @@ class Phase7ScheduledEnginesAndEventPipelineIntegrationTest {
 
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
+
+    @Autowired
+    private ReportingHierarchyRepository hierarchyRepository;
 
     @Autowired
     private LeaveTypeRepository leaveTypeRepository;
@@ -693,23 +697,22 @@ class Phase7ScheduledEnginesAndEventPipelineIntegrationTest {
     void teardownTestData() {
         purgeData(List.of(
                 "p7.agent@company.com",
-                "p7.requester@company.com",
-                "hr.admin@company.com"
+                "p7.requester@company.com"
         ));
     }
 
     private void purgeData(List<String> emailsToClean) {
         // Clean outbox and notifications
-        notificationRepository.deleteAll();
-        eventOutboxRepository.deleteAll();
-        oooRecordRepository.deleteAll();
+        notificationRepository.deleteAllInBatch();
+        eventOutboxRepository.deleteAllInBatch();
+        oooRecordRepository.deleteAllInBatch();
 
         // Clean tickets
-        ticketCommentRepository.deleteAll();
-        routingHistoryRepository.deleteAll();
-        slaBreachLogRepository.deleteAll();
-        ticketRepository.deleteAll();
-        queueMemberRepository.deleteAll();
+        ticketCommentRepository.deleteAllInBatch();
+        routingHistoryRepository.deleteAllInBatch();
+        slaBreachLogRepository.deleteAllInBatch();
+        ticketRepository.deleteAllInBatch();
+        queueMemberRepository.deleteAllInBatch();
 
         // Clean test users
         Set<UUID> testUserIds = emailsToClean.stream()
@@ -719,6 +722,9 @@ class Phase7ScheduledEnginesAndEventPipelineIntegrationTest {
                 .collect(java.util.stream.Collectors.toSet());
 
         if (!testUserIds.isEmpty()) {
+            hierarchyRepository.deleteAll(hierarchyRepository.findAll().stream()
+                    .filter(h -> testUserIds.contains(h.getEmployee().getId()) || (h.getManager() != null && testUserIds.contains(h.getManager().getId())))
+                    .toList());
             balanceTransactionRepository.deleteAllByRelatedUserIds(testUserIds);
             leaveApprovalRepository.deleteAll(leaveApprovalRepository.findAll().stream()
                     .filter(la -> testUserIds.contains(la.getApprover().getId()))

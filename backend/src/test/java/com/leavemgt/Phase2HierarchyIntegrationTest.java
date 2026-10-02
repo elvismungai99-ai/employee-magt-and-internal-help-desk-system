@@ -14,6 +14,8 @@ import com.leavemgt.identity.repository.DepartmentRepository;
 import com.leavemgt.identity.repository.RefreshTokenRepository;
 import com.leavemgt.identity.repository.ReportingHierarchyRepository;
 import com.leavemgt.identity.repository.UserRepository;
+import com.leavemgt.leave.repository.BalanceTransactionRepository;
+import com.leavemgt.leave.repository.LeaveBalanceRepository;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -56,6 +58,12 @@ class Phase2HierarchyIntegrationTest {
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
+    @Autowired
+    private LeaveBalanceRepository leaveBalanceRepository;
+
+    @Autowired
+    private BalanceTransactionRepository balanceTransactionRepository;
+
     private String hrAdminToken;
     private UUID hrAdminId;
 
@@ -78,26 +86,7 @@ class Phase2HierarchyIntegrationTest {
 
     @BeforeAll
     void setupTestData() throws Exception {
-        // Clean previous test users
-        List<String> emailsToClean = List.of(
-                "p2.emp1@company.com",
-                "p2.emp2@company.com",
-                "p2.mgr1@company.com",
-                "p2.mgr2@company.com",
-                "p2.mgr3@company.com",
-                "p2.inactive@company.com"
-        );
-        for (String email : emailsToClean) {
-            userRepository.findByEmail(email).ifPresent(user -> {
-                hierarchyRepository.deleteAll(hierarchyRepository.findAll().stream()
-                        .filter(h -> h.getEmployee().getId().equals(user.getId()) || h.getManager().getId().equals(user.getId()))
-                        .toList());
-                refreshTokenRepository.deleteAll(refreshTokenRepository.findAll().stream()
-                        .filter(rt -> rt.getUser().getId().equals(user.getId()))
-                        .toList());
-                userRepository.delete(user);
-            });
-        }
+        cleanupTestData();
 
         // Login HR Admin
         User hrAdmin = userRepository.findByEmail("hr.admin@company.com").orElseThrow();
@@ -441,5 +430,34 @@ class Phase2HierarchyIntegrationTest {
                 .andReturn();
         JsonNode node = objectMapper.readTree(res.getResponse().getContentAsString());
         return UUID.fromString(node.path("data").path("id").asText());
+    }
+
+    @AfterAll
+    void teardownTestData() {
+        cleanupTestData();
+    }
+
+    private void cleanupTestData() {
+        List<String> emailsToClean = List.of(
+                "p2.emp1@company.com",
+                "p2.emp2@company.com",
+                "p2.mgr1@company.com",
+                "p2.mgr2@company.com",
+                "p2.mgr3@company.com",
+                "p2.inactive@company.com"
+        );
+        for (String email : emailsToClean) {
+            userRepository.findByEmail(email).ifPresent(user -> {
+                balanceTransactionRepository.deleteAllByRelatedUserIds(java.util.Set.of(user.getId()));
+                leaveBalanceRepository.deleteAll(leaveBalanceRepository.findAllByUserId(user.getId()));
+                hierarchyRepository.deleteAll(hierarchyRepository.findAll().stream()
+                        .filter(h -> h.getEmployee().getId().equals(user.getId()) || (h.getManager() != null && h.getManager().getId().equals(user.getId())))
+                        .toList());
+                refreshTokenRepository.deleteAll(refreshTokenRepository.findAll().stream()
+                        .filter(rt -> rt.getUser().getId().equals(user.getId()))
+                        .toList());
+                userRepository.delete(user);
+            });
+        }
     }
 }

@@ -76,8 +76,7 @@ class Phase1IntegrationTest {
         purgeUsers(List.of(
                 "john.doe@company.com",
                 "alice.manager@company.com",
-                "unauthorized.create@company.com",
-                "hr.admin@company.com"
+                "unauthorized.create@company.com"
         ));
     }
 
@@ -90,11 +89,12 @@ class Phase1IntegrationTest {
                 jdbcTemplate.execute("DELETE FROM helpdesk.ticket_comments WHERE author_id = '" + uid + "'");
                 jdbcTemplate.execute("DELETE FROM helpdesk.ticket_routing_history WHERE changed_by_id = '" + uid + "' OR previous_agent_id = '" + uid + "' OR new_agent_id = '" + uid + "'");
                 jdbcTemplate.execute("DELETE FROM helpdesk.tickets WHERE requester_id = '" + uid + "' OR assigned_agent_id = '" + uid + "'");
-                jdbcTemplate.execute("DELETE FROM helpdesk.queue_members WHERE agent_user_id = '" + uid + "'");
+                jdbcTemplate.execute("DELETE FROM helpdesk.queue_members WHERE agent_user_id = '" + uid + "' OR assigned_by = '" + uid + "'");
                 jdbcTemplate.execute("DELETE FROM leave.balance_transactions WHERE leave_balance_id IN (SELECT id FROM leave.leave_balances WHERE user_id = '" + uid + "')");
                 jdbcTemplate.execute("DELETE FROM leave.leave_approvals WHERE approver_id = '" + uid + "' OR leave_request_id IN (SELECT id FROM leave.leave_requests WHERE user_id = '" + uid + "')");
                 jdbcTemplate.execute("DELETE FROM leave.leave_requests WHERE user_id = '" + uid + "'");
                 jdbcTemplate.execute("DELETE FROM leave.leave_balances WHERE user_id = '" + uid + "'");
+                jdbcTemplate.execute("UPDATE identity.reporting_hierarchy SET assigned_by = NULL WHERE assigned_by = '" + uid + "'");
                 hierarchyRepository.deleteAll(hierarchyRepository.findAll().stream()
                         .filter(h -> h.getEmployee().getId().equals(uid) || h.getManager().getId().equals(uid))
                         .toList());

@@ -60,8 +60,10 @@ export const AdminDashboardPage: React.FC = () => {
   // Feedback Alert
   const [pageAlert, setPageAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const loadAdminData = async () => {
-    setIsLoading(true);
+  const loadAdminData = async (silent = false) => {
+    if (!silent) {
+      setIsLoading(true);
+    }
     try {
       const [accrualRes, slaRes, outboxRes, usersRes, pendingRes] = await Promise.all([
         adminApi.getLastAccrualRun().catch(() => null),
@@ -77,17 +79,37 @@ export const AdminDashboardPage: React.FC = () => {
       if (usersRes) setUsers(usersRes);
       if (pendingRes) setPendingUsers(pendingRes);
     } catch (err: any) {
-      setPageAlert({
-        type: 'error',
-        message: err.response?.data?.message || 'Failed to load admin telemetry.',
-      });
+      if (!silent) {
+        setPageAlert({
+          type: 'error',
+          message: err.response?.data?.message || 'Failed to load admin telemetry.',
+        });
+      }
     } finally {
-      setIsLoading(false);
+      if (!silent) {
+        setIsLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     loadAdminData();
+
+    // Automatically poll every 10 seconds so newly registered users appear immediately
+    const pollInterval = setInterval(() => {
+      loadAdminData(true);
+    }, 10000);
+
+    // Refresh immediately when HR Admin refocuses or switches to the tab
+    const handleFocus = () => {
+      loadAdminData(true);
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(pollInterval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [currentPage, statusFilter]);
 
   const handleTriggerAccrual = async (e: React.FormEvent) => {

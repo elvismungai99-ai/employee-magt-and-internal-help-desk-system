@@ -339,6 +339,11 @@ public class LeaveRequestService {
             throw new IllegalStateException("Cannot cancel leave request: Only PENDING or APPROVED requests can be cancelled (current status: " + request.getStatus() + ")");
         }
 
+        // Prevent retroactive cancellation and fraudulent balance refunds for leave periods already commenced or passed
+        if (request.getStatus() == LeaveRequestStatus.APPROVED && !request.getStartDate().isAfter(LocalDate.now())) {
+            throw new IllegalStateException("Approved leave cannot be cancelled once the leave period has commenced or passed. Please contact HR for adjustments.");
+        }
+
         int year = request.getStartDate().getYear();
         leaveBalanceRepository.findByUserIdAndLeaveTypeIdAndYearWithLock(
                 request.getUser().getId(), request.getLeaveType().getId(), year)

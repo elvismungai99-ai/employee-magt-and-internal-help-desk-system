@@ -48,8 +48,30 @@ public class DataInitializer implements CommandLineRunner {
     private final SupportQueueRepository supportQueueRepository;
     private final SlaPolicyRepository slaPolicyRepository;
     private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
     @org.springframework.beans.factory.annotation.Value("${app.seed-admin-user:false}")
     private boolean seedAdminUser;
+
+    @org.springframework.beans.factory.annotation.Value("${app.admin.email:hr.admin@company.com}")
+    private String adminEmail;
+
+    @org.springframework.beans.factory.annotation.Value("${app.admin.password:Admin123!}")
+    private String adminPassword;
+
+    @org.springframework.beans.factory.annotation.Value("${app.admin.employee-code:EMP-00001}")
+    private String adminEmployeeCode;
+
+    @org.springframework.beans.factory.annotation.Value("${app.admin.first-name:System}")
+    private String adminFirstName;
+
+    @org.springframework.beans.factory.annotation.Value("${app.admin.last-name:Admin}")
+    private String adminLastName;
+
+    @org.springframework.beans.factory.annotation.Value("${app.admin.job-title:HR Administrator}")
+    private String adminJobTitle;
+
+    @org.springframework.beans.factory.annotation.Value("${app.admin.phone:+254700000000}")
+    private String adminPhone;
 
     public DataInitializer(RoleRepository roleRepository,
                            PermissionRepository permissionRepository,
@@ -222,20 +244,19 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private User initAdminUser(Role adminRole, Department hrDept) {
-        String adminEmail = "hr.admin@company.com";
         Optional<User> existing = userRepository.findByEmail(adminEmail);
         if (existing.isPresent()) {
             return existing.get();
         }
 
         User admin = User.builder()
-                .employeeCode("EMP-00001")
+                .employeeCode(adminEmployeeCode)
                 .email(adminEmail)
-                .passwordHash(passwordEncoder.encode("Admin123!"))
-                .firstName("System")
-                .lastName("Admin")
-                .jobTitle("HR Administrator")
-                .phone("+254700000000")
+                .passwordHash(passwordEncoder.encode(adminPassword))
+                .firstName(adminFirstName)
+                .lastName(adminLastName)
+                .jobTitle(adminJobTitle)
+                .phone(adminPhone)
                 .department(hrDept)
                 .status("ACTIVE")
                 .roles(new HashSet<>(Collections.singletonList(adminRole)))

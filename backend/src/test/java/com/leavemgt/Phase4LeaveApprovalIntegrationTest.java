@@ -18,6 +18,7 @@ import com.leavemgt.leave.dto.SubmitLeaveRequest;
 import com.leavemgt.leave.entity.*;
 import com.leavemgt.leave.repository.*;
 import com.leavemgt.leave.service.LeaveBalanceService;
+import com.leavemgt.platform.repository.NotificationRepository;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -80,6 +81,9 @@ class Phase4LeaveApprovalIntegrationTest {
     private BalanceTransactionRepository balanceTransactionRepository;
 
     @Autowired
+    private NotificationRepository notificationRepository;
+
+    @Autowired
     private LeaveBalanceService leaveBalanceService;
 
     private String hrAdminToken;
@@ -106,41 +110,7 @@ class Phase4LeaveApprovalIntegrationTest {
     @BeforeAll
     void setupTestData() throws Exception {
         currentYear = Year.now().getValue();
-
-        // 1. Clean previous test data in topological order
-        List<String> emailsToClean = List.of(
-                "p4.mgr1@company.com",
-                "p4.mgr2@company.com",
-                "p4.emp1@company.com",
-                "p4.emp2@company.com"
-        );
-        java.util.Set<UUID> testUserIds = emailsToClean.stream()
-                .map(userRepository::findByEmail)
-                .filter(java.util.Optional::isPresent)
-                .map(opt -> opt.get().getId())
-                .collect(java.util.stream.Collectors.toSet());
-
-        if (!testUserIds.isEmpty()) {
-            leaveApprovalRepository.deleteAllByRelatedUserIds(testUserIds);
-            leaveRequestRepository.deleteAllByUserIdIn(testUserIds);
-            balanceTransactionRepository.deleteAllByRelatedUserIds(testUserIds);
-
-            for (UUID uId : testUserIds) {
-                leaveBalanceRepository.deleteAll(leaveBalanceRepository.findAllByUserId(uId));
-            }
-
-            hierarchyRepository.deleteAll(hierarchyRepository.findAll().stream()
-                    .filter(h -> testUserIds.contains(h.getEmployee().getId()) || (h.getManager() != null && testUserIds.contains(h.getManager().getId())))
-                    .toList());
-
-            refreshTokenRepository.deleteAll(refreshTokenRepository.findAll().stream()
-                    .filter(rt -> testUserIds.contains(rt.getUser().getId()))
-                    .toList());
-
-            for (UUID uId : testUserIds) {
-                userRepository.deleteById(uId);
-            }
-        }
+        cleanupTestData();
 
         // 2. Obtain HR Admin token
         User hrAdmin = userRepository.findByEmail("hr.admin@company.com").orElseThrow();
@@ -607,5 +577,49 @@ class Phase4LeaveApprovalIntegrationTest {
                 .andReturn();
         JsonNode node = objectMapper.readTree(res.getResponse().getContentAsString());
         return UUID.fromString(node.path("data").path("id").asText());
+    }
+
+    @AfterAll
+    void teardownTestData() {
+        cleanupTestData();
+    }
+
+    private void cleanupTestData() {
+        List<String> emailsToClean = List.of(
+                "p4.mgr1@company.com",
+                "p4.mgr2@company.com",
+                "p4.emp1@company.com",
+                "p4.emp2@company.com"
+        );
+        java.util.Set<UUID> testUserIds = emailsToClean.stream()
+                .map(userRepository::findByEmail)
+                .filter(java.util.Optional::isPresent)
+                .map(opt -> opt.get().getId())
+                .collect(java.util.stream.Collectors.toSet());
+
+        if (!testUserIds.isEmpty()) {
+            notificationRepository.deleteAll(notificationRepository.findAll().stream()
+                    .filter(n -> n.getRecipient() != null && testUserIds.contains(n.getRecipient().getId()))
+                    .toList());
+            leaveApprovalRepository.deleteAllByRelatedUserIds(testUserIds);
+            leaveRequestRepository.deleteAllByUserIdIn(testUserIds);
+            balanceTransactionRepository.deleteAllByRelatedUserIds(testUserIds);
+
+            for (UUID uId : testUserIds) {
+                leaveBalanceRepository.deleteAll(leaveBalanceRepository.findAllByUserId(uId));
+            }
+
+            hierarchyRepository.deleteAll(hierarchyRepository.findAll().stream()
+                    .filter(h -> testUserIds.contains(h.getEmployee().getId()) || (h.getManager() != null && testUserIds.contains(h.getManager().getId())))
+                    .toList());
+
+            refreshTokenRepository.deleteAll(refreshTokenRepository.findAll().stream()
+                    .filter(rt -> testUserIds.contains(rt.getUser().getId()))
+                    .toList());
+
+            for (UUID uId : testUserIds) {
+                userRepository.deleteById(uId);
+            }
+        }
     }
 }

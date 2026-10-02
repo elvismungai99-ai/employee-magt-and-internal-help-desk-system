@@ -32,8 +32,30 @@ jwt:
 app:
   timezone: ${APP_TIMEZONE:Africa/Nairobi}
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+  seed-admin-user: ${SEED_ADMIN_USER:false}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000}
+    max-age-seconds: ${CORS_MAX_AGE_SECONDS:3600}
+  security:
+    bcrypt-strength: ${BCRYPT_STRENGTH:12}
   auth:
-    max-failed-attempts: 5
-    lockout-duration-minutes: 15
+    require-registration-approval: ${REQUIRE_REGISTRATION_APPROVAL:true}
+    max-failed-attempts: ${AUTH_MAX_FAILED_ATTEMPTS:5}
+    lockout-duration-minutes: ${AUTH_LOCKOUT_DURATION_MINUTES:15}
+    rate-limiter:
+      max-entries: ${RATE_LIMITER_MAX_ENTRIES:10000}
+  admin:
+    email: ${ADMIN_EMAIL:hr.admin@company.com}
+    password: ${ADMIN_PASSWORD:Admin123!}
+    employee-code: ${ADMIN_EMPLOYEE_CODE:EMP-00001}
+    first-name: ${ADMIN_FIRST_NAME:System}
+    last-name: ${ADMIN_LAST_NAME:Admin}
+    job-title: ${ADMIN_JOB_TITLE:HR Administrator}
+    phone: ${ADMIN_PHONE:+254700000000}
+  helpdesk:
+    max-attachment-size-bytes: ${MAX_ATTACHMENT_SIZE_BYTES:10485760} # 10MB
+    allowed-attachment-extensions: ${ALLOWED_ATTACHMENT_EXTENSIONS:pdf,png,jpg,jpeg,gif,webp,txt,csv,doc,docx,xls,xlsx,zip}
+  scheduling:
+    sla-monitor-rate-ms: ${SLA_MONITOR_RATE_MS:60000}
+    accrual-cron: ${ACCRUAL_CRON:0 0 1 1 * *}
+    outbox-poll-interval-ms: ${OUTBOX_POLL_INTERVAL_MS:5000}

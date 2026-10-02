@@ -82,12 +82,6 @@ export const RegisterPage: React.FC = () => {
       icon: Headphones,
       desc: 'Triage ticket queues, claim & resolve incidents',
     },
-    {
-      id: 'HR_ADMIN',
-      name: 'HR Administrator',
-      icon: ShieldCheck,
-      desc: 'Manage staff, policies, scheduled engines & telemetry',
-    },
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -71,6 +71,12 @@ class Phase6TicketLifecycleIntegrationTest {
     @Autowired
     private TicketRoutingHistoryRepository routingHistoryRepository;
 
+    @Autowired
+    private com.leavemgt.leave.repository.LeaveBalanceRepository leaveBalanceRepository;
+
+    @Autowired
+    private com.leavemgt.leave.repository.BalanceTransactionRepository balanceTransactionRepository;
+
     private String hrAdminToken;
     private UUID hrAdminId;
 
@@ -92,33 +98,7 @@ class Phase6TicketLifecycleIntegrationTest {
 
     @BeforeAll
     void setupTestData() throws Exception {
-        // Clean test tickets, history, comments and queue memberships first
-        ticketCommentRepository.deleteAll();
-        routingHistoryRepository.deleteAll();
-        ticketRepository.deleteAll();
-        queueMemberRepository.deleteAll();
-
-        // Clean test users in cascade
-        List<String> emailsToClean = List.of(
-                "p6.emp@company.com",
-                "p6.agent1@company.com",
-                "p6.agent2@company.com"
-        );
-        Set<UUID> testUserIds = emailsToClean.stream()
-                .map(userRepository::findByEmail)
-                .filter(Optional::isPresent)
-                .map(opt -> opt.get().getId())
-                .collect(java.util.stream.Collectors.toSet());
-
-        if (!testUserIds.isEmpty()) {
-            queueMemberRepository.deleteAllByRelatedUserIds(testUserIds);
-            refreshTokenRepository.deleteAll(refreshTokenRepository.findAll().stream()
-                    .filter(rt -> testUserIds.contains(rt.getUser().getId()))
-                    .toList());
-            for (UUID id : testUserIds) {
-                userRepository.deleteById(id);
-            }
-        }
+        cleanupTestData();
 
         // Login HR Admin
         User hrAdmin = userRepository.findByEmail("hr.admin@company.com").orElseThrow();
@@ -592,5 +572,44 @@ class Phase6TicketLifecycleIntegrationTest {
                 .andReturn();
         JsonNode node = objectMapper.readTree(res.getResponse().getContentAsString());
         return UUID.fromString(node.path("data").path("id").asText());
+    }
+
+    @AfterAll
+    void teardownTestData() {
+        cleanupTestData();
+    }
+
+    private void cleanupTestData() {
+        // Clean test tickets, history, comments and queue memberships first
+        ticketCommentRepository.deleteAll();
+        routingHistoryRepository.deleteAll();
+        ticketRepository.deleteAll();
+        queueMemberRepository.deleteAll();
+
+        // Clean test users in cascade
+        List<String> emailsToClean = List.of(
+                "p6.emp@company.com",
+                "p6.agent1@company.com",
+                "p6.agent2@company.com"
+        );
+        Set<UUID> testUserIds = emailsToClean.stream()
+                .map(userRepository::findByEmail)
+                .filter(Optional::isPresent)
+                .map(opt -> opt.get().getId())
+                .collect(java.util.stream.Collectors.toSet());
+
+        if (!testUserIds.isEmpty()) {
+            balanceTransactionRepository.deleteAllByRelatedUserIds(testUserIds);
+            for (UUID uId : testUserIds) {
+                leaveBalanceRepository.deleteAll(leaveBalanceRepository.findAllByUserId(uId));
+            }
+            queueMemberRepository.deleteAllByRelatedUserIds(testUserIds);
+            refreshTokenRepository.deleteAll(refreshTokenRepository.findAll().stream()
+                    .filter(rt -> testUserIds.contains(rt.getUser().getId()))
+                    .toList());
+            for (UUID id : testUserIds) {
+                userRepository.deleteById(id);
+            }
+        }
     }
 }

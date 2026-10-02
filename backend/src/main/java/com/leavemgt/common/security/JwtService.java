@@ -3,7 +3,10 @@ package com.leavemgt.common.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -11,14 +14,44 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.Function;
 
+@Slf4j
 @Service
 public class JwtService {
+
+    private static final String DEFAULT_DEV_SECRET = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970";
 
     @Value("${jwt.secret:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}")
     private String secret;
 
     @Value("${jwt.access-token-expiration-ms:900000}")
     private long accessTokenExpirationMs;
+
+    private final Environment environment;
+
+    public JwtService(Environment environment) {
+        this.environment = environment;
+    }
+
+    @PostConstruct
+    public void validateJwtConfiguration() {
+        if (secret == null || secret.trim().length() < 32) {
+            throw new IllegalStateException("JWT Secret must be configured and at least 256 bits (32 characters) long.");
+        }
+
+        boolean isProduction = Arrays.stream(environment.getActiveProfiles())
+                .anyMatch(p -> p.equalsIgnoreCase("prod") || p.equalsIgnoreCase("production"));
+
+        if (isProduction && DEFAULT_DEV_SECRET.equalsIgnoreCase(secret.trim())) {
+            throw new IllegalStateException(
+                    "FATAL SECURITY RISK: Application is running in production with the default development JWT secret! " +
+                    "Configure a unique, high-entropy JWT_SECRET environment variable."
+            );
+        }
+
+        if (DEFAULT_DEV_SECRET.equalsIgnoreCase(secret.trim())) {
+            log.warn("SECURITY WARNING: Using default development JWT secret. Ensure JWT_SECRET is overridden in production environments!");
+        }
+    }
 
     private SecretKey getSigningKey() {
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);

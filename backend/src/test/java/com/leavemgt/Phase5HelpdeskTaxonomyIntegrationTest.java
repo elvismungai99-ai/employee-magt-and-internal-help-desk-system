@@ -67,6 +67,12 @@ class Phase5HelpdeskTaxonomyIntegrationTest {
     @Autowired
     private SlaPolicyRepository slaPolicyRepository;
 
+    @Autowired
+    private com.leavemgt.leave.repository.LeaveBalanceRepository leaveBalanceRepository;
+
+    @Autowired
+    private com.leavemgt.leave.repository.BalanceTransactionRepository balanceTransactionRepository;
+
     private String hrAdminToken;
     private UUID hrAdminId;
 
@@ -80,34 +86,7 @@ class Phase5HelpdeskTaxonomyIntegrationTest {
 
     @BeforeAll
     void setupTestData() throws Exception {
-        // Clear all queue memberships for test isolation
-        queueMemberRepository.deleteAll();
-
-        // Clean test users in topological cascade order
-        List<String> emailsToClean = List.of(
-                "p5.emp@company.com",
-                "p5.agent@company.com"
-        );
-        Set<UUID> testUserIds = emailsToClean.stream()
-                .map(userRepository::findByEmail)
-                .filter(java.util.Optional::isPresent)
-                .map(opt -> opt.get().getId())
-                .collect(java.util.stream.Collectors.toSet());
-
-        if (!testUserIds.isEmpty()) {
-            queueMemberRepository.deleteAllByRelatedUserIds(testUserIds);
-            refreshTokenRepository.deleteAll(refreshTokenRepository.findAll().stream()
-                    .filter(rt -> testUserIds.contains(rt.getUser().getId()))
-                    .toList());
-            for (UUID id : testUserIds) {
-                userRepository.deleteById(id);
-            }
-        }
-
-        // Clean custom categories or queues created in tests
-        categoryRepository.findByCode("FACILITIES").ifPresent(categoryRepository::delete);
-        categoryRepository.findByCode("TEST_CAT").ifPresent(categoryRepository::delete);
-        queueRepository.findByName("Security Incident Response").ifPresent(queueRepository::delete);
+        cleanupTestData();
 
         // Login HR Admin
         User hrAdmin = userRepository.findByEmail("hr.admin@company.com").orElseThrow();
@@ -420,5 +399,45 @@ class Phase5HelpdeskTaxonomyIntegrationTest {
                 .andReturn();
         JsonNode node = objectMapper.readTree(res.getResponse().getContentAsString());
         return UUID.fromString(node.path("data").path("id").asText());
+    }
+
+    @AfterAll
+    void teardownTestData() {
+        cleanupTestData();
+    }
+
+    private void cleanupTestData() {
+        // Clear all queue memberships for test isolation
+        queueMemberRepository.deleteAll();
+
+        // Clean test users in topological cascade order
+        List<String> emailsToClean = List.of(
+                "p5.emp@company.com",
+                "p5.agent@company.com"
+        );
+        Set<UUID> testUserIds = emailsToClean.stream()
+                .map(userRepository::findByEmail)
+                .filter(java.util.Optional::isPresent)
+                .map(opt -> opt.get().getId())
+                .collect(java.util.stream.Collectors.toSet());
+
+        if (!testUserIds.isEmpty()) {
+            balanceTransactionRepository.deleteAllByRelatedUserIds(testUserIds);
+            for (UUID uId : testUserIds) {
+                leaveBalanceRepository.deleteAll(leaveBalanceRepository.findAllByUserId(uId));
+            }
+            queueMemberRepository.deleteAllByRelatedUserIds(testUserIds);
+            refreshTokenRepository.deleteAll(refreshTokenRepository.findAll().stream()
+                    .filter(rt -> testUserIds.contains(rt.getUser().getId()))
+                    .toList());
+            for (UUID id : testUserIds) {
+                userRepository.deleteById(id);
+            }
+        }
+
+        // Clean custom categories or queues created in tests
+        categoryRepository.findByCode("FACILITIES").ifPresent(categoryRepository::delete);
+        categoryRepository.findByCode("TEST_CAT").ifPresent(categoryRepository::delete);
+        queueRepository.findByName("Security Incident Response").ifPresent(queueRepository::delete);
     }
 }

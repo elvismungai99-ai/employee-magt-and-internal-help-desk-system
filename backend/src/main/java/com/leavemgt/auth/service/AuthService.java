@@ -15,6 +15,7 @@ import com.leavemgt.identity.entity.User;
 import com.leavemgt.identity.repository.DepartmentRepository;
 import com.leavemgt.identity.repository.RoleRepository;
 import com.leavemgt.identity.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,8 +25,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class AuthService {
+
+    private static final Set<String> ALLOWED_REGISTRATION_ROLES = Set.of(
+            "EMPLOYEE", "LINE_MANAGER", "SUPPORT_AGENT"
+    );
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -38,6 +44,9 @@ public class AuthService {
 
     @Value("${jwt.access-token-expiration-ms:900000}")
     private long accessTokenExpirationMs;
+
+    @Value("${app.auth.require-registration-approval:true}")
+    private boolean requireRegistrationApproval;
 
     public AuthService(UserRepository userRepository,
                        RoleRepository roleRepository,
@@ -63,7 +72,7 @@ public class AuthService {
             throw new IllegalArgumentException("Email already in use");
         }
 
-        // Resolve and assign user-dictated role(s)
+        // Collect requested role(s)
         Set<String> requestedRoleNames = new LinkedHashSet<>();
         if (request.getRoles() != null && !request.getRoles().isEmpty()) {
             requestedRoleNames.addAll(request.getRoles());
@@ -76,18 +85,34 @@ public class AuthService {
             }
         }
 
-        // Default to EMPLOYEE role if no role was dictated
-        if (requestedRoleNames.isEmpty()) {
-            requestedRoleNames.add("EMPLOYEE");
+        // Strict role privilege escalation prevention:
+        // Anonymous self-registration must NEVER grant administrative privileges (HR_ADMIN, ADMIN).
+        Set<String> sanitizedRoleNames = new LinkedHashSet<>();
+        for (String rName : requestedRoleNames) {
+            String cleanName = rName.toUpperCase().replace("ROLE_", "").trim();
+            if ("HR_ADMIN".equals(cleanName) || "ADMIN".equals(cleanName) || "SUPERADMIN".equals(cleanName)) {
+                log.warn("SECURITY ALERT: Blocked privilege escalation attempt during registration for email {}. Forbidden role: {}",
+                        request.getEmail(), cleanName);
+                continue;
+            }
+            if (ALLOWED_REGISTRATION_ROLES.contains(cleanName)) {
+                sanitizedRoleNames.add(cleanName);
+            } else {
+                log.warn("Ignored unauthorized or unknown registration role '{}' for email {}", cleanName, request.getEmail());
+            }
+        }
+
+        // Default to EMPLOYEE role if no permitted role was provided
+        if (sanitizedRoleNames.isEmpty()) {
+            sanitizedRoleNames.add("EMPLOYEE");
         }
 
         Set<Role> assignedRoles = new HashSet<>();
-        for (String rName : requestedRoleNames) {
-            String cleanName = rName.toUpperCase().replace("ROLE_", "").trim();
-            Role resolvedRole = roleRepository.findByName(cleanName)
+        for (String rName : sanitizedRoleNames) {
+            Role resolvedRole = roleRepository.findByName(rName)
                     .orElseGet(() -> roleRepository.save(Role.builder()
-                            .name(cleanName)
-                            .description(cleanName + " role")
+                            .name(rName)
+                            .description(rName + " role")
                             .isSystemRole(true)
                             .build()));
             assignedRoles.add(resolvedRole);
@@ -103,6 +128,8 @@ public class AuthService {
             employeeCode = "EMP-" + (10000 + new Random().nextInt(90000));
         }
 
+        String initialStatus = requireRegistrationApproval ? "PENDING_APPROVAL" : "ACTIVE";
+
         User user = User.builder()
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
@@ -112,11 +139,22 @@ public class AuthService {
                 .jobTitle(request.getJobTitle() != null ? request.getJobTitle() : "Employee")
                 .phone(request.getPhone())
                 .department(department)
-                .status("PENDING_APPROVAL")
+                .status(initialStatus)
                 .roles(assignedRoles)
                 .build();
 
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        // If registered directly as ACTIVE, initialize current-year leave balances
+        if ("ACTIVE".equalsIgnoreCase(initialStatus)) {
+            try {
+                leaveBalanceService.initializeBalancesForUser(savedUser, java.time.Year.now().getValue());
+            } catch (Exception e) {
+                log.warn("Could not auto-initialize leave balances for active user {}: {}", savedUser.getEmail(), e.getMessage());
+            }
+        }
+
+        return savedUser;
     }
 
     @Transactional

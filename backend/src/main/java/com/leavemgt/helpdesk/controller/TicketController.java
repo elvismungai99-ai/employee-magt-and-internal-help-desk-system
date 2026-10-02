@@ -171,7 +171,9 @@ public class TicketController {
         if (callerId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Unauthorized"));
         }
-        TicketAttachmentResponse response = ticketService.addAttachment(id, request, callerId);
+        boolean isHrAdmin = isHrAdmin(authentication);
+        boolean isSupportAgent = isSupportAgent(authentication);
+        TicketAttachmentResponse response = ticketService.addAttachment(id, request, callerId, isHrAdmin, isSupportAgent);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Attachment uploaded successfully"));
     }

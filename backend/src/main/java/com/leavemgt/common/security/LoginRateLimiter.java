@@ -15,13 +15,18 @@ public class LoginRateLimiter {
     @Value("${app.auth.lockout-duration-minutes:15}")
     private int lockoutDurationMinutes;
 
+    @Value("${app.auth.rate-limiter.max-entries:10000}")
+    private int maxEntries;
+
     private static class AttemptDetails {
         int attempts;
         Instant lockoutUntil;
+        Instant lastAttemptAt;
 
         AttemptDetails(int attempts) {
             this.attempts = attempts;
             this.lockoutUntil = null;
+            this.lastAttemptAt = Instant.now();
         }
     }
 
@@ -47,12 +52,21 @@ public class LoginRateLimiter {
     }
 
     public void recordFailedAttempt(String key) {
+        if (attemptsMap.size() >= maxEntries) {
+            cleanupExpired();
+            if (attemptsMap.size() >= maxEntries) {
+                // Memory guard: do not allow unbounded growth beyond limit
+                return;
+            }
+        }
+
         attemptsMap.compute(key, (k, details) -> {
             if (details == null) {
                 return new AttemptDetails(1);
             }
 
             details.attempts++;
+            details.lastAttemptAt = Instant.now();
             if (details.attempts >= maxFailedAttempts) {
                 details.lockoutUntil = Instant.now().plusSeconds(lockoutDurationMinutes * 60L);
             }
@@ -62,5 +76,16 @@ public class LoginRateLimiter {
 
     public void reset(String key) {
         attemptsMap.remove(key);
+    }
+
+    private void cleanupExpired() {
+        Instant now = Instant.now();
+        attemptsMap.entrySet().removeIf(entry -> {
+            AttemptDetails d = entry.getValue();
+            // Expired lockout or inactive for more than lockout duration
+            boolean lockoutPassed = d.lockoutUntil != null && now.isAfter(d.lockoutUntil);
+            boolean inactive = d.lastAttemptAt != null && now.isAfter(d.lastAttemptAt.plusSeconds(lockoutDurationMinutes * 60L));
+            return lockoutPassed || inactive;
+        });
     }
 }

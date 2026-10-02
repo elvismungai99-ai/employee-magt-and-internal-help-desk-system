@@ -24,12 +24,21 @@ public class AuthController {
         this.authService = authService;
     }
 
+    private static final java.util.regex.Pattern IP_PATTERN = java.util.regex.Pattern.compile(
+            "^([0-9]{1,3}\\.){3}[0-9]{1,3}$|^([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}$"
+    );
+
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<Map<String, Object>>> register(@Valid @RequestBody RegisterRequest request) {
         User registeredUser = authService.register(request);
         java.util.List<String> roleNames = registeredUser.getRoles().stream()
                 .map(com.leavemgt.identity.entity.Role::getName)
                 .toList();
+
+        String message = "ACTIVE".equalsIgnoreCase(registeredUser.getStatus())
+                ? "Registration completed successfully."
+                : "Registration submitted successfully. Your account is pending HR verification and will be activated once approved by HR.";
+
         return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(ApiResponse.success(
                 Map.of(
                         "id", registeredUser.getId().toString(),
@@ -39,7 +48,7 @@ public class AuthController {
                         "roles", roleNames,
                         "assignedRole", roleNames.isEmpty() ? "EMPLOYEE" : roleNames.get(0)
                 ),
-                "Registration submitted successfully. Your account is pending HR verification and will be activated once approved by HR."
+                message
         ));
     }
 
@@ -67,9 +76,13 @@ public class AuthController {
 
     private String getClientIp(HttpServletRequest request) {
         String xfHeader = request.getHeader("X-Forwarded-For");
-        if (xfHeader == null || xfHeader.isBlank()) {
-            return request.getRemoteAddr();
+        if (xfHeader != null && !xfHeader.isBlank()) {
+            String firstIp = xfHeader.split(",")[0].trim();
+            if (firstIp.length() <= 45 && IP_PATTERN.matcher(firstIp).matches()) {
+                return firstIp;
+            }
         }
-        return xfHeader.split(",")[0].trim();
+        String remoteAddr = request.getRemoteAddr();
+        return (remoteAddr != null && !remoteAddr.isBlank() && remoteAddr.length() <= 45) ? remoteAddr : "unknown";
     }
 }

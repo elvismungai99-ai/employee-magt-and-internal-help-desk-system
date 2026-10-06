@@ -2,6 +2,11 @@ server:
   port: ${PORT:8080}
   servlet:
     context-path: /
+  tomcat:
+    threads:
+      max: 20
+      min-spare: 2
+    max-connections: 100
 
 spring:
   application:
@@ -14,12 +19,19 @@ spring:
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 3
+      minimum-idle: 1
+      idle-timeout: 300000
+      max-lifetime: 900000
+      connection-timeout: 20000
   sql:
     init:
       mode: ${SQL_INIT_MODE:never}
       schema-locations: classpath:schema.sql
       continue-on-error: true
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: ${DDL_AUTO:validate}
     database-platform: org.hibernate.dialect.PostgreSQLDialect

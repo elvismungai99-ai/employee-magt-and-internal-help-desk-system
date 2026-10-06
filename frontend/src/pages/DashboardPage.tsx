@@ -62,7 +62,7 @@ export const DashboardPage: React.FC = () => {
             adminApi.getAllUsers(),
             adminApi.getPendingApprovals(),
           ]);
-          if (allUsersRes.status === 'fulfilled') setAllUsers(allUsersRes.value);
+          if (allUsersRes.status === 'fulfilled') setAllEmployees(allUsersRes.value);
           if (pendingUsersRes.status === 'fulfilled') setPendingRegistrations(pendingUsersRes.value);
         }
       } finally {

@@ -74,7 +74,7 @@ export const DashboardPage: React.FC = () => {
   }, [hasRole]);
 
   const totalAvailableDays = balances.reduce(
-    (acc, b) => acc + (Number(b.availableDays) || 0),
+    (acc, b) => acc + Math.floor(Number(b.availableDays) || 0),
     0
   );
 
@@ -144,9 +144,9 @@ export const DashboardPage: React.FC = () => {
           </div>
           <div className="mt-3">
             <span className="text-2xl font-bold text-gray-900">
-              {loading ? '...' : totalAvailableDays.toFixed(1)}
+              {loading ? '...' : totalAvailableDays}
             </span>
-            <span className="text-xs text-gray-500 ml-1">days remaining</span>
+            <span className="text-xs text-gray-500 ml-1">full days remaining</span>
           </div>
           <div className="mt-3 text-xs text-gray-500 border-t border-gray-100 pt-2 flex justify-between">
             <span>Accrued year-to-date</span>
@@ -371,7 +371,7 @@ export const DashboardPage: React.FC = () => {
                       <StatusBadge status={req.status} />
                     </div>
                     <p className="text-xs text-gray-500">
-                      {req.startDate} to {req.endDate} &bull; {req.totalDays} day{Number(req.totalDays) > 1 ? 's' : ''}
+                      {req.startDate} to {req.endDate} &bull; {Math.floor(Number(req.totalDays))} day{Math.floor(Number(req.totalDays)) > 1 ? 's' : ''}
                     </p>
                   </div>
                   <span className="text-xs text-gray-400">

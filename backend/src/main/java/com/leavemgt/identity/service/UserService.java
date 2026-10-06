@@ -99,6 +99,7 @@ public class UserService {
                     .build();
 
             hierarchyRepository.save(hierarchy);
+            hierarchyRepository.flush();
         }
 
         return mapToUserProfileResponse(savedUser);
@@ -119,6 +120,7 @@ public class UserService {
             rh.setEffectiveTo(LocalDate.now());
             hierarchyRepository.save(rh);
         }
+        hierarchyRepository.flush();
 
         ReportingHierarchy hierarchy = ReportingHierarchy.builder()
                 .employee(employee)
@@ -129,6 +131,7 @@ public class UserService {
                 .build();
 
         hierarchyRepository.save(hierarchy);
+        hierarchyRepository.flush();
 
         return mapToUserProfileResponse(employee);
     }

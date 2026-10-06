@@ -240,6 +240,14 @@ public class DataInitializer implements CommandLineRunner {
         );
         map.put("FIN", fin);
 
+        Department exec = departmentRepository.findByCode("EXEC").orElseGet(() ->
+                departmentRepository.save(Department.builder()
+                        .name("Executive Management")
+                        .code("EXEC")
+                        .build())
+        );
+        map.put("EXEC", exec);
+
         return map;
     }
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ShieldAlert } from 'lucide-react';
 
@@ -38,12 +38,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
           <p className="text-sm text-gray-600 mb-6">
             Your account does not have permission to access this section. Contact an administrator if you believe this is in error.
           </p>
-          <a
-            href="/"
+          <Link
+            to="/"
             className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
           >
             Return to Dashboard
-          </a>
+          </Link>
         </div>
       </div>
     );

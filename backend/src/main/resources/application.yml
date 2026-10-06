@@ -16,7 +16,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   sql:
     init:
-      mode: ${SQL_INIT_MODE:always}
+      mode: ${SQL_INIT_MODE:never}
       schema-locations: classpath:schema.sql
       continue-on-error: true
   jpa:

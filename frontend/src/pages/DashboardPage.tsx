@@ -6,21 +6,6 @@ import { helpdeskApi } from '../api/helpdeskApi';
 import { adminApi } from '../api/adminApi';
 import { LeaveBalance, LeaveRequest, Ticket, UserProfile } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
-import { 
-  Calendar, 
-  HelpCircle, 
-  Clock, 
-  CheckCircle, 
-  ArrowRight, 
-  Briefcase, 
-  UserCheck, 
-  Building,
-  AlertCircle,
-  Users,
-  UserPlus,
-  ShieldCheck,
-  Search
-} from 'lucide-react';
 
 export const DashboardPage: React.FC = () => {
   const { user, hasRole } = useAuth();
@@ -45,8 +30,8 @@ export const DashboardPage: React.FC = () => {
         ]);
 
         if (balRes.status === 'fulfilled') setBalances(balRes.value);
-        if (leaveRes.status === 'fulfilled') setRecentLeaves(leaveRes.value.slice(0, 4));
-        if (ticketRes.status === 'fulfilled') setRecentTickets(ticketRes.value.slice(0, 4));
+        if (leaveRes.status === 'fulfilled') setRecentLeaves(leaveRes.value.slice(0, 5));
+        if (ticketRes.status === 'fulfilled') setRecentTickets(ticketRes.value.slice(0, 5));
 
         if (hasRole('LINE_MANAGER') || hasRole('HR_ADMIN')) {
           try {
@@ -97,284 +82,240 @@ export const DashboardPage: React.FC = () => {
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-blue-700 to-indigo-800 rounded-2xl text-white p-6 sm:p-8 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      {/* Employee Welcome & Profile Header */}
+      <div className="bg-white border border-slate-200 rounded-lg p-6 sm:p-7">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div>
-            <span className="text-xs uppercase tracking-wider text-blue-200 font-semibold">
-              Corporate Portal
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Employee Self-Service
             </span>
-            <h1 className="text-2xl sm:text-3xl font-bold mt-1">
-              Welcome back, {user?.firstName || 'Employee'}!
+            <h1 className="text-2xl font-bold text-slate-900 mt-1">
+              Welcome back, {user?.firstName} {user?.lastName}
             </h1>
-            <p className="text-blue-100 text-sm mt-1 max-w-xl">
-              Track your paid time off balances, submit leave applications, and get IT/HR help desk support.
+            <p className="text-slate-600 text-sm mt-1 max-w-xl">
+              Track accrued leave days, submit absence requests, and submit help desk incident tickets.
             </p>
           </div>
 
-          {/* User Profile Pill Info */}
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 text-xs space-y-1.5 min-w-[220px]">
-            <div className="flex items-center gap-2">
-              <Building className="w-3.5 h-3.5 text-blue-200" />
-              <span>{user?.department?.name || 'Department: General'}</span>
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3.5 text-xs text-slate-700 min-w-[240px] space-y-1.5">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Department:</span>
+              <span className="font-semibold text-slate-900">{user?.department?.name || 'General'}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Briefcase className="w-3.5 h-3.5 text-blue-200" />
-              <span>{user?.jobTitle || 'Staff Member'}</span>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Designation:</span>
+              <span className="font-semibold text-slate-900">{user?.jobTitle || 'Staff Member'}</span>
             </div>
-            {user?.manager && (
-              <div className="flex items-center gap-2">
-                <UserCheck className="w-3.5 h-3.5 text-blue-200" />
-                <span>Manager: {user.manager.fullName}</span>
-              </div>
-            )}
+            <div className="flex justify-between">
+              <span className="text-slate-500">Line Manager:</span>
+              <span className="font-semibold text-slate-900">{user?.manager?.fullName || 'Not Assigned'}</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-500">Available PTO</span>
-            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
-              <Calendar className="w-5 h-5" />
-            </div>
+      {/* KPI Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Available PTO */}
+        <div className="bg-white border border-slate-200 rounded-lg p-5">
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Available Leave Balance
           </div>
-          <div className="mt-3">
-            <span className="text-2xl font-bold text-gray-900">
-              {loading ? '...' : totalAvailableDays}
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-3xl font-bold text-slate-900 tracking-tight">
+              {loading ? '—' : totalAvailableDays}
             </span>
-            <span className="text-xs text-gray-500 ml-1">full days remaining</span>
+            <span className="text-xs font-medium text-slate-500">working days</span>
           </div>
-          <div className="mt-3 text-xs text-gray-500 border-t border-gray-100 pt-2 flex justify-between">
-            <span>Accrued year-to-date</span>
-            <Link to="/leave" className="text-blue-600 hover:underline">
-              View Balances &rarr;
+          <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between text-xs">
+            <span className="text-slate-500">Current annual cycle</span>
+            <Link to="/leave" className="text-blue-600 hover:text-blue-800 font-medium">
+              View details
             </Link>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-500">Active Leave Requests</span>
-            <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
-              <Clock className="w-5 h-5" />
-            </div>
+        {/* Active Leave Requests */}
+        <div className="bg-white border border-slate-200 rounded-lg p-5">
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Active Leave Applications
           </div>
-          <div className="mt-3">
-            <span className="text-2xl font-bold text-gray-900">
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-3xl font-bold text-slate-900 tracking-tight">
               {loading
-                ? '...'
+                ? '—'
                 : recentLeaves.filter(
                     (r) => r.status === 'PENDING' || r.status === 'SUBMITTED'
                   ).length}
             </span>
-            <span className="text-xs text-gray-500 ml-1">awaiting review</span>
+            <span className="text-xs font-medium text-slate-500">pending review</span>
           </div>
-          <div className="mt-3 text-xs text-gray-500 border-t border-gray-100 pt-2 flex justify-between">
-            <span>Submitted requests</span>
-            <Link to="/leave" className="text-blue-600 hover:underline">
-              History &rarr;
+          <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between text-xs">
+            <span className="text-slate-500">Submitted requests</span>
+            <Link to="/leave" className="text-blue-600 hover:text-blue-800 font-medium">
+              Application history
             </Link>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-500">Open Support Tickets</span>
-            <div className="p-2 bg-sky-50 text-sky-600 rounded-lg">
-              <HelpCircle className="w-5 h-5" />
-            </div>
+        {/* Open Support Tickets */}
+        <div className="bg-white border border-slate-200 rounded-lg p-5">
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Open Help Desk Tickets
           </div>
-          <div className="mt-3">
-            <span className="text-2xl font-bold text-gray-900">
-              {loading ? '...' : openTicketsCount}
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-3xl font-bold text-slate-900 tracking-tight">
+              {loading ? '—' : openTicketsCount}
             </span>
-            <span className="text-xs text-gray-500 ml-1">in progress</span>
+            <span className="text-xs font-medium text-slate-500">in progress</span>
           </div>
-          <div className="mt-3 text-xs text-gray-500 border-t border-gray-100 pt-2 flex justify-between">
-            <span>Help Desk Incidents</span>
-            <Link to="/helpdesk" className="text-blue-600 hover:underline">
-              My Tickets &rarr;
+          <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between text-xs">
+            <span className="text-slate-500">Active incidents</span>
+            <Link to="/helpdesk" className="text-blue-600 hover:text-blue-800 font-medium">
+              Ticket list
             </Link>
           </div>
         </div>
 
+        {/* 4th Stat Card: Approvals or Enterprise Status */}
         {(hasRole('LINE_MANAGER') || hasRole('HR_ADMIN')) ? (
-          <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-2xs">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-500">Manager Approvals</span>
-              <div className="p-2 bg-purple-50 text-purple-600 rounded-lg">
-                <CheckCircle className="w-5 h-5" />
-              </div>
+          <div className="bg-white border border-slate-200 rounded-lg p-5">
+            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              Pending Team Approvals
             </div>
-            <div className="mt-3">
-              <span className="text-2xl font-bold text-gray-900">
-                {loading ? '...' : pendingApprovalsCount}
+            <div className="mt-2 flex items-baseline gap-1.5">
+              <span className="text-3xl font-bold text-slate-900 tracking-tight">
+                {loading ? '—' : pendingApprovalsCount}
               </span>
-              <span className="text-xs text-gray-500 ml-1">direct reports</span>
+              <span className="text-xs font-medium text-slate-500">awaiting decision</span>
             </div>
-            <div className="mt-3 text-xs text-gray-500 border-t border-gray-100 pt-2 flex justify-between">
-              <span>Awaiting decision</span>
-              <Link to="/approvals" className="text-purple-600 hover:underline">
-                Review &rarr;
+            <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between text-xs">
+              <span className="text-slate-500">Direct reports</span>
+              <Link to="/approvals" className="text-blue-600 hover:text-blue-800 font-medium">
+                Review queue
               </Link>
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-2xs">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-500">Service Status</span>
-              <div className="p-2 bg-teal-50 text-teal-600 rounded-lg">
-                <CheckCircle className="w-5 h-5" />
-              </div>
+          <div className="bg-white border border-slate-200 rounded-lg p-5">
+            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              Organization Policy
             </div>
-            <div className="mt-3">
-              <span className="text-lg font-bold text-emerald-600">Operational</span>
-            </div>
-            <div className="mt-3 text-xs text-gray-500 border-t border-gray-100 pt-2 flex justify-between">
-              <span>All engines healthy</span>
-              <span className="text-gray-400">v1.0.0</span>
-            </div>
-          </div>
-        )}
-
-        {hasRole('HR_ADMIN') && (
-          <div className={`bg-white rounded-xl p-5 border shadow-2xs ${pendingRegistrations.length > 0 ? 'border-amber-300 ring-2 ring-amber-100' : 'border-gray-200'}`}>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-500">Pending Registrations</span>
-              <div className={`p-2 rounded-lg ${pendingRegistrations.length > 0 ? 'bg-amber-100 text-amber-700 animate-pulse' : 'bg-blue-50 text-blue-600'}`}>
-                <UserPlus className="w-5 h-5" />
-              </div>
-            </div>
-            <div className="mt-3">
-              <span className={`text-2xl font-bold ${pendingRegistrations.length > 0 ? 'text-amber-700' : 'text-gray-900'}`}>
-                {loading ? '...' : pendingRegistrations.length}
+            <div className="mt-2 flex items-baseline gap-1.5">
+              <span className="text-xl font-bold text-slate-900 tracking-tight">
+                Statutory Standard
               </span>
-              <span className="text-xs text-gray-500 ml-1">awaiting HR</span>
             </div>
-            <div className="mt-3 text-xs text-gray-500 border-t border-gray-100 pt-2 flex justify-between">
-              <span>{allEmployees.length} total staff</span>
-              <Link to="/admin" className="text-blue-600 font-semibold hover:underline">
-                Approve &rarr;
+            <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between text-xs text-slate-500">
+              <span>Employment Act 2007</span>
+              <Link to="/leave" className="text-blue-600 hover:text-blue-800 font-medium">
+                Policy terms
               </Link>
             </div>
           </div>
         )}
       </div>
 
-      {/* Quick Action Buttons */}
-      <div className="flex flex-wrap gap-4">
+      {/* Quick Action Navigation Bar */}
+      <div className="flex flex-wrap gap-3">
         <Link
           to="/leave"
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium text-sm shadow-xs transition"
+          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-md text-sm font-medium transition"
         >
-          <Calendar className="w-4 h-4" />
           Apply for Leave
         </Link>
         <Link
           to="/helpdesk"
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium text-sm shadow-xs transition"
+          className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-md text-sm font-medium transition"
         >
-          <HelpCircle className="w-4 h-4" />
           Create Support Ticket
         </Link>
         {(hasRole('LINE_MANAGER') || hasRole('HR_ADMIN')) && (
           <Link
             to="/approvals"
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl font-medium text-sm transition"
+            className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-md text-sm font-medium transition"
           >
-            <CheckCircle className="w-4 h-4" />
             Review Team Approvals ({pendingApprovalsCount})
           </Link>
         )}
         {hasRole('HR_ADMIN') && (
           <Link
             to="/admin"
-            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm transition border ${
-              pendingRegistrations.length > 0
-                ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600 shadow-sm animate-pulse'
-                : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'
-            }`}
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-md text-sm font-medium transition"
           >
-            <ShieldCheck className="w-4 h-4" />
-            HR Admin Hub {pendingRegistrations.length > 0 && `(${pendingRegistrations.length} Pending Approvals)`}
+            Administration Portal
           </Link>
         )}
       </div>
 
-      {/* HR Pending Employee Registrations Alert Banner */}
+      {/* HR Pending Employee Registrations Notification Banner */}
       {hasRole('HR_ADMIN') && pendingRegistrations.length > 0 && (
-        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-2xl p-6 shadow-xs">
+        <div className="bg-amber-50/80 border border-amber-200 rounded-lg p-5">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 bg-amber-100 text-amber-800 rounded-xl">
-                <UserPlus className="w-6 h-6 animate-pulse" />
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 text-[11px] font-bold bg-amber-200 text-amber-900 rounded">
+                  Action Required
+                </span>
+                <h2 className="text-sm font-bold text-slate-900">
+                  {pendingRegistrations.length} Employee Registration{pendingRegistrations.length > 1 ? 's' : ''} Awaiting Review
+                </h2>
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-bold text-gray-900">
-                    {pendingRegistrations.length} New Employee Registration{pendingRegistrations.length > 1 ? 's' : ''} Awaiting Review
-                  </h2>
-                  <span className="px-2 py-0.5 text-xs font-semibold bg-amber-200 text-amber-900 rounded-full">
-                    Action Required
+              <p className="text-xs text-slate-600 mt-1">
+                New accounts require administrator verification and reporting manager hierarchy assignment before system access is granted.
+              </p>
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                {pendingRegistrations.map((p) => (
+                  <span
+                    key={p.id}
+                    className="inline-flex items-center px-2.5 py-1 bg-white border border-amber-200 text-slate-800 rounded text-xs"
+                  >
+                    <strong className="mr-1">{p.fullName || `${p.firstName} ${p.lastName}`}</strong> ({p.email}) &bull; <span className="font-mono text-slate-500 ml-1">{p.employeeCode}</span>
                   </span>
-                </div>
-                <p className="text-xs text-gray-600 mt-1">
-                  New employees have registered. Before they can log in and access the portal, verify their identity, assign their reporting manager, and initialize leave balances.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {pendingRegistrations.map((p) => (
-                    <span key={p.id} className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-amber-300 text-amber-900 rounded-lg text-xs font-medium shadow-2xs">
-                      <strong>{p.fullName || `${p.firstName} ${p.lastName}`}</strong> ({p.email}) &bull; <span className="font-mono text-gray-600">{p.employeeCode}</span>
-                    </span>
-                  ))}
-                </div>
+                ))}
               </div>
             </div>
             <Link
               to="/admin"
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-xs transition whitespace-nowrap self-start md:self-center"
+              className="px-4 py-2 bg-amber-800 hover:bg-amber-900 text-white rounded-md text-xs font-semibold transition whitespace-nowrap self-start md:self-center"
             >
-              Go to HR Admin to Approve
-              <ArrowRight className="w-4 h-4" />
+              Verify in Admin Hub
             </Link>
           </div>
         </div>
       )}
 
-      {/* Split Recent Tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Recent Activity Sections */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Leave Requests */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-900">Recent Leave Requests</h2>
-            <Link to="/leave" className="text-xs text-blue-600 hover:underline flex items-center gap-1 font-medium">
-              View all <ArrowRight className="w-3 h-3" />
+        <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <h2 className="text-sm font-bold text-slate-900">Recent Leave Requests</h2>
+            <Link to="/leave" className="text-xs text-blue-600 hover:text-blue-800 font-medium">
+              View all
             </Link>
           </div>
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-slate-100">
             {recentLeaves.length === 0 ? (
-              <div className="p-6 text-center text-sm text-gray-500">
+              <div className="p-6 text-center text-sm text-slate-500">
                 No leave requests filed yet.
               </div>
             ) : (
               recentLeaves.map((req) => (
-                <div key={req.id} className="p-4 sm:px-6 flex items-center justify-between hover:bg-gray-50 transition">
+                <div key={req.id} className="p-4 sm:px-5 flex items-center justify-between hover:bg-slate-50 transition">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm text-gray-900">
+                      <span className="font-semibold text-sm text-slate-900">
                         {req.leaveTypeName || 'Leave'}
                       </span>
                       <StatusBadge status={req.status} />
                     </div>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-slate-500">
                       {req.startDate} to {req.endDate} &bull; {Math.floor(Number(req.totalDays))} day{Math.floor(Number(req.totalDays)) > 1 ? 's' : ''}
                     </p>
                   </div>
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-slate-400">
                     {req.createdAt ? new Date(req.createdAt).toLocaleDateString() : ''}
                   </span>
                 </div>
@@ -384,36 +325,36 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* Recent Support Tickets */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-900">Recent Support Tickets</h2>
-            <Link to="/helpdesk" className="text-xs text-blue-600 hover:underline flex items-center gap-1 font-medium">
-              View all <ArrowRight className="w-3 h-3" />
+        <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <h2 className="text-sm font-bold text-slate-900">Recent Support Tickets</h2>
+            <Link to="/helpdesk" className="text-xs text-blue-600 hover:text-blue-800 font-medium">
+              View all
             </Link>
           </div>
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-slate-100">
             {recentTickets.length === 0 ? (
-              <div className="p-6 text-center text-sm text-gray-500">
+              <div className="p-6 text-center text-sm text-slate-500">
                 No tickets opened yet.
               </div>
             ) : (
               recentTickets.map((t) => (
-                <div key={t.id} className="p-4 sm:px-6 flex items-center justify-between hover:bg-gray-50 transition">
+                <div key={t.id} className="p-4 sm:px-5 flex items-center justify-between hover:bg-slate-50 transition">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                      <span className="font-mono text-xs font-semibold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
                         {t.ticketNumber}
                       </span>
-                      <span className="font-medium text-sm text-gray-900 truncate max-w-[200px]">
+                      <span className="font-medium text-sm text-slate-900 truncate max-w-[200px]">
                         {t.title}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
                       <StatusBadge status={t.status} />
                       <StatusBadge priority={t.priority} />
                     </div>
                   </div>
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-slate-400">
                     {t.createdAt ? new Date(t.createdAt).toLocaleDateString() : ''}
                   </span>
                 </div>
@@ -425,99 +366,87 @@ export const DashboardPage: React.FC = () => {
 
       {/* Organization Employee Directory (Visible to HR_ADMIN) */}
       {hasRole('HR_ADMIN') && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-blue-50/40 to-slate-50">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-lg bg-blue-100/80 text-blue-700">
-                <Users className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-gray-900">Organization Employee Directory</h2>
-                <p className="text-xs text-gray-500">
-                  Total {allEmployees.length} staff members registered across company divisions.
-                </p>
-              </div>
+        <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">Employee Directory</h2>
+              <p className="text-xs text-slate-500">
+                {allEmployees.length} total staff registered across organization departments.
+              </p>
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Search name, code, department..."
-                  value={employeeSearch}
-                  onChange={(e) => setEmployeeSearch(e.target.value)}
-                  className="pl-9 pr-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-600 focus:border-blue-600 w-56 sm:w-64 bg-white"
-                />
-              </div>
+              <input
+                type="text"
+                placeholder="Filter by name, code, department..."
+                value={employeeSearch}
+                onChange={(e) => setEmployeeSearch(e.target.value)}
+                className="px-3 py-1.5 border border-slate-300 rounded-md text-xs focus:ring-1 focus:ring-slate-900 focus:border-slate-900 w-56 sm:w-64 bg-white"
+              />
               <Link
                 to="/admin"
-                className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition whitespace-nowrap"
+                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-md text-xs font-medium transition whitespace-nowrap"
               >
-                <ShieldCheck className="w-3.5 h-3.5" />
-                Manage in Admin Hub
+                Manage Staff
               </Link>
             </div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 text-xs">
-              <thead className="bg-gray-50/75 text-gray-600 font-semibold uppercase tracking-wider text-[11px]">
+            <table className="min-w-full divide-y divide-slate-200 text-xs">
+              <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
                 <tr>
-                  <th className="px-6 py-3 text-left">Employee</th>
-                  <th className="px-6 py-3 text-left">Code</th>
-                  <th className="px-6 py-3 text-left">Department</th>
-                  <th className="px-6 py-3 text-left">Job Title &amp; Role</th>
-                  <th className="px-6 py-3 text-left">Line Manager</th>
-                  <th className="px-6 py-3 text-center">Status</th>
+                  <th className="px-5 py-3 text-left">Employee</th>
+                  <th className="px-5 py-3 text-left">Employee ID</th>
+                  <th className="px-5 py-3 text-left">Department</th>
+                  <th className="px-5 py-3 text-left">Title &amp; Role</th>
+                  <th className="px-5 py-3 text-left">Line Manager</th>
+                  <th className="px-5 py-3 text-center">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 bg-white">
+              <tbody className="divide-y divide-slate-100 bg-white">
                 {filteredEmployees.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-gray-400 italic">
-                      No employees found matching "{employeeSearch}".
+                    <td colSpan={6} className="px-5 py-8 text-center text-slate-400">
+                      No employees match your search query.
                     </td>
                   </tr>
                 ) : (
                   filteredEmployees.map((emp) => (
-                    <tr key={emp.id} className="hover:bg-blue-50/30 transition">
-                      <td className="px-6 py-3.5 whitespace-nowrap">
-                        <div className="font-semibold text-gray-900">
+                    <tr key={emp.id} className="hover:bg-slate-50/80 transition">
+                      <td className="px-5 py-3.5 whitespace-nowrap">
+                        <div className="font-semibold text-slate-900">
                           {emp.fullName || `${emp.firstName} ${emp.lastName}`}
                         </div>
-                        <div className="text-gray-500 text-[11px]">{emp.email}</div>
+                        <div className="text-slate-500 text-[11px]">{emp.email}</div>
                       </td>
-                      <td className="px-6 py-3.5 whitespace-nowrap font-mono text-gray-700">
+                      <td className="px-5 py-3.5 whitespace-nowrap font-mono text-slate-700">
                         {emp.employeeCode}
                       </td>
-                      <td className="px-6 py-3.5 whitespace-nowrap text-gray-700">
-                        {emp.department?.name || <span className="text-gray-400 italic">Unassigned</span>}
+                      <td className="px-5 py-3.5 whitespace-nowrap text-slate-700">
+                        {emp.department?.name || <span className="text-slate-400">Unassigned</span>}
                       </td>
-                      <td className="px-6 py-3.5 whitespace-nowrap">
-                        <div className="text-gray-900 font-medium">{emp.jobTitle || 'Staff Member'}</div>
-                        <div className="text-gray-400 text-[10px]">{emp.roles.join(', ')}</div>
+                      <td className="px-5 py-3.5 whitespace-nowrap">
+                        <div className="text-slate-900 font-medium">{emp.jobTitle || 'Staff Member'}</div>
+                        <div className="text-slate-500 text-[10px]">{emp.roles.join(', ')}</div>
                       </td>
-                      <td className="px-6 py-3.5 whitespace-nowrap text-gray-700">
+                      <td className="px-5 py-3.5 whitespace-nowrap text-slate-700">
                         {emp.manager ? (
-                          <span className="inline-flex items-center gap-1 font-medium text-gray-800">
-                            <UserCheck className="w-3.5 h-3.5 text-blue-500" />
+                          <span className="font-medium text-slate-800">
                             {emp.manager.fullName}
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                            No Manager Assigned
-                          </span>
+                          <span className="text-slate-400">None assigned</span>
                         )}
                       </td>
-                      <td className="px-6 py-3.5 whitespace-nowrap text-center">
+                      <td className="px-5 py-3.5 whitespace-nowrap text-center">
                         <span
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                          className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
                             emp.status === 'ACTIVE'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                               : emp.status === 'PENDING_APPROVAL'
-                              ? 'bg-amber-100 text-amber-800 border-amber-300 animate-pulse'
-                              : 'bg-rose-50 text-rose-700 border-rose-200'
+                              ? 'bg-amber-50 text-amber-800 border-amber-200'
+                              : 'bg-rose-50 text-rose-800 border-rose-200'
                           }`}
                         >
                           {emp.status}

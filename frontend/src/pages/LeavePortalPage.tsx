@@ -4,15 +4,6 @@ import { LeaveBalance, LeaveRequest, LeaveType } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
 import { Modal } from '../components/Modal';
 import { Alert } from '../components/Alert';
-import { 
-  Calendar, 
-  PlusCircle, 
-  Clock, 
-  CheckCircle2, 
-  AlertTriangle, 
-  XCircle,
-  CalendarDays
-} from 'lucide-react';
 
 export const LeavePortalPage: React.FC = () => {
   const [balances, setBalances] = useState<LeaveBalance[]>([]);
@@ -177,9 +168,8 @@ export const LeavePortalPage: React.FC = () => {
             setApplyError(null);
             setIsApplyModalOpen(true);
           }}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium text-sm shadow-xs transition"
+          className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition"
         >
-          <PlusCircle className="w-4 h-4" />
           Apply for Leave
         </button>
       </div>
@@ -194,23 +184,22 @@ export const LeavePortalPage: React.FC = () => {
 
       {/* Balance Cards Grid */}
       <section>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <CalendarDays className="w-5 h-5 text-blue-600" />
+        <h2 className="text-base font-semibold text-gray-900 mb-4">
           Leave Balances ({new Date().getFullYear()})
         </h2>
 
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-pulse">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-44 bg-gray-200 rounded-xl"></div>
+              <div key={i} className="h-44 bg-gray-200 rounded-lg"></div>
             ))}
           </div>
         ) : balances.length === 0 ? (
-          <div className="bg-white rounded-xl p-8 border border-gray-200 text-center text-gray-500">
+          <div className="bg-white rounded-lg p-8 border border-gray-200 text-center text-gray-500">
             No active leave balance allocations found for this calendar year.
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
             {balances.map((bal) => {
               const available = Number(bal.availableDays) || 0;
               const entitled = Number(bal.entitledDays) || 0;
@@ -221,11 +210,11 @@ export const LeavePortalPage: React.FC = () => {
               return (
                 <div
                   key={bal.id}
-                  className="bg-white rounded-xl border border-gray-200 p-5 shadow-2xs hover:shadow-sm transition flex flex-col justify-between"
+                  className="bg-white rounded-lg border border-slate-200 p-5 flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-sm text-gray-900">
+                      <span className="font-semibold text-sm text-slate-900">
                         {bal.leaveTypeName}
                       </span>
                       <span className="text-xs font-mono font-medium px-2 py-0.5 bg-slate-100 text-slate-700 rounded">
@@ -233,30 +222,30 @@ export const LeavePortalPage: React.FC = () => {
                       </span>
                     </div>
 
-                    <div className="mt-4 flex items-baseline gap-1">
-                      <span className="text-3xl font-extrabold text-blue-600">
+                    <div className="mt-4 flex items-baseline gap-1.5">
+                      <span className="text-3xl font-bold tracking-tight text-slate-900">
                         {available.toFixed(1)}
                       </span>
-                      <span className="text-xs font-medium text-gray-500">days available</span>
+                      <span className="text-xs font-medium text-slate-500">days available</span>
                     </div>
                   </div>
 
-                  <div className="mt-5 border-t border-gray-100 pt-3 space-y-1.5 text-xs text-gray-600">
+                  <div className="mt-5 border-t border-slate-100 pt-3 space-y-1.5 text-xs text-slate-600">
                     <div className="flex justify-between">
                       <span>Accrued:</span>
-                      <span className="font-medium text-gray-800">{accrued.toFixed(1)}</span>
+                      <span className="font-medium text-slate-800">{accrued.toFixed(1)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Entitled:</span>
-                      <span className="font-medium text-gray-800">{entitled.toFixed(1)}</span>
+                      <span className="font-medium text-slate-800">{entitled.toFixed(1)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Used:</span>
-                      <span className="font-medium text-rose-600">{used.toFixed(1)}</span>
+                      <span className="font-medium text-slate-800">{used.toFixed(1)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Pending:</span>
-                      <span className="font-medium text-amber-600">{pending.toFixed(1)}</span>
+                      <span className="font-medium text-amber-700">{pending.toFixed(1)}</span>
                     </div>
                   </div>
                 </div>
@@ -268,12 +257,11 @@ export const LeavePortalPage: React.FC = () => {
 
       {/* Leave Application History Table */}
       <section>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <Clock className="w-5 h-5 text-blue-600" />
-          My Application History
+        <h2 className="text-base font-semibold text-gray-900 mb-4">
+          Application History
         </h2>
 
-        <div className="bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden">
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           {requests.length === 0 ? (
             <div className="p-8 text-center text-sm text-gray-500">
               You have not submitted any leave applications yet.
@@ -404,14 +392,14 @@ export const LeavePortalPage: React.FC = () => {
             </div>
 
             {hasDates && requestedWorkingDays === 0 && (
-              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
-                ⚠️ Selected dates fall exclusively on weekends. Leave requests must include at least one working day (Mon–Fri).
+              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+                Selected dates fall exclusively on weekends. Leave requests must include at least one working day (Monday to Friday).
               </p>
             )}
 
             {isInsufficient && (
-              <p className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg p-2">
-                ⚠️ Insufficient balance! You are requesting {requestedWorkingDays} days, which exceeds your current balance of {availableDays.toFixed(1)} days.
+              <p className="text-xs text-rose-800 bg-rose-50 border border-rose-200 rounded-lg p-2.5">
+                Insufficient balance. You are requesting {requestedWorkingDays} days, which exceeds your current balance of {availableDays.toFixed(1)} days.
               </p>
             )}
           </div>

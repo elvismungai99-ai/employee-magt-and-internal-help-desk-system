@@ -5,17 +5,6 @@ import { SupportQueue, Ticket, TicketPriority, TicketStatus } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
 import { Modal } from '../components/Modal';
 import { Alert } from '../components/Alert';
-import { 
-  Headphones, 
-  UserCheck, 
-  CheckCircle, 
-  Clock, 
-  Send, 
-  Lock, 
-  Filter, 
-  MessageSquare,
-  AlertOctagon
-} from 'lucide-react';
 
 export const AgentQueuePage: React.FC = () => {
   const { user } = useAuth();
@@ -160,9 +149,8 @@ export const AgentQueuePage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-            <Headphones className="w-8 h-8 text-blue-600" />
-            Support Agent Queue Board
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+            Support Agent Queue
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             Triage incoming support requests, manage SLA timelines, post internal notes, and resolve incidents.
@@ -198,12 +186,12 @@ export const AgentQueuePage: React.FC = () => {
       )}
 
       {/* Filter Chips */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
         {['ALL', 'NEW', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].map((st) => (
           <button
             key={st}
             onClick={() => setStatusFilter(st)}
-            className={`px-3 py-1.5 rounded-lg font-medium transition ${
+            className={`px-3 py-1.5 rounded-md font-medium transition ${
               statusFilter === st
                 ? 'bg-blue-600 text-white'
                 : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
@@ -215,7 +203,7 @@ export const AgentQueuePage: React.FC = () => {
       </div>
 
       {/* Tickets Board */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <span className="font-semibold text-gray-900 text-sm">
             Tickets in Queue ({filteredTickets.length})
@@ -231,10 +219,9 @@ export const AgentQueuePage: React.FC = () => {
         {isLoading ? (
           <div className="p-8 text-center text-sm text-gray-500">Loading queue tickets...</div>
         ) : filteredTickets.length === 0 ? (
-          <div className="p-12 text-center text-gray-500">
-            <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
-            <h3 className="text-base font-semibold text-gray-900">All caught up!</h3>
-            <p className="text-sm mt-1">No pending tickets matching this queue or filter.</p>
+          <div className="p-12 text-center text-slate-500">
+            <p className="font-semibold text-slate-900 text-sm">No tickets in queue</p>
+            <p className="text-xs text-slate-500 mt-1">No pending tickets match the selected queue or status filter.</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
@@ -261,8 +248,8 @@ export const AgentQueuePage: React.FC = () => {
                       <StatusBadge status={t.status} />
                       <StatusBadge priority={t.priority} />
                       {isBreached && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
-                          <AlertOctagon className="w-3 h-3" /> SLA BREACHED
+                        <span className="text-[11px] font-bold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded">
+                          SLA BREACHED
                         </span>
                       )}
                     </div>
@@ -281,8 +268,8 @@ export const AgentQueuePage: React.FC = () => {
                         <span className="text-amber-600 font-medium">Unassigned</span>
                       )}
                       {t.slaDueAt && (
-                        <span className="text-gray-500 flex items-center gap-1">
-                          <Clock className="w-3 h-3" /> SLA Target: {new Date(t.slaDueAt).toLocaleString()}
+                        <span className="text-gray-500">
+                          SLA Target: {new Date(t.slaDueAt).toLocaleString()}
                         </span>
                       )}
                     </div>
@@ -293,9 +280,8 @@ export const AgentQueuePage: React.FC = () => {
                     {!isAssignedToMe && t.status !== 'RESOLVED' && t.status !== 'CLOSED' && (
                       <button
                         onClick={() => handleAssignToMe(t)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-xs font-semibold transition"
+                        className="px-3 py-1.5 border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-md text-xs font-medium transition"
                       >
-                        <UserCheck className="w-3.5 h-3.5" />
                         Assign to Me
                       </button>
                     )}
@@ -303,18 +289,16 @@ export const AgentQueuePage: React.FC = () => {
                     {t.status !== 'RESOLVED' && t.status !== 'CLOSED' && (
                       <button
                         onClick={() => handleOpenResolveModal(t)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-2xs transition"
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-medium transition"
                       >
-                        <CheckCircle className="w-3.5 h-3.5" />
                         Resolve
                       </button>
                     )}
 
                     <button
                       onClick={() => handleOpenDetail(t)}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg text-xs font-medium transition"
+                      className="px-3 py-1.5 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md text-xs font-medium transition"
                     >
-                      <MessageSquare className="w-3.5 h-3.5" />
                       Details ({t.comments?.length || 0})
                     </button>
                   </div>
@@ -423,8 +407,8 @@ export const AgentQueuePage: React.FC = () => {
                           <span className="flex items-center gap-1.5">
                             {c.authorName}
                             {isInternal && (
-                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] bg-amber-200 text-amber-900 font-bold uppercase">
-                                <Lock className="w-2.5 h-2.5" /> Internal Note
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-amber-200 text-amber-900 font-bold uppercase">
+                                Internal Note
                               </span>
                             )}
                           </span>
@@ -464,9 +448,8 @@ export const AgentQueuePage: React.FC = () => {
                   <button
                     type="submit"
                     disabled={isPostingComment || !commentText.trim()}
-                    className="inline-flex items-center gap-1 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs disabled:opacity-50"
+                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-medium transition disabled:opacity-50"
                   >
-                    <Send className="w-3.5 h-3.5" />
                     {isPostingComment ? 'Posting...' : 'Post Note'}
                   </button>
                 </div>

@@ -3,25 +3,7 @@ import { adminApi } from '../api/adminApi';
 import { AccrualRunResult, EventOutboxItem, PageResponse, SlaMonitorRunResult, UserProfile } from '../types';
 import { Modal } from '../components/Modal';
 import { Alert } from '../components/Alert';
-import { 
-  ShieldCheck, 
-  Activity, 
-  Play, 
-  Clock, 
-  CheckCircle, 
-  AlertTriangle, 
-  RefreshCw, 
-  Layers, 
-  Eye, 
-  FileText,
-  UserCheck,
-  Users,
-  ArrowRight,
-  UserPlus,
-  XCircle,
-  Check,
-  Search
-} from 'lucide-react';
+import { Search } from 'lucide-react';
 
 export const AdminDashboardPage: React.FC = () => {
   const [lastAccrual, setLastAccrual] = useState<AccrualRunResult | null>(null);
@@ -245,29 +227,26 @@ export const AdminDashboardPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-            <ShieldCheck className="w-8 h-8 text-blue-600" />
-            Platform &amp; Scheduled Engines Admin
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+            System Administration
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Monitor background scheduled jobs, trigger policy balance accruals, and inspect transaction event outboxes.
+            Manage employee registrations, reporting hierarchies, leave accrual schedules, and event transactions.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <button
             onClick={loadAdminData}
-            className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 rounded-xl text-sm font-medium transition"
+            className="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 rounded-lg text-sm font-medium transition"
           >
-            <RefreshCw className="w-4 h-4" />
-            Refresh Telemetry
+            Refresh
           </button>
           <button
             onClick={() => setIsTriggerModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-xs transition"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition"
           >
-            <Play className="w-4 h-4" />
-            Trigger Accrual Run
+            Run Accrual
           </button>
         </div>
       </div>
@@ -281,35 +260,29 @@ export const AdminDashboardPage: React.FC = () => {
       )}
 
       {/* Pending Employee Registrations Card */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-blue-50/50 to-indigo-50/30">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-blue-100/80 text-blue-700">
-              <UserPlus className="w-5 h-5" />
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/70">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold text-gray-900">Pending Employee Registrations</h2>
+              <span className={`text-xs px-2.5 py-0.5 rounded font-medium border ${
+                pendingUsers.length > 0 
+                  ? 'bg-amber-50 text-amber-800 border-amber-200' 
+                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              }`}>
+                {pendingUsers.length} awaiting approval
+              </span>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-gray-900">Pending Employee Registrations</h2>
-                <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold border ${
-                  pendingUsers.length > 0 
-                    ? 'bg-amber-100 text-amber-800 border-amber-300 animate-pulse' 
-                    : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                }`}>
-                  {pendingUsers.length} awaiting approval
-                </span>
-              </div>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Verify identity of newly registered users before granting organizational portal access and leave quotas.
-              </p>
-            </div>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Verify identity of newly registered users before granting organizational portal access and leave quotas.
+            </p>
           </div>
         </div>
 
         {pendingUsers.length === 0 ? (
-          <div className="py-8 text-center text-sm text-gray-500">
-            <CheckCircle className="w-8 h-8 text-emerald-500 mx-auto mb-2 opacity-80" />
-            <p className="font-medium text-gray-700">No Pending Approvals</p>
-            <p className="text-xs text-gray-400 mt-0.5">All registered employees are verified and active.</p>
+          <div className="py-8 text-center text-sm text-slate-500">
+            <p className="font-medium text-slate-800">No Pending Approvals</p>
+            <p className="text-xs text-slate-400 mt-0.5">All registered employees are verified and active.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -348,16 +321,14 @@ export const AdminDashboardPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
                       <button
                         onClick={() => handleOpenApproveModal(u)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-xs transition text-xs"
+                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-medium transition text-xs"
                       >
-                        <Check className="w-3.5 h-3.5" />
                         Approve
                       </button>
                       <button
                         onClick={() => handleRejectRegistration(u)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg font-medium transition text-xs"
+                        className="px-3 py-1 bg-white hover:bg-rose-50 text-rose-700 border border-slate-300 hover:border-rose-300 rounded font-medium transition text-xs"
                       >
-                        <XCircle className="w-3.5 h-3.5" />
                         Reject
                       </button>
                     </td>
@@ -372,13 +343,10 @@ export const AdminDashboardPage: React.FC = () => {
       {/* Background Engines Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Accrual Engine Card */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-2xs">
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-            <div className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-indigo-600" />
-              <h2 className="text-base font-bold text-gray-900">Monthly Accrual Engine</h2>
-            </div>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">
+            <h2 className="text-sm font-bold text-gray-900">Monthly Accrual Schedule</h2>
+            <span className="text-xs px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">
               Active Schedule (0 0 1 * *)
             </span>
           </div>
@@ -419,20 +387,17 @@ export const AdminDashboardPage: React.FC = () => {
               </>
             ) : (
               <div className="py-6 text-center text-gray-400 italic">
-                No recorded accrual runs yet. Click "Trigger Accrual Run" to test.
+                No recorded accrual runs yet. Click "Run Accrual" to execute.
               </div>
             )}
           </div>
         </div>
 
         {/* SLA Monitor Engine Card */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-2xs">
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-            <div className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-amber-600" />
-              <h2 className="text-base font-bold text-gray-900">SLA Breach Monitor Engine</h2>
-            </div>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-200">
+            <h2 className="text-sm font-bold text-gray-900">SLA Breach Monitor</h2>
+            <span className="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold border border-blue-200">
               Active Poller (0 */5 * * *)
             </span>
           </div>
@@ -471,15 +436,12 @@ export const AdminDashboardPage: React.FC = () => {
       </div>
 
       {/* Organizational Hierarchy: Assign Direct Manager */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-2xs">
-        <div className="flex items-center gap-2 pb-4 border-b border-gray-100">
-          <UserCheck className="w-5 h-5 text-blue-600" />
-          <div>
-            <h2 className="text-base font-bold text-gray-900">Reporting Hierarchy Assignment</h2>
-            <p className="text-xs text-gray-500">
-              Assign or update an employee's direct line manager for leave approvals.
-            </p>
-          </div>
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="pb-4 border-b border-gray-100">
+          <h2 className="text-sm font-bold text-gray-900">Reporting Hierarchy Assignment</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Assign or update an employee's direct line manager for leave approvals.
+          </p>
         </div>
 
         <form onSubmit={handleAssignManager} className="mt-4 grid grid-cols-1 sm:grid-cols-12 gap-4 items-end">
@@ -525,9 +487,8 @@ export const AdminDashboardPage: React.FC = () => {
             <button
               type="submit"
               disabled={isAssigning}
-              className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-xs disabled:opacity-50 transition"
+              className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50 transition"
             >
-              <UserCheck className="w-4 h-4" />
               {isAssigning ? 'Saving...' : 'Assign'}
             </button>
           </div>
@@ -536,22 +497,17 @@ export const AdminDashboardPage: React.FC = () => {
 
       {/* Organization Employees & Staff Directory */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-slate-50 to-blue-50/30">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-blue-100/80 text-blue-700">
-              <Users className="w-5 h-5" />
+        <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/70">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold text-gray-900">Organization Employees</h2>
+              <span className="text-xs px-2 py-0.5 rounded font-medium border bg-slate-100 text-slate-700 border-slate-200">
+                {users.length} Total Users
+              </span>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-gray-900">All Organization Employees</h2>
-                <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold border bg-blue-50 text-blue-700 border-blue-200">
-                  {users.length} Total Users
-                </span>
-              </div>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Full personnel directory across departments with reporting managers and active permissions.
-              </p>
-            </div>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Full personnel directory across departments with reporting managers and active permissions.
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -561,10 +517,10 @@ export const AdminDashboardPage: React.FC = () => {
                 <button
                   key={st}
                   onClick={() => setAdminUserStatusFilter(st)}
-                  className={`px-2.5 py-1 rounded-lg font-medium transition text-xs ${
+                  className={`px-2.5 py-1 rounded-md font-medium transition text-xs ${
                     adminUserStatusFilter === st
-                      ? 'bg-blue-600 text-white shadow-2xs'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
                   }`}
                 >
                   {st || 'ALL'}
@@ -631,23 +587,22 @@ export const AdminDashboardPage: React.FC = () => {
                     </td>
                     <td className="px-6 py-3.5 whitespace-nowrap text-gray-700">
                       {u.manager ? (
-                        <span className="inline-flex items-center gap-1 font-medium text-gray-800">
-                          <UserCheck className="w-3.5 h-3.5 text-blue-500" />
+                        <span className="font-medium text-gray-800">
                           {u.manager.fullName}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
                           Unassigned
                         </span>
                       )}
                     </td>
                     <td className="px-6 py-3.5 whitespace-nowrap text-center">
                       <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
                           u.status === 'ACTIVE'
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                             : u.status === 'PENDING_APPROVAL'
-                            ? 'bg-amber-100 text-amber-800 border-amber-300 animate-pulse'
+                            ? 'bg-amber-50 text-amber-800 border-amber-200'
                             : 'bg-rose-50 text-rose-700 border-rose-200'
                         }`}
                       >
@@ -658,9 +613,8 @@ export const AdminDashboardPage: React.FC = () => {
                       {u.status === 'PENDING_APPROVAL' ? (
                         <button
                           onClick={() => handleOpenApproveModal(u)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold shadow-2xs transition"
+                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-medium transition"
                         >
-                          <Check className="w-3 h-3" />
                           Approve
                         </button>
                       ) : (
@@ -669,9 +623,8 @@ export const AdminDashboardPage: React.FC = () => {
                             setAssignForm((prev) => ({ ...prev, employeeId: u.id }));
                             window.scrollTo({ top: 400, behavior: 'smooth' });
                           }}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded text-xs font-medium border border-slate-200 transition"
+                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-medium border border-slate-200 transition"
                         >
-                          <UserCheck className="w-3 h-3" />
                           Set Manager
                         </button>
                       )}
@@ -685,15 +638,12 @@ export const AdminDashboardPage: React.FC = () => {
       </div>
 
       {/* Transactional Event Outbox Inspector */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Layers className="w-5 h-5 text-blue-600" />
-            <h2 className="text-base font-bold text-gray-900">Transactional Event Outbox</h2>
-          </div>
+          <h2 className="text-sm font-bold text-gray-900">Transactional Event Outbox</h2>
 
           {/* Outbox Status Filter */}
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-1.5 text-xs">
             {['', 'PENDING', 'PROCESSED', 'FAILED'].map((st) => (
               <button
                 key={st}
@@ -701,10 +651,10 @@ export const AdminDashboardPage: React.FC = () => {
                   setStatusFilter(st);
                   setCurrentPage(0);
                 }}
-                className={`px-2.5 py-1 rounded font-medium transition ${
+                className={`px-2.5 py-1 rounded-md font-medium transition ${
                   statusFilter === st
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
                 }`}
               >
                 {st || 'ALL'}
@@ -763,9 +713,9 @@ export const AdminDashboardPage: React.FC = () => {
                     <td className="px-6 py-3 text-right">
                       <button
                         onClick={() => setSelectedEvent(ev)}
-                        className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium"
+                        className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                       >
-                        <Eye className="w-3.5 h-3.5" /> View
+                        View
                       </button>
                     </td>
                   </tr>
@@ -853,9 +803,9 @@ export const AdminDashboardPage: React.FC = () => {
             <button
               type="submit"
               disabled={isTriggering}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs disabled:opacity-50"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold disabled:opacity-50 transition"
             >
-              {isTriggering ? 'Executing Engine...' : 'Run Accrual Now'}
+              {isTriggering ? 'Executing Engine...' : 'Run Accrual'}
             </button>
           </div>
         </form>
@@ -979,9 +929,8 @@ export const AdminDashboardPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={isProcessingApproval}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs disabled:opacity-50 transition"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold disabled:opacity-50 transition"
               >
-                <Check className="w-4 h-4" />
                 {isProcessingApproval ? 'Activating Employee...' : 'Approve & Activate'}
               </button>
             </div>

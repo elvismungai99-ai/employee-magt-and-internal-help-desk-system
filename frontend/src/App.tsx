@@ -16,8 +16,8 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
     <Navbar />
     <main className="flex-1 pb-12">{children}</main>
-    <footer className="border-t border-gray-200 bg-white py-4 text-center text-xs text-gray-500">
-      Employee Management &amp; Internal Help Desk System &bull; Phase 8 Enterprise UI
+    <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500">
+      Employee Management &amp; Internal Help Desk System &bull; &copy; 2026 All rights reserved.
     </footer>
   </div>
 );

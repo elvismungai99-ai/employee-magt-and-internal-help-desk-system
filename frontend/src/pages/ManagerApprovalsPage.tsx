@@ -4,7 +4,6 @@ import { LeaveRequest } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
 import { Modal } from '../components/Modal';
 import { Alert } from '../components/Alert';
-import { CheckCircle, XCircle, Clock, User, Calendar, MessageSquare, AlertTriangle } from 'lucide-react';
 
 export const ManagerApprovalsPage: React.FC = () => {
   const [pendingRequests, setPendingRequests] = useState<LeaveRequest[]>([]);
@@ -116,9 +115,9 @@ export const ManagerApprovalsPage: React.FC = () => {
         />
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-2xs overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <span className="font-semibold text-gray-900">
+          <span className="font-semibold text-gray-900 text-sm">
             Pending Approval Queue ({pendingRequests.length})
           </span>
           <button
@@ -132,10 +131,9 @@ export const ManagerApprovalsPage: React.FC = () => {
         {isLoading ? (
           <div className="p-8 text-center text-sm text-gray-500">Loading requests...</div>
         ) : pendingRequests.length === 0 ? (
-          <div className="p-12 text-center text-gray-500">
-            <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
-            <h3 className="text-base font-semibold text-gray-900">Queue is clear!</h3>
-            <p className="text-sm mt-1">No pending leave applications requiring your decision.</p>
+          <div className="p-12 text-center text-slate-500">
+            <p className="font-semibold text-slate-900 text-sm">No pending requests</p>
+            <p className="text-xs text-slate-500 mt-1">Leave applications submitted by your reporting staff will appear here.</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
@@ -159,8 +157,7 @@ export const ManagerApprovalsPage: React.FC = () => {
                     <span className="font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
                       {req.leaveTypeName}
                     </span>
-                    <span className="flex items-center gap-1 font-medium">
-                      <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                    <span className="font-medium">
                       {req.startDate} &rarr; {req.endDate} ({req.totalDays} day{Number(req.totalDays) > 1 ? 's' : ''})
                     </span>
                     <span className="text-gray-400">
@@ -176,20 +173,18 @@ export const ManagerApprovalsPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 flex-shrink-0">
+                <div className="flex items-center gap-2.5 flex-shrink-0">
                   <button
                     onClick={() => openDecisionModal(req, 'reject')}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 border border-rose-300 text-rose-700 bg-white hover:bg-rose-50 rounded-lg text-sm font-medium transition"
+                    className="px-3.5 py-1.5 border border-slate-300 text-slate-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 rounded-md text-sm font-medium transition"
                   >
-                    <XCircle className="w-4 h-4" />
                     Reject
                   </button>
 
                   <button
                     onClick={() => openDecisionModal(req, 'approve')}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium shadow-xs transition"
+                    className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-sm font-medium transition"
                   >
-                    <CheckCircle className="w-4 h-4" />
                     Approve
                   </button>
                 </div>

@@ -8,13 +8,14 @@ import {
   ShieldCheck, 
   LayoutGrid, 
   ArrowRight, 
-  Clock, 
-  CheckCircle2,
-  FileText
+  LogIn,
+  UserPlus,
+  LogOut,
+  CheckCircle2
 } from 'lucide-react';
 
 export const LandingPage: React.FC = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
   // Interactive sample state for "Today at a glance" widget
@@ -43,8 +44,43 @@ export const LandingPage: React.FC = () => {
     }
   };
 
+  const handleLogout = async () => {
+    await logout();
+  };
+
   return (
     <div className="min-h-screen bg-[#f2f8f8] text-[#0d2836] flex flex-col font-sans selection:bg-teal-200 selection:text-teal-900">
+      
+      {/* Active Session Notice Banner (if previous session detected in browser) */}
+      {isAuthenticated && (
+        <aside aria-label="Active session banner" className="bg-[#0e4a5c] text-white text-xs px-4 py-2 border-b border-teal-800">
+          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>
+                Active session detected for <strong className="underline">{user?.fullName || user?.firstName}</strong> ({user?.employeeCode || 'Employee'}).
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link
+                to="/home"
+                className="font-bold text-[#2dd4bf] hover:underline inline-flex items-center gap-1"
+              >
+                Go to Home Dashboard &rarr;
+              </Link>
+              <span className="text-teal-400">|</span>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="text-slate-200 hover:text-white underline cursor-pointer inline-flex items-center gap-1"
+              >
+                <LogOut className="w-3 h-3" /> Sign Out
+              </button>
+            </div>
+          </div>
+        </aside>
+      )}
+
       {/* Top Navbar */}
       <header className="border-b border-teal-100 bg-white/90 backdrop-blur-md sticky top-0 z-30">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -87,35 +123,20 @@ export const LandingPage: React.FC = () => {
             </button>
           </div>
 
+          {/* Top Auth Actions */}
           <div className="flex items-center gap-3">
-            {isAuthenticated ? (
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-slate-600 hidden sm:inline">
-                  Signed in as <strong className="text-[#0d2836]">{user?.fullName || user?.firstName}</strong>
-                </span>
-                <Link
-                  to="/dashboard"
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#0e4a5c] hover:bg-[#083543] text-white text-xs font-semibold rounded-lg shadow-xs transition"
-                >
-                  Open Dashboard <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Link
-                  to="/register"
-                  className="px-3 py-1.5 border border-teal-200 text-[#0e4a5c] hover:bg-teal-50 text-xs font-semibold rounded-lg transition"
-                >
-                  Register
-                </Link>
-                <Link
-                  to="/login"
-                  className="px-3.5 py-1.5 bg-[#0e4a5c] hover:bg-[#083543] text-white text-xs font-semibold rounded-lg shadow-xs transition"
-                >
-                  Sign In
-                </Link>
-              </div>
-            )}
+            <Link
+              to="/login"
+              className="px-3.5 py-1.5 text-xs font-semibold text-[#0e4a5c] hover:bg-teal-50 border border-teal-200 rounded-lg transition inline-flex items-center gap-1.5"
+            >
+              <LogIn className="w-3.5 h-3.5" /> Sign In
+            </Link>
+            <Link
+              to="/register"
+              className="px-3.5 py-1.5 bg-[#0e4a5c] hover:bg-[#083543] text-white text-xs font-semibold rounded-lg shadow-xs transition inline-flex items-center gap-1.5"
+            >
+              <UserPlus className="w-3.5 h-3.5" /> Create Account
+            </Link>
           </div>
         </div>
       </header>
@@ -128,40 +149,60 @@ export const LandingPage: React.FC = () => {
           <div className="lg:col-span-7 space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#e3f4f1] text-[#0e4a5c] text-xs font-bold tracking-wider uppercase">
               <span className="w-1.5 h-1.5 rounded-full bg-[#0e4a5c]" />
-              Enterprise Employee Service Desk
+              Internal Workplace Portal
             </div>
 
             <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#0d2836] leading-[1.18] tracking-tight">
-              Manage leave, approvals, and workplace support in one connected platform.
+              Manage workplace leave and get internal support in one place.
             </h1>
 
             <p className="text-slate-600 text-sm sm:text-base leading-relaxed max-w-xl">
-              A unified internal workspace for employees to plan time off, monitor quota balances, and submit IT &amp; HR support tickets with transparent, auditable workflows.
+              Welcome to the company employee portal. Please sign in to access your account or register as a new user to request organization access.
             </p>
 
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => handleAction('/leave')}
-                className="px-5 py-2.5 bg-[#0e4a5c] hover:bg-[#083543] text-white text-sm font-semibold rounded-xl shadow-xs transition inline-flex items-center gap-2 cursor-pointer"
-              >
-                <Calendar className="w-4 h-4" /> Request Leave
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAction('/helpdesk')}
-                className="px-5 py-2.5 bg-white border border-teal-200 text-[#0e4a5c] hover:bg-[#f0f9f8] text-sm font-semibold rounded-xl shadow-xs transition inline-flex items-center gap-2 cursor-pointer"
-              >
-                <LifeBuoy className="w-4 h-4" /> Submit Help Ticket
-              </button>
-              {!isAuthenticated && (
+            {/* Prominent Gateway Cards: Sign In vs Create Account */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl pt-2">
+              {/* Gateway Card 1: Existing User */}
+              <div className="bg-white rounded-xl border border-teal-200/90 p-5 shadow-xs flex flex-col justify-between space-y-3 hover:border-teal-400 transition">
+                <div>
+                  <div className="text-[11px] font-bold text-[#0e4a5c] uppercase tracking-wider flex items-center gap-1.5">
+                    <LogIn className="w-3.5 h-3.5" /> Existing User
+                  </div>
+                  <h3 className="font-bold text-base text-[#0d2836] mt-1">
+                    Sign in to your account
+                  </h3>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Access your leave balances, view active requests, and track your help desk tickets.
+                  </p>
+                </div>
+                <Link
+                  to="/login"
+                  className="w-full py-2.5 px-4 bg-[#0e4a5c] hover:bg-[#083543] text-white text-xs font-semibold rounded-lg shadow-xs transition text-center inline-flex items-center justify-center gap-1.5"
+                >
+                  Sign In to Account <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+
+              {/* Gateway Card 2: New User */}
+              <div className="bg-white rounded-xl border border-teal-200/90 p-5 shadow-xs flex flex-col justify-between space-y-3 hover:border-teal-400 transition">
+                <div>
+                  <div className="text-[11px] font-bold text-teal-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <UserPlus className="w-3.5 h-3.5" /> New Team Member
+                  </div>
+                  <h3 className="font-bold text-base text-[#0d2836] mt-1">
+                    Create a new account
+                  </h3>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Register your employee details, role, and department to request workspace access.
+                  </p>
+                </div>
                 <Link
                   to="/register"
-                  className="px-4 py-2.5 text-xs font-semibold text-slate-600 hover:text-[#0e4a5c] transition inline-flex items-center gap-1"
+                  className="w-full py-2.5 px-4 bg-white border border-teal-300 hover:bg-teal-50 text-[#0e4a5c] text-xs font-semibold rounded-lg shadow-xs transition text-center inline-flex items-center justify-center gap-1.5"
                 >
-                  Create account &rarr;
+                  Register as New User <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
-              )}
+              </div>
             </div>
           </div>
 
@@ -392,10 +433,10 @@ export const LandingPage: React.FC = () => {
                 1
               </div>
               <h4 className="font-bold text-sm text-[#0d2836]">
-                Submit Request
+                Sign In or Register
               </h4>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Choose leave dates or log an IT/HR support ticket with relevant details.
+                Log into your account or register with your work email to get verified.
               </p>
             </div>
 
@@ -404,7 +445,7 @@ export const LandingPage: React.FC = () => {
                 2
               </div>
               <h4 className="font-bold text-sm text-[#0d2836]">
-                Review &amp; Assignment
+                Submit Leaves or Tickets
               </h4>
               <p className="text-xs text-slate-600 leading-relaxed">
                 Line managers review absences, and support agents claim tickets based on priority.
@@ -416,7 +457,7 @@ export const LandingPage: React.FC = () => {
                 3
               </div>
               <h4 className="font-bold text-sm text-[#0d2836]">
-                Resolution &amp; Logs
+                Track on Home Dashboard
               </h4>
               <p className="text-xs text-slate-600 leading-relaxed">
                 Automatic quota recalculation, status updates, and transparent audit history.
@@ -482,35 +523,24 @@ export const LandingPage: React.FC = () => {
         {/* Section 5: Dark Petrol Final CTA Banner */}
         <section className="bg-[#0f2e3d] rounded-2xl p-8 sm:p-12 text-center text-white space-y-5 shadow-sm">
           <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight max-w-xl mx-auto leading-snug">
-            Ready to streamline leave and workplace support?
+            Ready to access your employee workspace?
           </h2>
           <p className="text-slate-300 text-xs sm:text-sm max-w-md mx-auto leading-relaxed">
-            Sign in to access your organization workspace, submit requests, or manage direct reports.
+            Please sign in to your existing account or register as a new employee to get started.
           </p>
           <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
-            {isAuthenticated ? (
-              <Link
-                to="/dashboard"
-                className="inline-flex items-center justify-center px-6 py-2.5 bg-[#2dd4bf] hover:bg-[#14b8a6] text-[#0a2734] font-bold text-sm rounded-xl shadow-xs transition"
-              >
-                Go to Dashboard &rarr;
-              </Link>
-            ) : (
-              <>
-                <Link
-                  to="/login"
-                  className="inline-flex items-center justify-center px-6 py-2.5 bg-[#2dd4bf] hover:bg-[#14b8a6] text-[#0a2734] font-bold text-sm rounded-xl shadow-xs transition"
-                >
-                  Sign In to Account
-                </Link>
-                <Link
-                  to="/register"
-                  className="inline-flex items-center justify-center px-6 py-2.5 bg-white/10 hover:bg-white/20 border border-teal-200/40 text-white font-semibold text-sm rounded-xl shadow-xs transition"
-                >
-                  Register as Employee
-                </Link>
-              </>
-            )}
+            <Link
+              to="/login"
+              className="inline-flex items-center justify-center px-6 py-2.5 bg-[#2dd4bf] hover:bg-[#14b8a6] text-[#0a2734] font-bold text-sm rounded-xl shadow-xs transition"
+            >
+              Sign In to Account
+            </Link>
+            <Link
+              to="/register"
+              className="inline-flex items-center justify-center px-6 py-2.5 bg-white/10 hover:bg-white/20 border border-teal-200/40 text-white font-semibold text-sm rounded-xl shadow-xs transition"
+            >
+              Register as New User
+            </Link>
           </div>
         </section>
       </main>

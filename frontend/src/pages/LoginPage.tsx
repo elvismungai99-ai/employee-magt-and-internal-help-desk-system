@@ -11,9 +11,8 @@ export const LoginPage: React.FC = () => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [savedFound, setSavedFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -33,7 +32,7 @@ export const LoginPage: React.FC = () => {
 
   // Where to navigate after login
   const rawFrom = (location.state as any)?.from?.pathname;
-  const from = rawFrom && rawFrom !== '/' ? rawFrom : '/dashboard';
+  const from = rawFrom && rawFrom !== '/' && rawFrom !== '/landing' ? rawFrom : '/home';
 
   // Purge any legacy insecure plain-text credentials from localStorage
   useEffect(() => {

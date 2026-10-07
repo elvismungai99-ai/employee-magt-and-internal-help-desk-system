@@ -22,10 +22,12 @@ export const getStoredRefreshToken = (): string | null => {
   return localStorage.getItem(REFRESH_TOKEN_KEY) || sessionStorage.getItem(REFRESH_TOKEN_KEY);
 };
 
-export const setStoredRefreshToken = (token: string | null, persistent: boolean = true) => {
+export const setStoredRefreshToken = (token: string | null, persistent: boolean = false) => {
   if (token) {
-    if (persistent || localStorage.getItem(REFRESH_TOKEN_KEY)) {
+    if (persistent) {
       localStorage.setItem(REFRESH_TOKEN_KEY, token);
+    } else {
+      localStorage.removeItem(REFRESH_TOKEN_KEY);
     }
     sessionStorage.setItem(REFRESH_TOKEN_KEY, token);
   } else {

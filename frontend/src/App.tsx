@@ -33,7 +33,17 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
-          {/* Authenticated Application Routes */}
+          {/* Authenticated Application Home & Dashboard Routes */}
+          <Route
+            path="/home"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <DashboardPage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/dashboard"
             element={
@@ -44,7 +54,8 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/app" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/app" element={<Navigate to="/home" replace />} />
+          <Route path="/landing" element={<Navigate to="/" replace />} />
 
           <Route
             path="/leave"

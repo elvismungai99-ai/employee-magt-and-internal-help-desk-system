@@ -71,7 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initAuth();
   }, [clearAuthState, fetchProfile]);
 
-  const login = async (payload: LoginPayload, rememberMe: boolean = true) => {
+  const login = async (payload: LoginPayload, rememberMe: boolean = false) => {
     setIsLoading(true);
     try {
       const authData = await authApi.login(payload);
@@ -86,7 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (payload: RegisterPayload, rememberMe: boolean = true) => {
+  const register = async (payload: RegisterPayload, rememberMe: boolean = false) => {
     setIsLoading(true);
     try {
       // Backend registers account with PENDING_APPROVAL status for HR verification

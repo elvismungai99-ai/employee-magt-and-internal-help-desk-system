@@ -37,21 +37,21 @@ export const Navbar: React.FC = () => {
           <div className="flex items-center gap-8">
             <Link to="/dashboard" className="flex items-center gap-2.5 group">
               <div className="w-8 h-8 rounded-lg bg-[#0e4a5c] text-white flex items-center justify-center font-bold text-sm tracking-tight shadow-xs group-hover:bg-[#083543] transition">
-                W
+                EM
               </div>
               <div className="flex flex-col">
                 <span className="font-bold text-[#0d2836] text-sm tracking-tight leading-none group-hover:text-[#0e4a5c] transition">
-                  WorkHub
+                  Employee Management
                 </span>
-                <span className="text-[11px] text-teal-800/80 font-medium tracking-normal mt-0.5">
-                  Internal Workspace
+                <span className="text-[11px] text-teal-800 font-medium tracking-normal mt-0.5">
+                  Internal Help Desk
                 </span>
               </div>
             </Link>
 
             <div className="hidden md:flex items-center gap-1">
-              <Link to="/" className="px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:text-[#0e4a5c] hover:bg-[#f0f9f8] rounded-lg transition" title="View WorkHub Landing Page">
-                Overview
+              <Link to="/" className="px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:text-[#0e4a5c] hover:bg-[#f0f9f8] rounded-lg transition" title="View Landing Page">
+                Home
               </Link>
 
               <Link to="/dashboard" className={navItemClass('/dashboard')}>

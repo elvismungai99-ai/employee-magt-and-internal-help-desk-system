@@ -72,19 +72,8 @@ export const RegisterPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      if (rememberMe) {
-        localStorage.setItem(
-          'remembered_credentials',
-          JSON.stringify({
-            email: formData.email,
-            password: formData.password,
-            rememberMe: true,
-            updatedAt: new Date().toISOString(),
-          })
-        );
-      } else {
-        localStorage.removeItem('remembered_credentials');
-      }
+      // Purge any legacy credentials in localStorage
+      localStorage.removeItem('remembered_credentials');
 
       await register({
         firstName: formData.firstName,
@@ -108,31 +97,31 @@ export const RegisterPage: React.FC = () => {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-[#f0f6fc] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-[#f2f8f8] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-white py-8 px-6 rounded-2xl sm:px-9 border border-blue-100 text-center space-y-5 shadow-xs">
-            <div className="w-12 h-12 bg-amber-50 text-amber-900 rounded-xl border border-amber-200 flex items-center justify-center mx-auto text-lg font-bold shadow-2xs">
-              !
+          <div className="bg-white py-8 px-6 rounded-2xl sm:px-9 border border-teal-100 text-center space-y-5 shadow-xs">
+            <div className="w-12 h-12 bg-teal-50 text-[#0e4a5c] rounded-xl border border-teal-200 flex items-center justify-center mx-auto text-lg font-bold shadow-2xs">
+              &check;
             </div>
 
             <div className="space-y-1.5">
-              <h2 className="text-xl font-bold text-slate-950">Registration Submitted</h2>
+              <h2 className="text-xl font-bold text-[#0d2836]">Registration Submitted</h2>
               <p className="text-sm text-slate-600">
-                Your account for <strong className="text-slate-950">{formData.firstName} {formData.lastName}</strong> has been registered.
+                Your account for <strong className="text-[#0d2836]">{formData.firstName} {formData.lastName}</strong> has been registered.
               </p>
             </div>
 
-            <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-200/80 text-left text-xs text-slate-700 space-y-2">
-              <div className="font-semibold text-slate-900">
+            <div className="p-4 bg-teal-50/50 rounded-xl border border-teal-200/80 text-left text-xs text-slate-700 space-y-2">
+              <div className="font-semibold text-[#0d2836]">
                 Administrator Approval Required
               </div>
               <p>In accordance with internal company policy, your registration is pending review by an HR Administrator.</p>
-              <p>Once verified, your leave balance quota will be allocated and you may sign in with your email address (<strong className="text-slate-900">{formData.email}</strong>).</p>
+              <p>Once verified, your leave balance quota will be allocated and you may sign in with your email address (<strong className="text-[#0d2836]">{formData.email}</strong>).</p>
             </div>
 
             <Link
               to="/login"
-              className="inline-flex items-center justify-center w-full px-4 py-2.5 bg-slate-950 hover:bg-black text-white font-semibold rounded-lg shadow-xs transition"
+              className="inline-flex items-center justify-center w-full px-4 py-2.5 bg-[#0e4a5c] hover:bg-[#083543] text-white font-semibold rounded-lg shadow-xs transition"
             >
               Return to Sign In &rarr;
             </Link>
@@ -143,21 +132,23 @@ export const RegisterPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f0f6fc] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#f2f8f8] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-xl text-center">
-        <div className="w-11 h-11 rounded-xl bg-slate-950 text-white flex items-center justify-center font-bold text-base tracking-tight mx-auto mb-3 ring-4 ring-blue-100 shadow-xs">
-          HR
-        </div>
-        <h1 className="text-2xl font-bold text-slate-950 tracking-tight">
+        <Link to="/" className="inline-flex items-center gap-2 mb-3 group">
+          <div className="w-10 h-10 rounded-xl bg-[#0e4a5c] text-white flex items-center justify-center font-bold text-base tracking-tight shadow-xs group-hover:bg-[#083543] transition">
+            EM
+          </div>
+        </Link>
+        <h1 className="text-2xl font-bold text-[#0d2836] tracking-tight">
           Register employee account
         </h1>
-        <p className="mt-1.5 text-sm text-slate-600">
+        <p className="mt-1 text-xs text-slate-500">
           Enter your employee information and select your organization role
         </p>
       </div>
 
-      <div className="mt-7 sm:mx-auto sm:w-full sm:max-w-xl">
-        <div className="bg-white py-8 px-6 border border-blue-100 rounded-2xl sm:px-9 shadow-xs">
+      <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-xl">
+        <div className="bg-white py-8 px-6 border border-teal-100 rounded-2xl sm:px-9 shadow-xs">
           {error && (
             <Alert
               type="error"
@@ -352,16 +343,16 @@ export const RegisterPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-2.5 px-4 bg-slate-950 hover:bg-black focus:outline-hidden focus:ring-2 focus:ring-offset-1 focus:ring-slate-950 text-white rounded-lg text-sm font-semibold shadow-xs disabled:opacity-50 transition cursor-pointer"
+                className="w-full py-2.5 px-4 bg-[#0e4a5c] hover:bg-[#083543] focus:outline-hidden focus:ring-2 focus:ring-offset-1 focus:ring-[#0e4a5c] text-white rounded-lg text-sm font-semibold shadow-xs disabled:opacity-50 transition cursor-pointer"
               >
                 {isSubmitting ? 'Submitting registration...' : 'Register Account'}
               </button>
             </div>
           </form>
 
-          <div className="mt-6 text-center text-xs text-slate-500 border-t border-blue-100 pt-5">
+          <div className="mt-6 text-center text-xs text-slate-500 border-t border-teal-100 pt-5">
             Already have an account?{' '}
-            <Link to="/login" className="font-semibold text-blue-700 hover:text-black transition">
+            <Link to="/login" className="font-semibold text-[#0e4a5c] hover:underline transition">
               Sign in &rarr;
             </Link>
           </div>

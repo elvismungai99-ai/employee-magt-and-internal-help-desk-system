@@ -18,7 +18,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <Navbar />
     <main className="flex-1 pb-12">{children}</main>
     <footer className="border-t border-teal-100 bg-white/95 py-4 text-center text-xs text-slate-500">
-      WorkHub &bull; Employee Management &amp; Internal Help Desk System &bull; &copy; 2026 All rights reserved.
+      Employee Management &amp; Internal Help Desk System &bull; &copy; 2026 All rights reserved.
     </footer>
   </div>
 );

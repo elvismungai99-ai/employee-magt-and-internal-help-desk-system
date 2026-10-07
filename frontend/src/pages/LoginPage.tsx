@@ -35,35 +35,14 @@ export const LoginPage: React.FC = () => {
   const rawFrom = (location.state as any)?.from?.pathname;
   const from = rawFrom && rawFrom !== '/' ? rawFrom : '/dashboard';
 
-  // Load remembered user & password from local storage on mount
+  // Purge any legacy insecure plain-text credentials from localStorage
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('remembered_credentials');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.email) {
-          setEmail(parsed.email);
-          setSavedFound(true);
-        }
-        if (parsed.password) {
-          setPassword(parsed.password);
-        }
-        if (parsed.rememberMe !== undefined) {
-          setRememberMe(Boolean(parsed.rememberMe));
-        }
-      }
-    } catch (e) {
-      console.warn('Could not read remembered credentials', e);
+      localStorage.removeItem('remembered_credentials');
+    } catch {
+      // Ignore
     }
   }, []);
-
-  const handleForgetSaved = () => {
-    localStorage.removeItem('remembered_credentials');
-    setEmail('');
-    setPassword('');
-    setRememberMe(false);
-    setSavedFound(false);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,15 +50,6 @@ export const LoginPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      if (rememberMe) {
-        localStorage.setItem(
-          'remembered_credentials',
-          JSON.stringify({ email, password, rememberMe: true, updatedAt: new Date().toISOString() })
-        );
-      } else {
-        localStorage.removeItem('remembered_credentials');
-      }
-
       await login({ email, password }, rememberMe);
       navigate(from, { replace: true });
     } catch (err: any) {
@@ -91,21 +61,23 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f0f6fc] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#f2f8f8] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="w-11 h-11 rounded-xl bg-slate-950 text-white flex items-center justify-center font-bold text-base tracking-tight mx-auto mb-3 ring-4 ring-blue-100 shadow-xs">
-          HR
-        </div>
-        <h1 className="text-2xl font-bold text-slate-950 tracking-tight">
+        <Link to="/" className="inline-flex items-center gap-2 mb-3 group">
+          <div className="w-10 h-10 rounded-xl bg-[#0e4a5c] text-white flex items-center justify-center font-bold text-base tracking-tight shadow-xs group-hover:bg-[#083543] transition">
+            EM
+          </div>
+        </Link>
+        <h1 className="text-2xl font-bold text-[#0d2836] tracking-tight">
           Sign in to your account
         </h1>
-        <p className="mt-1.5 text-sm text-slate-600">
-          Employee management and internal service portal
+        <p className="mt-1 text-xs text-slate-500">
+          Employee Management &amp; Internal Help Desk Portal
         </p>
       </div>
 
-      <div className="mt-7 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 border border-blue-100 rounded-2xl sm:px-9 shadow-xs">
+      <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white py-8 px-6 border border-teal-100 rounded-2xl sm:px-9 shadow-xs">
           {error && (
             <Alert
               type="error"
@@ -113,21 +85,6 @@ export const LoginPage: React.FC = () => {
               onClose={() => setError(null)}
               className="mb-5"
             />
-          )}
-
-          {savedFound && (
-            <div className="mb-4 flex items-center justify-between px-3 py-2 bg-blue-50/70 border border-blue-200/80 rounded-lg text-xs text-slate-800">
-              <span className="font-semibold text-blue-950">
-                Saved credentials loaded
-              </span>
-              <button
-                type="button"
-                onClick={handleForgetSaved}
-                className="text-slate-600 hover:text-rose-600 underline font-medium transition"
-              >
-                Clear
-              </button>
-            </div>
           )}
 
           <form onSubmit={handleSubmit} autoComplete="on" className="space-y-4">
@@ -139,17 +96,12 @@ export const LoginPage: React.FC = () => {
                 id="email"
                 name="email"
                 type="email"
-                autoComplete="username"
+                autoComplete="email"
                 required
                 value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (savedFound && e.target.value !== email) {
-                    setSavedFound(false);
-                  }
-                }}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@company.com"
-                className="block w-full px-3.5 py-2 border border-blue-200 rounded-lg text-sm text-slate-950 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white"
+                className="block w-full px-3.5 py-2 border border-teal-200/90 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-[#0e4a5c] focus:border-[#0e4a5c] bg-white"
               />
             </div>
 
@@ -167,12 +119,12 @@ export const LoginPage: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="block w-full px-3.5 pr-10 py-2 border border-blue-200 rounded-lg text-sm text-slate-950 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white"
+                  className="block w-full px-3.5 pr-10 py-2 border border-teal-200/90 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-[#0e4a5c] focus:border-[#0e4a5c] bg-white"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-hidden"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-hidden cursor-pointer"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -188,26 +140,16 @@ export const LoginPage: React.FC = () => {
                   name="rememberMe"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 rounded border-blue-200 text-slate-950 focus:ring-slate-950 cursor-pointer"
+                  className="h-4 w-4 rounded border-teal-200 text-[#0e4a5c] focus:ring-[#0e4a5c] cursor-pointer"
                 />
                 <span className="ml-2 font-medium">Keep me signed in</span>
               </label>
-
-              {savedFound && (
-                <button
-                  type="button"
-                  onClick={handleForgetSaved}
-                  className="text-xs text-slate-500 hover:text-rose-600 underline font-medium transition"
-                >
-                  Forget
-                </button>
-              )}
             </div>
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-2.5 px-4 bg-slate-950 hover:bg-black focus:outline-hidden focus:ring-2 focus:ring-offset-1 focus:ring-slate-950 text-white rounded-lg text-sm font-semibold shadow-xs disabled:opacity-50 transition cursor-pointer"
+              className="w-full py-2.5 px-4 bg-[#0e4a5c] hover:bg-[#083543] focus:outline-hidden focus:ring-2 focus:ring-offset-1 focus:ring-[#0e4a5c] text-white rounded-lg text-sm font-semibold shadow-xs disabled:opacity-50 transition cursor-pointer"
             >
               {isSubmitting ? 'Signing in...' : 'Sign In'}
             </button>
@@ -221,9 +163,9 @@ export const LoginPage: React.FC = () => {
             )}
           </form>
 
-          <div className="mt-6 text-center text-xs text-slate-500 border-t border-blue-100 pt-5">
+          <div className="mt-6 text-center text-xs text-slate-500 border-t border-teal-100 pt-5">
             New employee?{' '}
-            <Link to="/register" className="font-semibold text-blue-700 hover:text-black transition">
+            <Link to="/register" className="font-semibold text-[#0e4a5c] hover:underline transition">
               Register an account &rarr;
             </Link>
           </div>

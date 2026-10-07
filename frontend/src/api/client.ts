@@ -79,7 +79,22 @@ const processQueue = (error: unknown, token: string | null = null) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean; _retryCount?: number };
+
+    // Handle Render free-tier cold-boot / network timeouts on login and auth requests
+    const isNetworkOrTimeout = !error.response || error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED';
+    if (
+      originalRequest &&
+      isNetworkOrTimeout &&
+      (originalRequest.url?.includes('/api/auth/login') || originalRequest.url?.includes('/api/auth/register'))
+    ) {
+      originalRequest._retryCount = (originalRequest._retryCount || 0) + 1;
+      if (originalRequest._retryCount <= 2) {
+        // Wait 3.5s for the sleeping Render container to finish waking up, then retry seamlessly
+        await new Promise((resolve) => setTimeout(resolve, 3500));
+        return apiClient(originalRequest);
+      }
+    }
 
     // Avoid infinite loop if refresh endpoint itself failed or request already retried
     if (

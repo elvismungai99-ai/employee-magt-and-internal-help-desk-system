@@ -43,6 +43,14 @@ export const LoginPage: React.FC = () => {
     }
   }, []);
 
+  // Proactively ping the cloud backend to wake it from standby if idle
+  useEffect(() => {
+    const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+    if (apiBase) {
+      fetch(`${apiBase}/actuator/health`, { mode: 'no-cors', cache: 'no-store' }).catch(() => {});
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -52,8 +60,14 @@ export const LoginPage: React.FC = () => {
       await login({ email, password }, rememberMe);
       navigate(from, { replace: true });
     } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Authentication failed. Please verify your email and password.';
-      setError(msg);
+      if (!err.response || err.code === 'ERR_NETWORK') {
+        setError(
+          'The cloud server was waking up from idle standby (free-tier cold boot). Please wait a few seconds and click Sign In again.'
+        );
+      } else {
+        const msg = err.response?.data?.message || err.message || 'Authentication failed. Please verify your email and password.';
+        setError(msg);
+      }
     } finally {
       setIsSubmitting(false);
     }

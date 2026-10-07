@@ -23,6 +23,13 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 );
 
 export default function App() {
+  React.useEffect(() => {
+    const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+    if (apiBase) {
+      fetch(`${apiBase}/actuator/health`, { mode: 'no-cors', cache: 'no-store' }).catch(() => {});
+    }
+  }, []);
+
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>

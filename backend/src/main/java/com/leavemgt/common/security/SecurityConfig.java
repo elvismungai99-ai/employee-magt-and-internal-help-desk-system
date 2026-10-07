@@ -69,6 +69,8 @@ public class SecurityConfig {
                 })
             )
             .authorizeHttpRequests(auth -> auth
+                // Explicitly allow all CORS preflight OPTIONS requests everywhere
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // Public authentication and onboarding endpoints
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/identity/departments").permitAll()
@@ -111,6 +113,9 @@ public class SecurityConfig {
         List<String> patterns = new ArrayList<>(origins);
         if (!patterns.contains("https://*.vercel.app")) {
             patterns.add("https://*.vercel.app");
+        }
+        if (!patterns.contains("*")) {
+            patterns.add("*");
         }
         config.setAllowedOriginPatterns(patterns);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));

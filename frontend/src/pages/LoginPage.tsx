@@ -17,6 +17,20 @@ export const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [submitSeconds, setSubmitSeconds] = useState(0);
+
+  useEffect(() => {
+    let timer: any;
+    if (isSubmitting) {
+      timer = setInterval(() => {
+        setSubmitSeconds((s) => s + 1);
+      }, 1000);
+    } else {
+      setSubmitSeconds(0);
+    }
+    return () => clearInterval(timer);
+  }, [isSubmitting]);
+
   // Where to navigate after login
   const from = (location.state as any)?.from?.pathname || '/';
 
@@ -196,6 +210,14 @@ export const LoginPage: React.FC = () => {
             >
               {isSubmitting ? 'Signing in...' : 'Sign In'}
             </button>
+
+            {isSubmitting && submitSeconds >= 4 && (
+              <p className="mt-2 text-center text-xs text-slate-500 animate-pulse">
+                {submitSeconds < 15
+                  ? 'Connecting to secure server...'
+                  : 'Waking up cloud server from standby (free tier takes ~30–60s on first request)...'}
+              </p>
+            )}
           </form>
 
           <div className="mt-6 text-center text-xs text-slate-500 border-t border-blue-100 pt-5">

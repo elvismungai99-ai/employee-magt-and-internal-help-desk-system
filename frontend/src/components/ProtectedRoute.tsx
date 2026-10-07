@@ -9,15 +9,62 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
-  const { isAuthenticated, isLoading, hasAnyRole } = useAuth();
+  const { isAuthenticated, isLoading, hasAnyRole, logout } = useAuth();
   const location = useLocation();
+  const [elapsedSeconds, setElapsedSeconds] = React.useState(0);
+
+  React.useEffect(() => {
+    let timer: any;
+    if (isLoading) {
+      timer = setInterval(() => {
+        setElapsedSeconds((s) => s + 1);
+      }, 1000);
+    } else {
+      setElapsedSeconds(0);
+    }
+    return () => clearInterval(timer);
+  }, [isLoading]);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-sm font-medium text-gray-600">Verifying session...</span>
+      <div className="min-h-screen flex items-center justify-center bg-[#f0f6fc] px-4">
+        <div className="max-w-md w-full bg-white rounded-2xl border border-blue-100 p-8 shadow-xs flex flex-col items-center text-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-200 border-t-slate-950 rounded-full animate-spin"></div>
+          
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-slate-950">
+              {elapsedSeconds < 4 
+                ? 'Verifying secure session...' 
+                : elapsedSeconds < 15 
+                ? 'Connecting to backend service...' 
+                : 'Waking up cloud backend...'}
+            </h3>
+            <p className="text-xs text-slate-600 max-w-sm">
+              {elapsedSeconds < 4
+                ? 'Validating authorization credentials with the server.'
+                : elapsedSeconds < 15
+                ? 'Establishing a secure connection with cloud infrastructure.'
+                : 'The cloud backend is spinning up from idle standby. Free-tier instances take ~30–60 seconds on initial boot.'}
+            </p>
+          </div>
+
+          {elapsedSeconds >= 8 && (
+            <div className="pt-2 w-full flex flex-col gap-2">
+              <div className="w-full bg-blue-50 rounded-full h-1.5 overflow-hidden border border-blue-100">
+                <div 
+                  className="bg-slate-950 h-full rounded-full transition-all duration-1000"
+                  style={{ width: `${Math.min(95, elapsedSeconds * 2.5)}%` }}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="mt-2 text-xs text-blue-700 hover:text-black font-semibold underline transition cursor-pointer"
+              >
+                Cancel and go to Sign In screen &rarr;
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );

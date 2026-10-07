@@ -32,7 +32,7 @@ export const LoginPage: React.FC = () => {
 
   // Where to navigate after login
   const rawFrom = (location.state as any)?.from?.pathname;
-  const from = rawFrom && rawFrom !== '/' && rawFrom !== '/landing' ? rawFrom : '/home';
+  const from = rawFrom && rawFrom !== '/login' ? rawFrom : '/';
 
   // Purge any legacy insecure plain-text credentials from localStorage
   useEffect(() => {

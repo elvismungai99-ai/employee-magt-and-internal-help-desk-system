@@ -5,7 +5,6 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { Navbar } from './components/Navbar';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
-import { LandingPage } from './pages/LandingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LeavePortalPage } from './pages/LeavePortalPage';
 import { ManagerApprovalsPage } from './pages/ManagerApprovalsPage';
@@ -28,14 +27,13 @@ export default function App() {
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
         <Routes>
-          {/* Public Landing & Authentication Routes */}
-          <Route path="/" element={<LandingPage />} />
+          {/* Public Authentication Routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
-          {/* Authenticated Application Home & Dashboard Routes */}
+          {/* Authenticated Application Home & Landing Page */}
           <Route
-            path="/home"
+            path="/"
             element={
               <ProtectedRoute>
                 <AppLayout>
@@ -44,18 +42,10 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <DashboardPage />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/app" element={<Navigate to="/home" replace />} />
+          <Route path="/home" element={<Navigate to="/" replace />} />
+          <Route path="/dashboard" element={<Navigate to="/" replace />} />
           <Route path="/landing" element={<Navigate to="/" replace />} />
+          <Route path="/app" element={<Navigate to="/" replace />} />
 
           <Route
             path="/leave"

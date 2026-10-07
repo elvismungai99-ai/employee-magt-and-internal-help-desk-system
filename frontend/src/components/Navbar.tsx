@@ -14,8 +14,8 @@ export const Navbar: React.FC = () => {
   };
 
   const isActive = (path: string) => {
-    if (path === '/home' && (location.pathname === '/home' || location.pathname === '/dashboard')) return true;
-    if (path !== '/home' && location.pathname.startsWith(path)) return true;
+    if (path === '/' && (location.pathname === '/' || location.pathname === '/home' || location.pathname === '/dashboard')) return true;
+    if (path !== '/' && location.pathname.startsWith(path)) return true;
     return false;
   };
 
@@ -35,7 +35,7 @@ export const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center gap-8">
-            <Link to="/home" className="flex items-center gap-2.5 group">
+            <Link to="/" className="flex items-center gap-2.5 group">
               <div className="w-8 h-8 rounded-lg bg-[#0e4a5c] text-white flex items-center justify-center font-bold text-sm tracking-tight shadow-xs group-hover:bg-[#083543] transition">
                 EM
               </div>
@@ -50,7 +50,7 @@ export const Navbar: React.FC = () => {
             </Link>
 
             <div className="hidden md:flex items-center gap-1">
-              <Link to="/home" className={navItemClass('/home')}>
+              <Link to="/" className={navItemClass('/')}>
                 Home
               </Link>
 
@@ -79,10 +79,6 @@ export const Navbar: React.FC = () => {
                   Administration
                 </Link>
               )}
-
-              <Link to="/" className="px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:text-[#0e4a5c] hover:bg-[#f0f9f8] rounded-lg transition ml-2 border border-dashed border-teal-200/70" title="View Public Landing Page">
-                Landing Page
-              </Link>
             </div>
           </div>
 

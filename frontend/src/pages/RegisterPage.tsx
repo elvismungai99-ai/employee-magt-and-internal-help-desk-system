@@ -108,33 +108,33 @@ export const RegisterPage: React.FC = () => {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-[#f0f6fc] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-white py-8 px-6 rounded-lg sm:px-9 border border-slate-200 text-center space-y-5 shadow-xs">
-            <div className="w-12 h-12 bg-amber-50 text-amber-800 rounded-md border border-amber-200 flex items-center justify-center mx-auto text-lg font-bold">
+          <div className="bg-white py-8 px-6 rounded-2xl sm:px-9 border border-blue-100 text-center space-y-5 shadow-xs">
+            <div className="w-12 h-12 bg-amber-50 text-amber-900 rounded-xl border border-amber-200 flex items-center justify-center mx-auto text-lg font-bold shadow-2xs">
               !
             </div>
 
             <div className="space-y-1.5">
-              <h2 className="text-xl font-bold text-slate-900">Registration Submitted</h2>
+              <h2 className="text-xl font-bold text-slate-950">Registration Submitted</h2>
               <p className="text-sm text-slate-600">
-                Your account for <strong className="text-slate-900">{formData.firstName} {formData.lastName}</strong> has been registered.
+                Your account for <strong className="text-slate-950">{formData.firstName} {formData.lastName}</strong> has been registered.
               </p>
             </div>
 
-            <div className="p-4 bg-slate-50 rounded-md border border-slate-200 text-left text-xs text-slate-600 space-y-2">
-              <div className="font-semibold text-slate-800">
+            <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-200/80 text-left text-xs text-slate-700 space-y-2">
+              <div className="font-semibold text-slate-900">
                 Administrator Approval Required
               </div>
               <p>In accordance with internal company policy, your registration is pending review by an HR Administrator.</p>
-              <p>Once verified, your leave balance quota will be allocated and you may sign in with your email address (<strong className="text-slate-800">{formData.email}</strong>).</p>
+              <p>Once verified, your leave balance quota will be allocated and you may sign in with your email address (<strong className="text-slate-900">{formData.email}</strong>).</p>
             </div>
 
             <Link
               to="/login"
-              className="inline-flex items-center justify-center w-full px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-md shadow-xs transition"
+              className="inline-flex items-center justify-center w-full px-4 py-2.5 bg-slate-950 hover:bg-black text-white font-semibold rounded-lg shadow-xs transition"
             >
-              Return to Sign In
+              Return to Sign In &rarr;
             </Link>
           </div>
         </div>
@@ -143,12 +143,12 @@ export const RegisterPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#f0f6fc] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-xl text-center">
-        <div className="w-10 h-10 rounded-md bg-slate-900 text-white flex items-center justify-center font-bold text-base tracking-tight mx-auto mb-3 shadow-xs">
+        <div className="w-11 h-11 rounded-xl bg-slate-950 text-white flex items-center justify-center font-bold text-base tracking-tight mx-auto mb-3 ring-4 ring-blue-100 shadow-xs">
           HR
         </div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+        <h1 className="text-2xl font-bold text-slate-950 tracking-tight">
           Register employee account
         </h1>
         <p className="mt-1.5 text-sm text-slate-600">
@@ -157,7 +157,7 @@ export const RegisterPage: React.FC = () => {
       </div>
 
       <div className="mt-7 sm:mx-auto sm:w-full sm:max-w-xl">
-        <div className="bg-white py-8 px-6 border border-slate-200 rounded-lg sm:px-9 shadow-xs">
+        <div className="bg-white py-8 px-6 border border-blue-100 rounded-2xl sm:px-9 shadow-xs">
           {error && (
             <Alert
               type="error"
@@ -170,8 +170,8 @@ export const RegisterPage: React.FC = () => {
           <form onSubmit={handleSubmit} autoComplete="on" className="space-y-4">
             {/* Role Selection Grid */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-2">
-                Account Role <span className="text-red-500">*</span>
+              <label className="block text-xs font-semibold text-slate-900 mb-2">
+                Account Role <span className="text-rose-500">*</span>
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {roleOptions.map((r) => {
@@ -180,23 +180,23 @@ export const RegisterPage: React.FC = () => {
                     <div
                       key={r.id}
                       onClick={() => setFormData((prev) => ({ ...prev, role: r.id }))}
-                      className={`p-3 rounded-md border cursor-pointer transition text-left flex flex-col justify-between ${
+                      className={`p-3 rounded-xl border cursor-pointer transition text-left flex flex-col justify-between ${
                         isSelected
-                          ? 'border-slate-900 bg-slate-50 ring-1 ring-slate-900'
-                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                          ? 'border-slate-950 bg-blue-50/70 ring-1 ring-slate-950 shadow-2xs'
+                          : 'border-blue-200/80 bg-white hover:bg-blue-50/40'
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-xs text-slate-900">{r.name}</span>
+                        <span className="font-bold text-xs text-slate-950">{r.name}</span>
                         <span
                           className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
-                            isSelected ? 'border-slate-900 bg-slate-900' : 'border-slate-300'
+                            isSelected ? 'border-slate-950 bg-slate-950' : 'border-slate-300'
                           }`}
                         >
                           {isSelected && <span className="w-1 h-1 rounded-full bg-white" />}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-500 mt-1.5 leading-snug">{r.desc}</p>
+                      <p className="text-[11px] text-slate-600 mt-1.5 leading-snug">{r.desc}</p>
                     </div>
                   );
                 })}
@@ -206,8 +206,8 @@ export const RegisterPage: React.FC = () => {
             {/* Name Fields */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  First Name <span className="text-red-500">*</span>
+                <label className="block text-xs font-semibold text-slate-900 mb-1">
+                  First Name <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -216,13 +216,13 @@ export const RegisterPage: React.FC = () => {
                   value={formData.firstName}
                   onChange={handleChange}
                   placeholder="e.g. Jane"
-                  className="block w-full px-3.5 py-2 border border-slate-300 rounded-md text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-slate-900 focus:border-slate-900"
+                  className="block w-full px-3.5 py-2 border border-blue-200 rounded-lg text-sm text-slate-950 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Last Name <span className="text-red-500">*</span>
+                <label className="block text-xs font-semibold text-slate-900 mb-1">
+                  Last Name <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -231,15 +231,15 @@ export const RegisterPage: React.FC = () => {
                   value={formData.lastName}
                   onChange={handleChange}
                   placeholder="e.g. Doe"
-                  className="block w-full px-3.5 py-2 border border-slate-300 rounded-md text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-slate-900 focus:border-slate-900"
+                  className="block w-full px-3.5 py-2 border border-blue-200 rounded-lg text-sm text-slate-950 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white"
                 />
               </div>
             </div>
 
             {/* Email */}
             <div>
-              <label htmlFor="regEmail" className="block text-xs font-semibold text-slate-700 mb-1">
-                Work Email <span className="text-red-500">*</span>
+              <label htmlFor="regEmail" className="block text-xs font-semibold text-slate-900 mb-1">
+                Work Email <span className="text-rose-500">*</span>
               </label>
               <input
                 id="regEmail"
@@ -250,14 +250,14 @@ export const RegisterPage: React.FC = () => {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="name@company.com"
-                className="block w-full px-3.5 py-2 border border-slate-300 rounded-md text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-slate-900 focus:border-slate-900"
+                className="block w-full px-3.5 py-2 border border-blue-200 rounded-lg text-sm text-slate-950 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white"
               />
             </div>
 
             {/* Password */}
             <div>
-              <label htmlFor="regPassword" className="block text-xs font-semibold text-slate-700 mb-1">
-                Password <span className="text-red-500">*</span>
+              <label htmlFor="regPassword" className="block text-xs font-semibold text-slate-900 mb-1">
+                Password <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
                 <input
@@ -270,7 +270,7 @@ export const RegisterPage: React.FC = () => {
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="Minimum 6 characters"
-                  className="block w-full px-3.5 pr-10 py-2 border border-slate-300 rounded-md text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-slate-900 focus:border-slate-900"
+                  className="block w-full px-3.5 pr-10 py-2 border border-blue-200 rounded-lg text-sm text-slate-950 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white"
                 />
                 <button
                   type="button"
@@ -286,14 +286,14 @@ export const RegisterPage: React.FC = () => {
             {/* Department and Job Title */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-slate-900 mb-1">
                   Department
                 </label>
                 <select
                   name="departmentId"
                   value={formData.departmentId}
                   onChange={handleChange}
-                  className="block w-full px-3 py-2 border border-slate-300 rounded-md text-sm text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-slate-900 focus:border-slate-900 bg-white"
+                  className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm text-slate-950 focus:outline-hidden focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white"
                 >
                   <option value="">Select Department...</option>
                   {departments.map((dept) => (
@@ -305,7 +305,7 @@ export const RegisterPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-slate-900 mb-1">
                   Designation / Job Title
                 </label>
                 <input
@@ -314,14 +314,14 @@ export const RegisterPage: React.FC = () => {
                   value={formData.jobTitle}
                   onChange={handleChange}
                   placeholder="e.g. Software Engineer"
-                  className="block w-full px-3.5 py-2 border border-slate-300 rounded-md text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-slate-900 focus:border-slate-900"
+                  className="block w-full px-3.5 py-2 border border-blue-200 rounded-lg text-sm text-slate-950 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white"
                 />
               </div>
             </div>
 
             {/* Phone */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-slate-900 mb-1">
                 Phone Number
               </label>
               <input
@@ -330,7 +330,7 @@ export const RegisterPage: React.FC = () => {
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="+254 700 000 000"
-                className="block w-full px-3.5 py-2 border border-slate-300 rounded-md text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-slate-900 focus:border-slate-900"
+                className="block w-full px-3.5 py-2 border border-blue-200 rounded-lg text-sm text-slate-950 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white"
               />
             </div>
 
@@ -342,7 +342,7 @@ export const RegisterPage: React.FC = () => {
                   name="rememberMe"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
+                  className="h-4 w-4 rounded border-blue-200 text-slate-950 focus:ring-slate-950 cursor-pointer"
                 />
                 <span className="ml-2 font-medium">Keep me signed in on this browser</span>
               </label>
@@ -352,17 +352,17 @@ export const RegisterPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-offset-1 focus:ring-slate-900 text-white rounded-md text-sm font-semibold shadow-xs disabled:opacity-50 transition cursor-pointer"
+                className="w-full py-2.5 px-4 bg-slate-950 hover:bg-black focus:outline-hidden focus:ring-2 focus:ring-offset-1 focus:ring-slate-950 text-white rounded-lg text-sm font-semibold shadow-xs disabled:opacity-50 transition cursor-pointer"
               >
                 {isSubmitting ? 'Submitting registration...' : 'Register Account'}
               </button>
             </div>
           </form>
 
-          <div className="mt-6 text-center text-xs text-slate-500 border-t border-slate-100 pt-5">
+          <div className="mt-6 text-center text-xs text-slate-500 border-t border-blue-100 pt-5">
             Already have an account?{' '}
-            <Link to="/login" className="font-semibold text-slate-900 hover:underline">
-              Sign in
+            <Link to="/login" className="font-semibold text-blue-700 hover:text-black transition">
+              Sign in &rarr;
             </Link>
           </div>
         </div>

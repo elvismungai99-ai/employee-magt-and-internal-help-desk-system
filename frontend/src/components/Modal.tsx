@@ -46,12 +46,12 @@ export const Modal: React.FC<ModalProps> = ({
           onClick={onClose} 
         />
 
-        <div className={`relative transform overflow-hidden rounded-xl bg-white text-left shadow-2xl transition-all w-full my-8 ${maxWidthClasses}`}>
-          <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+        <div className={`relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl border border-blue-100 transition-all w-full my-8 ${maxWidthClasses}`}>
+          <div className="flex items-center justify-between border-b border-blue-100 bg-blue-50/40 px-6 py-4">
+            <h3 className="text-base font-bold text-slate-950">{title}</h3>
             <button
               onClick={onClose}
-              className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition"
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-blue-50 hover:text-slate-800 transition cursor-pointer"
               aria-label="Close"
             >
               <X className="w-5 h-5" />

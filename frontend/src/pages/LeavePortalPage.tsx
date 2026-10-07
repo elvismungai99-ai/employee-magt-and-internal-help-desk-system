@@ -155,10 +155,10 @@ export const LeavePortalPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-950 tracking-tight">
             Leave Portal
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-slate-600 mt-1">
             Check your current leave balances, apply for paid time off, and track approval status.
           </p>
         </div>
@@ -168,7 +168,7 @@ export const LeavePortalPage: React.FC = () => {
             setApplyError(null);
             setIsApplyModalOpen(true);
           }}
-          className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition"
+          className="inline-flex items-center px-4 py-2 bg-slate-950 hover:bg-black text-white rounded-lg font-semibold text-sm transition shadow-xs"
         >
           Apply for Leave
         </button>
@@ -184,18 +184,18 @@ export const LeavePortalPage: React.FC = () => {
 
       {/* Balance Cards Grid */}
       <section>
-        <h2 className="text-base font-semibold text-gray-900 mb-4">
+        <h2 className="text-base font-bold text-slate-950 mb-4">
           Leave Balances ({new Date().getFullYear()})
         </h2>
 
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-pulse">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-44 bg-gray-200 rounded-lg"></div>
+              <div key={i} className="h-44 bg-blue-100/50 rounded-xl"></div>
             ))}
           </div>
         ) : balances.length === 0 ? (
-          <div className="bg-white rounded-lg p-8 border border-gray-200 text-center text-gray-500">
+          <div className="bg-white rounded-xl p-8 border border-blue-100 text-center text-slate-500 shadow-xs">
             No active leave balance allocations found for this calendar year.
           </div>
         ) : (
@@ -210,42 +210,42 @@ export const LeavePortalPage: React.FC = () => {
               return (
                 <div
                   key={bal.id}
-                  className="bg-white rounded-lg border border-slate-200 p-5 flex flex-col justify-between"
+                  className="bg-white rounded-xl border border-blue-100 p-5 flex flex-col justify-between shadow-xs hover:border-blue-200 transition"
                 >
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-sm text-slate-900">
+                      <span className="font-semibold text-sm text-slate-950">
                         {bal.leaveTypeName}
                       </span>
-                      <span className="text-xs font-mono font-medium px-2 py-0.5 bg-slate-100 text-slate-700 rounded">
+                      <span className="text-xs font-mono font-semibold px-2 py-0.5 bg-blue-50 text-blue-900 border border-blue-200/80 rounded">
                         {bal.leaveTypeCode}
                       </span>
                     </div>
 
                     <div className="mt-4 flex items-baseline gap-1.5">
-                      <span className="text-3xl font-bold tracking-tight text-slate-900">
+                      <span className="text-3xl font-bold tracking-tight text-slate-950">
                         {available.toFixed(1)}
                       </span>
                       <span className="text-xs font-medium text-slate-500">days available</span>
                     </div>
                   </div>
 
-                  <div className="mt-5 border-t border-slate-100 pt-3 space-y-1.5 text-xs text-slate-600">
+                  <div className="mt-5 border-t border-blue-50 pt-3 space-y-1.5 text-xs text-slate-600">
                     <div className="flex justify-between">
                       <span>Accrued:</span>
-                      <span className="font-medium text-slate-800">{accrued.toFixed(1)}</span>
+                      <span className="font-semibold text-slate-800">{accrued.toFixed(1)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Entitled:</span>
-                      <span className="font-medium text-slate-800">{entitled.toFixed(1)}</span>
+                      <span className="font-semibold text-slate-800">{entitled.toFixed(1)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Used:</span>
-                      <span className="font-medium text-slate-800">{used.toFixed(1)}</span>
+                      <span className="font-semibold text-slate-800">{used.toFixed(1)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Pending:</span>
-                      <span className="font-medium text-amber-700">{pending.toFixed(1)}</span>
+                      <span className="font-semibold text-amber-800">{pending.toFixed(1)}</span>
                     </div>
                   </div>
                 </div>
@@ -257,19 +257,19 @@ export const LeavePortalPage: React.FC = () => {
 
       {/* Leave Application History Table */}
       <section>
-        <h2 className="text-base font-semibold text-gray-900 mb-4">
+        <h2 className="text-base font-bold text-slate-950 mb-4">
           Application History
         </h2>
 
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-blue-100 overflow-hidden shadow-xs">
           {requests.length === 0 ? (
-            <div className="p-8 text-center text-sm text-gray-500">
+            <div className="p-8 text-center text-sm text-slate-500">
               You have not submitted any leave applications yet.
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50 text-gray-600 font-medium">
+              <table className="min-w-full divide-y divide-blue-100 text-sm">
+                <thead className="bg-blue-50/50 text-slate-700 font-semibold uppercase tracking-wider text-[11px] border-b border-blue-100">
                   <tr>
                     <th className="px-6 py-3 text-left">Leave Type</th>
                     <th className="px-6 py-3 text-left">Period</th>
@@ -279,22 +279,22 @@ export const LeavePortalPage: React.FC = () => {
                     <th className="px-6 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-blue-50 bg-white">
                   {requests.map((req) => {
                     const isCancelable = ['DRAFT', 'SUBMITTED', 'PENDING'].includes(req.status);
 
                     return (
-                      <tr key={req.id} className="hover:bg-gray-50/70 transition">
-                        <td className="px-6 py-4 font-medium text-gray-900">
+                      <tr key={req.id} className="hover:bg-blue-50/30 transition">
+                        <td className="px-6 py-4 font-semibold text-slate-950">
                           {req.leaveTypeName}
                         </td>
-                        <td className="px-6 py-4 text-gray-600">
+                        <td className="px-6 py-4 text-slate-600">
                           {req.startDate} &rarr; {req.endDate}
                         </td>
-                        <td className="px-6 py-4 text-center font-medium text-gray-800">
+                        <td className="px-6 py-4 text-center font-semibold text-slate-900">
                           {req.totalDays}
                         </td>
-                        <td className="px-6 py-4 text-gray-600 max-w-xs truncate" title={req.reason}>
+                        <td className="px-6 py-4 text-slate-600 max-w-xs truncate" title={req.reason}>
                           {req.reason}
                         </td>
                         <td className="px-6 py-4 text-center">
@@ -304,12 +304,12 @@ export const LeavePortalPage: React.FC = () => {
                           {isCancelable ? (
                             <button
                               onClick={() => handleCancelRequest(req.id)}
-                              className="text-xs font-medium text-rose-600 hover:text-rose-800 hover:underline"
+                              className="text-xs font-semibold text-rose-600 hover:text-rose-800 hover:underline"
                             >
                               Cancel
                             </button>
                           ) : (
-                            <span className="text-xs text-gray-400">&mdash;</span>
+                            <span className="text-xs text-slate-400">&mdash;</span>
                           )}
                         </td>
                       </tr>
@@ -340,14 +340,14 @@ export const LeavePortalPage: React.FC = () => {
 
         <form onSubmit={handleApplySubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Leave Type <span className="text-red-500">*</span>
+            <label className="block text-sm font-semibold text-slate-900 mb-1">
+              Leave Type <span className="text-rose-500">*</span>
             </label>
             <select
               required
               value={applyForm.leaveTypeId}
               onChange={(e) => setApplyForm({ ...applyForm, leaveTypeId: e.target.value })}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-600 focus:border-blue-600 bg-white"
+              className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
             >
               {leaveTypes.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -358,33 +358,33 @@ export const LeavePortalPage: React.FC = () => {
           </div>
 
           {/* Interactive Balance & Calculation Panel */}
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
-            <div className="flex items-center justify-between text-xs text-gray-500 font-medium">
+          <div className="bg-blue-50/50 border border-blue-200/80 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between text-xs text-slate-600 font-semibold tracking-wide">
               <span>LEAVE BALANCE CALCULATION</span>
-              <span className="font-mono text-slate-700">{selectedBalance?.leaveTypeName || 'Selected Type'}</span>
+              <span className="font-mono text-slate-900 font-semibold">{selectedBalance?.leaveTypeName || 'Selected Type'}</span>
             </div>
 
             <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="bg-white p-2.5 rounded-lg border border-slate-200">
-                <span className="block text-xs text-gray-500">Available</span>
-                <span className="text-base font-bold text-blue-600">
-                  {availableDays.toFixed(1)} <span className="text-2xs font-normal text-gray-400">days</span>
+              <div className="bg-white p-2.5 rounded-lg border border-blue-100 shadow-2xs">
+                <span className="block text-xs text-slate-500 font-medium">Available</span>
+                <span className="text-base font-bold text-blue-950">
+                  {availableDays.toFixed(1)} <span className="text-2xs font-normal text-slate-500">days</span>
                 </span>
               </div>
-              <div className="bg-white p-2.5 rounded-lg border border-slate-200">
-                <span className="block text-xs text-gray-500">Requested</span>
-                <span className={`text-base font-bold ${requestedWorkingDays > 0 ? 'text-gray-900' : 'text-gray-400'}`}>
-                  {requestedWorkingDays} <span className="text-2xs font-normal text-gray-400">days</span>
+              <div className="bg-white p-2.5 rounded-lg border border-blue-100 shadow-2xs">
+                <span className="block text-xs text-slate-500 font-medium">Requested</span>
+                <span className={`text-base font-bold ${requestedWorkingDays > 0 ? 'text-slate-950' : 'text-slate-400'}`}>
+                  {requestedWorkingDays} <span className="text-2xs font-normal text-slate-500">days</span>
                 </span>
               </div>
-              <div className={`p-2.5 rounded-lg border ${
+              <div className={`p-2.5 rounded-lg border shadow-2xs ${
                 !hasDates 
-                  ? 'bg-white border-slate-200 text-gray-400'
+                  ? 'bg-white border-blue-100 text-slate-400'
                   : isInsufficient 
-                  ? 'bg-rose-50 border-rose-200 text-rose-600'
-                  : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                  ? 'bg-rose-50 border-rose-200 text-rose-700'
+                  : 'bg-emerald-50 border-emerald-200 text-emerald-800'
               }`}>
-                <span className="block text-xs text-gray-500">Remaining</span>
+                <span className="block text-xs text-slate-500 font-medium">Remaining</span>
                 <span className="text-base font-bold">
                   {hasDates ? remainingDays.toFixed(1) : '--'} <span className="text-2xs font-normal opacity-70">days</span>
                 </span>
@@ -392,13 +392,13 @@ export const LeavePortalPage: React.FC = () => {
             </div>
 
             {hasDates && requestedWorkingDays === 0 && (
-              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+              <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
                 Selected dates fall exclusively on weekends. Leave requests must include at least one working day (Monday to Friday).
               </p>
             )}
 
             {isInsufficient && (
-              <p className="text-xs text-rose-800 bg-rose-50 border border-rose-200 rounded-lg p-2.5">
+              <p className="text-xs text-rose-900 bg-rose-50 border border-rose-200 rounded-lg p-2.5">
                 Insufficient balance. You are requesting {requestedWorkingDays} days, which exceeds your current balance of {availableDays.toFixed(1)} days.
               </p>
             )}
@@ -406,35 +406,35 @@ export const LeavePortalPage: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Start Date <span className="text-red-500">*</span>
+              <label className="block text-sm font-semibold text-slate-900 mb-1">
+                Start Date <span className="text-rose-500">*</span>
               </label>
               <input
                 type="date"
                 required
                 value={applyForm.startDate}
                 onChange={(e) => setApplyForm({ ...applyForm, startDate: e.target.value })}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                End Date <span className="text-red-500">*</span>
+              <label className="block text-sm font-semibold text-slate-900 mb-1">
+                End Date <span className="text-rose-500">*</span>
               </label>
               <input
                 type="date"
                 required
                 value={applyForm.endDate}
                 onChange={(e) => setApplyForm({ ...applyForm, endDate: e.target.value })}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Reason / Justification <span className="text-red-500">*</span>
+            <label className="block text-sm font-semibold text-slate-900 mb-1">
+              Reason / Justification <span className="text-rose-500">*</span>
             </label>
             <textarea
               required
@@ -442,22 +442,22 @@ export const LeavePortalPage: React.FC = () => {
               value={applyForm.reason}
               onChange={(e) => setApplyForm({ ...applyForm, reason: e.target.value })}
               placeholder="State purpose of leave (e.g. annual vacation, personal obligations)"
-              className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+              className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
             />
           </div>
 
-          <div className="pt-4 border-t border-gray-100 flex items-center justify-end gap-3">
+          <div className="pt-4 border-t border-blue-100 flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={() => setIsApplyModalOpen(false)}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="px-4 py-2 border border-blue-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-blue-50/50 transition"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || isInsufficient || (hasDates && requestedWorkingDays === 0)}
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-xs disabled:opacity-50 transition"
+              className="px-5 py-2 bg-slate-950 hover:bg-black text-white rounded-lg text-sm font-semibold shadow-xs disabled:opacity-50 transition"
             >
               {isSubmitting ? 'Submitting...' : 'Submit Application'}
             </button>

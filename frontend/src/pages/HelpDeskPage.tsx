@@ -189,10 +189,10 @@ export const HelpDeskPage: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-950 tracking-tight">
             Help Desk
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-slate-600 mt-1">
             Submit IT and HR requests, communicate with support agents, and monitor incident SLA.
           </p>
         </div>
@@ -202,7 +202,7 @@ export const HelpDeskPage: React.FC = () => {
             setCreateError(null);
             setIsCreateModalOpen(true);
           }}
-          className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition"
+          className="inline-flex items-center px-4 py-2 bg-slate-950 hover:bg-black text-white rounded-lg font-semibold text-sm transition shadow-xs"
         >
           New Ticket
         </button>
@@ -222,10 +222,10 @@ export const HelpDeskPage: React.FC = () => {
           <button
             key={st}
             onClick={() => setStatusFilter(st)}
-            className={`px-3 py-1.5 rounded-md font-medium transition ${
+            className={`px-3 py-1.5 rounded-lg transition ${
               statusFilter === st
-                ? 'bg-blue-600 text-white'
-                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                ? 'bg-blue-100 text-blue-950 font-semibold border border-blue-200 shadow-2xs'
+                : 'bg-white border border-blue-100 text-slate-700 hover:text-black hover:bg-blue-50/70 font-medium'
             }`}
           >
             {st.replace('_', ' ')}
@@ -234,49 +234,49 @@ export const HelpDeskPage: React.FC = () => {
       </div>
 
       {/* Tickets List */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-blue-100 overflow-hidden shadow-xs">
         {isLoading ? (
-          <div className="p-8 text-center text-sm text-gray-500">Loading tickets...</div>
+          <div className="p-8 text-center text-sm text-slate-500">Loading tickets...</div>
         ) : filteredTickets.length === 0 ? (
           <div className="p-12 text-center text-slate-500">
-            <p className="font-semibold text-slate-900 text-sm">No tickets found</p>
-            <p className="text-xs text-slate-500 mt-1">Have an issue? Click "New Ticket" to notify the support team.</p>
+            <p className="font-bold text-slate-950 text-sm">No tickets found</p>
+            <p className="text-xs text-slate-600 mt-1">Have an issue? Click "New Ticket" to notify the support team.</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-blue-50">
             {filteredTickets.map((t) => (
               <div
                 key={t.id}
                 onClick={() => handleOpenDetail(t)}
-                className="p-5 hover:bg-gray-50/70 transition cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4"
+                className="p-5 hover:bg-blue-50/30 transition cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4"
               >
                 <div className="space-y-1.5 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                    <span className="font-mono text-xs font-semibold text-blue-950 bg-blue-50 px-2 py-0.5 rounded border border-blue-200/70">
                       {t.ticketNumber}
                     </span>
-                    <h3 className="font-semibold text-gray-900 text-base">{t.title}</h3>
+                    <h3 className="font-semibold text-slate-950 text-base">{t.title}</h3>
                     <StatusBadge status={t.status} />
                     <StatusBadge priority={t.priority} />
                   </div>
 
-                  <p className="text-xs text-gray-600 line-clamp-1">{t.description}</p>
+                  <p className="text-xs text-slate-600 line-clamp-1">{t.description}</p>
 
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
-                    <span>Category: <strong>{t.categoryName || 'General'}</strong></span>
-                    {t.queueName && <span>Queue: <strong>{t.queueName}</strong></span>}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                    <span>Category: <strong className="text-slate-800">{t.categoryName || 'General'}</strong></span>
+                    {t.queueName && <span>Queue: <strong className="text-slate-800">{t.queueName}</strong></span>}
                     {t.assignedAgentName ? (
-                      <span className="text-indigo-600">Assigned: {t.assignedAgentName}</span>
+                      <span className="text-blue-900 font-medium">Assigned: {t.assignedAgentName}</span>
                     ) : (
-                      <span className="text-gray-400 italic">Unassigned</span>
+                      <span className="text-slate-400 italic">Unassigned</span>
                     )}
                   </div>
                 </div>
 
-                <div className="text-right text-xs text-gray-400 flex flex-col items-end gap-1 flex-shrink-0">
-                  <span>{t.createdAt ? new Date(t.createdAt).toLocaleDateString() : ''}</span>
+                <div className="text-right text-xs text-slate-400 flex flex-col items-end gap-1 flex-shrink-0">
+                  <span className="font-medium text-slate-500">{t.createdAt ? new Date(t.createdAt).toLocaleDateString() : ''}</span>
                   {t.slaDueAt && (
-                    <span className="text-[11px] font-medium text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+                    <span className="text-[11px] font-semibold text-amber-900 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
                       Due {new Date(t.slaDueAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   )}
@@ -305,14 +305,14 @@ export const HelpDeskPage: React.FC = () => {
 
         <form onSubmit={handleCreateSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Category <span className="text-red-500">*</span>
+            <label className="block text-sm font-semibold text-slate-900 mb-1">
+              Category <span className="text-rose-500">*</span>
             </label>
             <select
               required
               value={createForm.categoryId}
               onChange={(e) => setCreateForm({ ...createForm, categoryId: e.target.value })}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-600 focus:border-blue-600 bg-white"
+              className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
             >
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -324,13 +324,13 @@ export const HelpDeskPage: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-semibold text-slate-900 mb-1">
                 Queue (Optional)
               </label>
               <select
                 value={createForm.queueId || ''}
                 onChange={(e) => setCreateForm({ ...createForm, queueId: e.target.value })}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-600 focus:border-blue-600 bg-white"
+                className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
               >
                 <option value="">Auto-Route via Taxonomy</option>
                 {queues.map((q) => (
@@ -342,13 +342,13 @@ export const HelpDeskPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-semibold text-slate-900 mb-1">
                 Priority
               </label>
               <select
                 value={createForm.priority}
                 onChange={(e) => setCreateForm({ ...createForm, priority: e.target.value as TicketPriority })}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-600 focus:border-blue-600 bg-white"
+                className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
               >
                 <option value="LOW">Low</option>
                 <option value="MEDIUM">Medium</option>
@@ -359,8 +359,8 @@ export const HelpDeskPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Title <span className="text-red-500">*</span>
+            <label className="block text-sm font-semibold text-slate-900 mb-1">
+              Title <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
@@ -368,13 +368,13 @@ export const HelpDeskPage: React.FC = () => {
               value={createForm.title}
               onChange={(e) => setCreateForm({ ...createForm, title: e.target.value })}
               placeholder="e.g., Cannot access VPN network, Payroll inquiry"
-              className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+              className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description <span className="text-red-500">*</span>
+            <label className="block text-sm font-semibold text-slate-900 mb-1">
+              Description <span className="text-rose-500">*</span>
             </label>
             <textarea
               required
@@ -382,22 +382,22 @@ export const HelpDeskPage: React.FC = () => {
               value={createForm.description}
               onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
               placeholder="Describe the issue, error messages, and steps to reproduce..."
-              className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+              className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
             />
           </div>
 
-          <div className="pt-4 border-t border-gray-100 flex items-center justify-end gap-3">
+          <div className="pt-4 border-t border-blue-100 flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={() => setIsCreateModalOpen(false)}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="px-4 py-2 border border-blue-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-blue-50/50 transition"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmittingTicket}
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-xs disabled:opacity-50 transition"
+              className="px-5 py-2 bg-slate-950 hover:bg-black text-white rounded-lg text-sm font-semibold shadow-xs disabled:opacity-50 transition"
             >
               {isSubmittingTicket ? 'Opening...' : 'Create Ticket'}
             </button>
@@ -419,32 +419,32 @@ export const HelpDeskPage: React.FC = () => {
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <StatusBadge status={selectedTicket.status} />
                 <StatusBadge priority={selectedTicket.priority} />
-                <span className="text-xs text-gray-500">
-                  Category: <strong>{selectedTicket.categoryName}</strong>
+                <span className="text-xs text-slate-500">
+                  Category: <strong className="text-slate-800">{selectedTicket.categoryName}</strong>
                 </span>
                 {selectedTicket.queueName && (
-                  <span className="text-xs text-gray-500">
-                    Queue: <strong>{selectedTicket.queueName}</strong>
+                  <span className="text-xs text-slate-500">
+                    Queue: <strong className="text-slate-800">{selectedTicket.queueName}</strong>
                   </span>
                 )}
               </div>
-              <h2 className="text-lg font-bold text-gray-900">{selectedTicket.title}</h2>
-              <div className="mt-2 text-sm text-gray-700 bg-slate-50 p-3 rounded-lg border border-slate-100 whitespace-pre-wrap">
+              <h2 className="text-lg font-bold text-slate-950">{selectedTicket.title}</h2>
+              <div className="mt-2 text-sm text-slate-800 bg-blue-50/40 p-3.5 rounded-xl border border-blue-100 whitespace-pre-wrap">
                 {selectedTicket.description}
               </div>
             </div>
 
             {/* Requester & Assignee Meta */}
-            <div className="grid grid-cols-2 gap-4 text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
+            <div className="grid grid-cols-2 gap-4 text-xs text-slate-600 bg-blue-50/30 border border-blue-100 p-3 rounded-lg">
               <div>
-                <span className="text-gray-400 block">Requester:</span>
-                <span className="font-semibold text-gray-800">
+                <span className="text-slate-500 block">Requester:</span>
+                <span className="font-semibold text-slate-900">
                   {selectedTicket.requesterName || user?.fullName}
                 </span>
               </div>
               <div>
-                <span className="text-gray-400 block">Assigned Agent:</span>
-                <span className="font-semibold text-indigo-700">
+                <span className="text-slate-500 block">Assigned Agent:</span>
+                <span className="font-semibold text-blue-950">
                   {selectedTicket.assignedAgentName || 'Unassigned'}
                 </span>
               </div>
@@ -452,20 +452,20 @@ export const HelpDeskPage: React.FC = () => {
 
             {/* State Actions for Requester */}
             {selectedTicket.status === 'RESOLVED' && (
-              <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 space-y-3">
-                <span className="text-sm font-semibold text-teal-900 block">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-3">
+                <span className="text-sm font-semibold text-emerald-950 block">
                   Support marked this issue as RESOLVED.
                 </span>
                 <div className="flex gap-2">
                   <button
                     onClick={handleCloseTicket}
-                    className="px-3 py-1.5 bg-teal-700 hover:bg-teal-800 text-white rounded-md text-xs font-medium"
+                    className="px-3.5 py-1.5 bg-slate-950 hover:bg-black text-white rounded-lg text-xs font-semibold shadow-xs transition"
                   >
                     Accept &amp; Close Ticket
                   </button>
                   <button
                     onClick={handleReopenTicket}
-                    className="px-3 py-1.5 bg-white border border-teal-300 text-teal-800 hover:bg-teal-100 rounded-md text-xs font-medium"
+                    className="px-3.5 py-1.5 bg-white border border-emerald-300 text-emerald-900 hover:bg-emerald-100 rounded-lg text-xs font-semibold transition"
                   >
                     Reopen (Issue Not Fixed)
                   </button>
@@ -475,35 +475,35 @@ export const HelpDeskPage: React.FC = () => {
 
             {/* Comments Thread */}
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-900">
+              <h3 className="text-sm font-bold text-slate-950">
                 Conversation Thread ({selectedTicket.comments?.length || 0})
               </h3>
 
               <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
                 {(!selectedTicket.comments || selectedTicket.comments.length === 0) ? (
-                  <div className="text-xs text-gray-400 italic">No comments yet.</div>
+                  <div className="text-xs text-slate-400 italic">No comments yet.</div>
                 ) : (
                   selectedTicket.comments.map((c) => {
                     const isInternal = c.isInternalNote || c.isInternal;
                     return (
                       <div
                         key={c.id}
-                        className={`p-3 rounded-lg text-xs ${
+                        className={`p-3 rounded-xl text-xs ${
                           isInternal
-                            ? 'bg-amber-50 border border-amber-200 text-amber-900'
-                            : 'bg-slate-50 border border-slate-200 text-slate-800'
+                            ? 'bg-amber-50/80 border border-amber-200 text-amber-950'
+                            : 'bg-white border border-blue-100 text-slate-900 shadow-2xs'
                         }`}
                       >
                         <div className="flex items-center justify-between font-semibold mb-1">
                           <span className="flex items-center gap-1.5">
                             {c.authorName}
                             {isInternal && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-amber-200 text-amber-800 font-bold uppercase">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-amber-200 text-amber-900 font-bold uppercase">
                                 Internal Note
                               </span>
                             )}
                           </span>
-                          <span className="text-[10px] text-gray-400">
+                          <span className="text-[10px] text-slate-400">
                             {new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
@@ -523,17 +523,17 @@ export const HelpDeskPage: React.FC = () => {
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
                     placeholder="Type a response or update..."
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                    className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-xs focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
                   />
 
                   <div className="flex items-center justify-between">
                     {canPostInternalNotes ? (
-                      <label className="flex items-center gap-1.5 text-xs text-amber-800 font-medium cursor-pointer">
+                      <label className="flex items-center gap-1.5 text-xs text-amber-900 font-medium cursor-pointer">
                         <input
                           type="checkbox"
                           checked={isInternalNote}
                           onChange={(e) => setIsInternalNote(e.target.checked)}
-                          className="rounded text-amber-600 focus:ring-amber-500"
+                          className="rounded text-slate-900 focus:ring-slate-900"
                         />
                         Internal agent note (hidden from employee)
                       </label>
@@ -542,7 +542,7 @@ export const HelpDeskPage: React.FC = () => {
                     <button
                       type="submit"
                       disabled={isPostingComment || !commentText.trim()}
-                      className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-medium transition disabled:opacity-50"
+                      className="px-3.5 py-1.5 bg-slate-950 hover:bg-black text-white rounded-lg text-xs font-semibold transition disabled:opacity-50 shadow-xs"
                     >
                       {isPostingComment ? 'Posting...' : 'Send Message'}
                     </button>

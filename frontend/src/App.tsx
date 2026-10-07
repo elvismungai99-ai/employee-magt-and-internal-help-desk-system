@@ -13,10 +13,10 @@ import { AgentQueuePage } from './pages/AgentQueuePage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+  <div className="min-h-screen bg-[#f0f6fc] flex flex-col font-sans">
     <Navbar />
     <main className="flex-1 pb-12">{children}</main>
-    <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500">
+    <footer className="border-t border-blue-100 bg-white/95 py-4 text-center text-xs text-slate-600">
       Employee Management &amp; Internal Help Desk System &bull; &copy; 2026 All rights reserved.
     </footer>
   </div>

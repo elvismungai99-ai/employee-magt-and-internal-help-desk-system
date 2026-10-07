@@ -76,12 +76,12 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#f0f6fc] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="w-10 h-10 rounded-md bg-slate-900 text-white flex items-center justify-center font-bold text-base tracking-tight mx-auto mb-3 shadow-xs">
+        <div className="w-11 h-11 rounded-xl bg-slate-950 text-white flex items-center justify-center font-bold text-base tracking-tight mx-auto mb-3 ring-4 ring-blue-100 shadow-xs">
           HR
         </div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+        <h1 className="text-2xl font-bold text-slate-950 tracking-tight">
           Sign in to your account
         </h1>
         <p className="mt-1.5 text-sm text-slate-600">
@@ -90,7 +90,7 @@ export const LoginPage: React.FC = () => {
       </div>
 
       <div className="mt-7 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 border border-slate-200 rounded-lg sm:px-9 shadow-xs">
+        <div className="bg-white py-8 px-6 border border-blue-100 rounded-2xl sm:px-9 shadow-xs">
           {error && (
             <Alert
               type="error"
@@ -101,8 +101,8 @@ export const LoginPage: React.FC = () => {
           )}
 
           {savedFound && (
-            <div className="mb-4 flex items-center justify-between px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-xs text-slate-700">
-              <span className="font-medium">
+            <div className="mb-4 flex items-center justify-between px-3 py-2 bg-blue-50/70 border border-blue-200/80 rounded-lg text-xs text-slate-800">
+              <span className="font-semibold text-blue-950">
                 Saved credentials loaded
               </span>
               <button
@@ -117,7 +117,7 @@ export const LoginPage: React.FC = () => {
 
           <form onSubmit={handleSubmit} autoComplete="on" className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-xs font-semibold text-slate-700 mb-1">
+              <label htmlFor="email" className="block text-xs font-semibold text-slate-900 mb-1">
                 Work Email Address
               </label>
               <input
@@ -134,12 +134,12 @@ export const LoginPage: React.FC = () => {
                   }
                 }}
                 placeholder="name@company.com"
-                className="block w-full px-3.5 py-2 border border-slate-300 rounded-md text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-slate-900 focus:border-slate-900"
+                className="block w-full px-3.5 py-2 border border-blue-200 rounded-lg text-sm text-slate-950 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-xs font-semibold text-slate-700 mb-1">
+              <label htmlFor="password" className="block text-xs font-semibold text-slate-900 mb-1">
                 Password
               </label>
               <div className="relative">
@@ -152,7 +152,7 @@ export const LoginPage: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="block w-full px-3.5 pr-10 py-2 border border-slate-300 rounded-md text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-slate-900 focus:border-slate-900"
+                  className="block w-full px-3.5 pr-10 py-2 border border-blue-200 rounded-lg text-sm text-slate-950 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white"
                 />
                 <button
                   type="button"
@@ -173,7 +173,7 @@ export const LoginPage: React.FC = () => {
                   name="rememberMe"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
+                  className="h-4 w-4 rounded border-blue-200 text-slate-950 focus:ring-slate-950 cursor-pointer"
                 />
                 <span className="ml-2 font-medium">Keep me signed in</span>
               </label>
@@ -192,16 +192,16 @@ export const LoginPage: React.FC = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 focus:outline-hidden focus:ring-2 focus:ring-offset-1 focus:ring-slate-900 text-white rounded-md text-sm font-semibold shadow-xs disabled:opacity-50 transition cursor-pointer"
+              className="w-full py-2.5 px-4 bg-slate-950 hover:bg-black focus:outline-hidden focus:ring-2 focus:ring-offset-1 focus:ring-slate-950 text-white rounded-lg text-sm font-semibold shadow-xs disabled:opacity-50 transition cursor-pointer"
             >
               {isSubmitting ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
 
-          <div className="mt-6 text-center text-xs text-slate-500 border-t border-slate-100 pt-5">
+          <div className="mt-6 text-center text-xs text-slate-500 border-t border-blue-100 pt-5">
             New employee?{' '}
-            <Link to="/register" className="font-semibold text-slate-900 hover:underline">
-              Register an account
+            <Link to="/register" className="font-semibold text-blue-700 hover:text-black transition">
+              Register an account &rarr;
             </Link>
           </div>
         </div>

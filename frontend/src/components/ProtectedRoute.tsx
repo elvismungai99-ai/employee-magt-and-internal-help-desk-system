@@ -86,8 +86,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
             Your account does not have permission to access this section. Contact an administrator if you believe this is in error.
           </p>
           <Link
-            to="/"
-            className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            to="/dashboard"
+            className="inline-flex items-center justify-center px-4 py-2 border border-teal-200 rounded-lg text-sm font-medium text-slate-700 bg-white hover:bg-teal-50"
           >
             Return to Dashboard
           </Link>

@@ -32,7 +32,8 @@ export const LoginPage: React.FC = () => {
   }, [isSubmitting]);
 
   // Where to navigate after login
-  const from = (location.state as any)?.from?.pathname || '/';
+  const rawFrom = (location.state as any)?.from?.pathname;
+  const from = rawFrom && rawFrom !== '/' ? rawFrom : '/dashboard';
 
   // Load remembered user & password from local storage on mount
   useEffect(() => {

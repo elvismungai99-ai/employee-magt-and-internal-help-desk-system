@@ -5,6 +5,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { Navbar } from './components/Navbar';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { LandingPage } from './pages/LandingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LeavePortalPage } from './pages/LeavePortalPage';
 import { ManagerApprovalsPage } from './pages/ManagerApprovalsPage';
@@ -13,11 +14,11 @@ import { AgentQueuePage } from './pages/AgentQueuePage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="min-h-screen bg-[#f0f6fc] flex flex-col font-sans">
+  <div className="min-h-screen bg-[#f2f8f8] flex flex-col font-sans">
     <Navbar />
     <main className="flex-1 pb-12">{children}</main>
-    <footer className="border-t border-blue-100 bg-white/95 py-4 text-center text-xs text-slate-600">
-      Employee Management &amp; Internal Help Desk System &bull; &copy; 2026 All rights reserved.
+    <footer className="border-t border-teal-100 bg-white/95 py-4 text-center text-xs text-slate-500">
+      WorkHub &bull; Employee Management &amp; Internal Help Desk System &bull; &copy; 2026 All rights reserved.
     </footer>
   </div>
 );
@@ -27,13 +28,14 @@ export default function App() {
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
         <Routes>
-          {/* Public Authentication Routes */}
+          {/* Public Landing & Authentication Routes */}
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
           {/* Authenticated Application Routes */}
           <Route
-            path="/"
+            path="/dashboard"
             element={
               <ProtectedRoute>
                 <AppLayout>
@@ -42,6 +44,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/app" element={<Navigate to="/dashboard" replace />} />
 
           <Route
             path="/leave"

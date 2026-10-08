@@ -12,9 +12,11 @@ import {
   TicketPriority, 
   TicketStatus 
 } from '../types';
+import { Search, Clock, AlertTriangle, Plus, Paperclip } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
 import { Modal } from '../components/Modal';
 import { Alert } from '../components/Alert';
+import { TableSkeleton } from '../components/Skeleton';
 
 export const HelpDeskPage: React.FC = () => {
   const { user, hasRole } = useAuth();
@@ -24,6 +26,7 @@ export const HelpDeskPage: React.FC = () => {
   const [queues, setQueues] = useState<SupportQueue[]>([]);
   const [myLeaveRequests, setMyLeaveRequests] = useState<LeaveRequest[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Create Ticket Modal State
@@ -211,9 +214,57 @@ export const HelpDeskPage: React.FC = () => {
   };
 
   const filteredTickets = tickets.filter((t) => {
-    if (statusFilter === 'ALL') return true;
-    return t.status === statusFilter;
+    const matchesStatus = statusFilter === 'ALL' || t.status === statusFilter;
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return matchesStatus;
+    const matchesQuery =
+      t.title.toLowerCase().includes(q) ||
+      t.ticketNumber.toLowerCase().includes(q) ||
+      t.description.toLowerCase().includes(q) ||
+      Boolean(t.categoryName && t.categoryName.toLowerCase().includes(q)) ||
+      Boolean(t.assignedAgentName && t.assignedAgentName.toLowerCase().includes(q));
+    return matchesStatus && matchesQuery;
   });
+
+  const renderSlaBadge = (t: Ticket) => {
+    if (t.status === 'PENDING_USER') {
+      return (
+        <span className="text-[11px] font-semibold text-sky-800 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded flex items-center gap-1">
+          <Clock className="h-3 w-3" />
+          <span>SLA Paused (Waiting for Your Reply)</span>
+        </span>
+      );
+    }
+    if (!t.slaDueAt || t.status === 'RESOLVED' || t.status === 'CLOSED') {
+      return null;
+    }
+    const dueDate = new Date(t.slaDueAt);
+    const now = new Date();
+    const diffMinutes = Math.round((dueDate.getTime() - now.getTime()) / 60000);
+
+    if (diffMinutes < 0) {
+      return (
+        <span className="text-[11px] font-bold text-rose-800 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded flex items-center gap-1">
+          <AlertTriangle className="h-3 w-3 text-rose-600" />
+          <span>SLA Breached ({Math.abs(diffMinutes)}m ago)</span>
+        </span>
+      );
+    }
+    if (diffMinutes <= 120) {
+      return (
+        <span className="text-[11px] font-bold text-amber-900 bg-amber-50 border border-amber-300 px-2 py-0.5 rounded flex items-center gap-1">
+          <Clock className="h-3 w-3 text-amber-600" />
+          <span>Due Soon ({diffMinutes}m)</span>
+        </span>
+      );
+    }
+    return (
+      <span className="text-[11px] font-semibold text-[#0e4a5c] bg-[#e3f4f1] border border-teal-200 px-2 py-0.5 rounded flex items-center gap-1">
+        <Clock className="h-3 w-3 text-teal-700" />
+        <span>Due {dueDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+      </span>
+    );
+  };
 
   const canPostInternalNotes = hasRole('SUPPORT_AGENT') || hasRole('HR_ADMIN');
 
@@ -221,7 +272,7 @@ export const HelpDeskPage: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-950 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#0d2836] tracking-tight">
             Help Desk
           </h1>
           <p className="text-sm text-slate-600 mt-1">
@@ -234,9 +285,10 @@ export const HelpDeskPage: React.FC = () => {
             setCreateError(null);
             setIsCreateModalOpen(true);
           }}
-          className="inline-flex items-center px-4 py-2 bg-slate-950 hover:bg-black text-white rounded-lg font-semibold text-sm transition shadow-xs"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-[#0e4a5c] hover:bg-[#083543] text-white rounded-xl font-bold text-xs transition shadow-xs"
         >
-          New Ticket
+          <Plus className="h-4 w-4" />
+          <span>New Ticket</span>
         </button>
       </div>
 
@@ -248,53 +300,65 @@ export const HelpDeskPage: React.FC = () => {
         />
       )}
 
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-        {['ALL', 'NEW', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].map((st) => (
-          <button
-            key={st}
-            onClick={() => setStatusFilter(st)}
-            className={`px-3 py-1.5 rounded-lg transition ${
-              statusFilter === st
-                ? 'bg-blue-100 text-blue-950 font-semibold border border-blue-200 shadow-2xs'
-                : 'bg-white border border-blue-100 text-slate-700 hover:text-black hover:bg-blue-50/70 font-medium'
-            }`}
-          >
-            {st.replace('_', ' ')}
-          </button>
-        ))}
+      {/* Filter Tabs and Search Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+          {['ALL', 'NEW', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].map((st) => (
+            <button
+              key={st}
+              onClick={() => setStatusFilter(st)}
+              className={`px-3 py-1.5 rounded-xl transition text-xs ${
+                statusFilter === st
+                  ? 'bg-[#0e4a5c] text-white font-bold shadow-2xs'
+                  : 'bg-white border border-teal-200/90 text-slate-700 hover:text-[#0d2836] hover:bg-[#f0f9f8] font-medium'
+              }`}
+            >
+              {st.replace('_', ' ')}
+            </button>
+          ))}
+        </div>
+
+        {/* Search Input Bar */}
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search tickets by title, ID, or agent..."
+            className="w-full sm:w-64 rounded-xl border border-teal-200/90 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-800 focus:border-[#0e4a5c] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c]"
+          />
+        </div>
       </div>
 
       {/* Tickets List */}
-      <div className="bg-white rounded-xl border border-blue-100 overflow-hidden shadow-xs">
+      <div className="bg-white rounded-2xl border border-teal-100 overflow-hidden shadow-2xs">
         {isLoading ? (
-          <div className="p-8 text-center text-sm text-slate-500">Loading tickets...</div>
+          <div className="p-6">
+            <TableSkeleton rows={4} cols={5} />
+          </div>
         ) : filteredTickets.length === 0 ? (
           <div className="p-12 text-center text-slate-500">
-            <p className="font-bold text-slate-950 text-sm">No tickets found</p>
-            <p className="text-xs text-slate-600 mt-1">Have an issue? Click "New Ticket" to notify the support team.</p>
+            <p className="font-bold text-[#0d2836] text-sm">No tickets found</p>
+            <p className="text-xs text-slate-500 mt-1">Have an issue? Click "New Ticket" to notify the support team.</p>
           </div>
         ) : (
-          <div className="divide-y divide-blue-50">
+          <div className="divide-y divide-teal-50">
             {filteredTickets.map((t) => (
               <div
                 key={t.id}
                 onClick={() => handleOpenDetail(t)}
-                className="p-5 hover:bg-blue-50/30 transition cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4"
+                className="p-5 hover:bg-[#f6faf8] transition cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4"
               >
                 <div className="space-y-1.5 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-xs font-semibold text-blue-950 bg-blue-50 px-2 py-0.5 rounded border border-blue-200/70">
+                    <span className="font-mono text-xs font-bold text-[#0e4a5c] bg-[#e3f4f1] px-2 py-0.5 rounded border border-teal-200/70">
                       {t.ticketNumber}
                     </span>
-                    <h3 className="font-semibold text-slate-950 text-base">{t.title}</h3>
+                    <h3 className="font-bold text-[#0d2836] text-base">{t.title}</h3>
                     <StatusBadge status={t.status} />
                     <StatusBadge priority={t.priority} />
-                    {t.status === 'PENDING_USER' && (
-                      <span className="text-[11px] font-semibold text-blue-900 bg-blue-100 border border-blue-200 px-2 py-0.5 rounded">
-                        SLA Paused (Awaiting Your Reply)
-                      </span>
-                    )}
+                    {renderSlaBadge(t)}
                     {t.leaveRequestSummary && (
                       <span className="text-[11px] font-semibold text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded">
                         Linked: {t.leaveRequestSummary}
@@ -308,7 +372,7 @@ export const HelpDeskPage: React.FC = () => {
                     <span>Category: <strong className="text-slate-800">{t.categoryName || 'General'}</strong></span>
                     {t.queueName && <span>Queue: <strong className="text-slate-800">{t.queueName}</strong></span>}
                     {t.assignedAgentName ? (
-                      <span className="text-blue-900 font-medium">Assigned: {t.assignedAgentName}</span>
+                      <span className="text-[#0e4a5c] font-semibold">Assigned: {t.assignedAgentName}</span>
                     ) : (
                       <span className="text-slate-400 italic">Unassigned</span>
                     )}
@@ -320,15 +384,11 @@ export const HelpDeskPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="text-right text-xs text-slate-400 flex flex-col items-end gap-1 flex-shrink-0">
+                <div className="text-right text-xs text-slate-400 flex flex-col items-end gap-1 shrink-0">
                   <span className="font-medium text-slate-500">{t.createdAt ? new Date(t.createdAt).toLocaleDateString() : ''}</span>
                   {t.slaDueAt && (
-                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded border ${
-                      t.status === 'PENDING_USER' 
-                        ? 'text-blue-800 bg-blue-50 border-blue-200' 
-                        : 'text-amber-900 bg-amber-50 border-amber-200'
-                    }`}>
-                      {t.status === 'PENDING_USER' ? 'Clock Paused' : `Due ${new Date(t.slaDueAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-50 text-slate-600 border border-slate-200">
+                      Target: {new Date(t.slaDueAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   )}
                 </div>
@@ -363,7 +423,7 @@ export const HelpDeskPage: React.FC = () => {
               required
               value={createForm.categoryId}
               onChange={(e) => setCreateForm({ ...createForm, categoryId: e.target.value })}
-              className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
+              className="block w-full px-3 py-2 border border-teal-200 rounded-xl text-xs focus:ring-1 focus:ring-[#0e4a5c] focus:border-[#0e4a5c] bg-white text-[#0d2836]"
             >
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -375,13 +435,13 @@ export const HelpDeskPage: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-900 mb-1">
+              <label className="block text-xs font-bold text-[#0d2836] mb-1">
                 Queue (Optional)
               </label>
               <select
                 value={createForm.queueId || ''}
                 onChange={(e) => setCreateForm({ ...createForm, queueId: e.target.value })}
-                className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
+                className="block w-full px-3 py-2 border border-teal-200 rounded-xl text-xs focus:ring-1 focus:ring-[#0e4a5c] focus:border-[#0e4a5c] bg-white text-[#0d2836]"
               >
                 <option value="">Auto-Route via Taxonomy</option>
                 {queues.map((q) => (
@@ -393,13 +453,13 @@ export const HelpDeskPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-900 mb-1">
+              <label className="block text-xs font-bold text-[#0d2836] mb-1">
                 Priority
               </label>
               <select
                 value={createForm.priority}
                 onChange={(e) => setCreateForm({ ...createForm, priority: e.target.value as TicketPriority })}
-                className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
+                className="block w-full px-3 py-2 border border-teal-200 rounded-xl text-xs focus:ring-1 focus:ring-[#0e4a5c] focus:border-[#0e4a5c] bg-white text-[#0d2836]"
               >
                 <option value="LOW">Low</option>
                 <option value="MEDIUM">Medium</option>
@@ -412,13 +472,13 @@ export const HelpDeskPage: React.FC = () => {
           {/* Optional Link to Leave Request */}
           {myLeaveRequests.length > 0 && (
             <div>
-              <label className="block text-sm font-semibold text-slate-900 mb-1">
+              <label className="block text-xs font-bold text-[#0d2836] mb-1">
                 Link to Leave Request <span className="text-slate-400 font-normal text-xs">(Optional &mdash; for leave or balance inquiries)</span>
               </label>
               <select
                 value={createForm.leaveRequestId || ''}
                 onChange={(e) => setCreateForm({ ...createForm, leaveRequestId: e.target.value })}
-                className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
+                className="block w-full px-3 py-2 border border-teal-200 rounded-xl text-xs focus:ring-1 focus:ring-[#0e4a5c] focus:border-[#0e4a5c] bg-white text-[#0d2836]"
               >
                 <option value="">-- No linked leave request --</option>
                 {myLeaveRequests.map((lr) => (
@@ -431,7 +491,7 @@ export const HelpDeskPage: React.FC = () => {
           )}
 
           <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-1">
+            <label className="block text-xs font-bold text-[#0d2836] mb-1">
               Title <span className="text-rose-500">*</span>
             </label>
             <input
@@ -440,12 +500,12 @@ export const HelpDeskPage: React.FC = () => {
               value={createForm.title}
               onChange={(e) => setCreateForm({ ...createForm, title: e.target.value })}
               placeholder="e.g., Cannot access VPN network, Payroll inquiry"
-              className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
+              className="block w-full px-3 py-2 border border-teal-200 rounded-xl text-xs focus:ring-1 focus:ring-[#0e4a5c] focus:border-[#0e4a5c] bg-white text-[#0d2836]"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-1">
+            <label className="block text-xs font-bold text-[#0d2836] mb-1">
               Description <span className="text-rose-500">*</span>
             </label>
             <textarea
@@ -454,22 +514,22 @@ export const HelpDeskPage: React.FC = () => {
               value={createForm.description}
               onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
               placeholder="Describe the issue, error messages, and steps to reproduce..."
-              className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
+              className="block w-full px-3 py-2 border border-teal-200 rounded-xl text-xs focus:ring-1 focus:ring-[#0e4a5c] focus:border-[#0e4a5c] bg-white text-[#0d2836]"
             />
           </div>
 
-          <div className="pt-4 border-t border-blue-100 flex items-center justify-end gap-3">
+          <div className="pt-4 border-t border-teal-100 flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={() => setIsCreateModalOpen(false)}
-              className="px-4 py-2 border border-blue-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-blue-50/50 transition"
+              className="px-4 py-2 border border-teal-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-[#f0f9f8] transition"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmittingTicket}
-              className="px-5 py-2 bg-slate-950 hover:bg-black text-white rounded-lg text-sm font-semibold shadow-xs disabled:opacity-50 transition"
+              className="px-5 py-2 bg-[#0e4a5c] hover:bg-[#083543] text-white rounded-xl text-xs font-bold shadow-xs disabled:opacity-50 transition"
             >
               {isSubmittingTicket ? 'Opening...' : 'Create Ticket'}
             </button>
@@ -500,23 +560,23 @@ export const HelpDeskPage: React.FC = () => {
                   </span>
                 )}
               </div>
-              <h2 className="text-lg font-bold text-slate-950">{selectedTicket.title}</h2>
-              <div className="mt-2 text-sm text-slate-800 bg-blue-50/40 p-3.5 rounded-xl border border-blue-100 whitespace-pre-wrap">
+              <h2 className="text-lg font-bold text-[#0d2836]">{selectedTicket.title}</h2>
+              <div className="mt-2 text-xs text-slate-700 bg-[#f8fbfb] p-3.5 rounded-xl border border-teal-100 whitespace-pre-wrap leading-relaxed">
                 {selectedTicket.description}
               </div>
             </div>
 
             {/* Requester & Assignee Meta */}
-            <div className="grid grid-cols-2 gap-4 text-xs text-slate-600 bg-blue-50/30 border border-blue-100 p-3 rounded-lg">
+            <div className="grid grid-cols-2 gap-4 text-xs text-slate-600 bg-[#f8fbfb] border border-teal-100 p-3 rounded-xl">
               <div>
-                <span className="text-slate-500 block">Requester:</span>
-                <span className="font-semibold text-slate-900">
+                <span className="text-slate-400 text-[11px] block">Requester:</span>
+                <span className="font-bold text-[#0d2836]">
                   {selectedTicket.requesterName || user?.fullName}
                 </span>
               </div>
               <div>
-                <span className="text-slate-500 block">Assigned Agent:</span>
-                <span className="font-semibold text-blue-950">
+                <span className="text-slate-400 text-[11px] block">Assigned Agent:</span>
+                <span className="font-bold text-[#0e4a5c]">
                   {selectedTicket.assignedAgentName || 'Unassigned'}
                 </span>
               </div>
@@ -537,11 +597,11 @@ export const HelpDeskPage: React.FC = () => {
 
             {/* Waiting on Requester Banner */}
             {selectedTicket.status === 'PENDING_USER' && (
-              <div className="rounded-xl border border-blue-200 bg-blue-50 p-3.5 space-y-1">
-                <span className="text-xs font-bold text-blue-950 block">
+              <div className="rounded-xl border border-sky-200 bg-sky-50 p-3.5 space-y-1">
+                <span className="text-xs font-bold text-sky-900 block">
                   Action Required: Support is waiting on your response
                 </span>
-                <p className="text-xs text-blue-800">
+                <p className="text-xs text-sky-800">
                   The SLA clock is currently paused. Replying below with the requested info will automatically resume work.
                 </p>
               </div>
@@ -556,13 +616,13 @@ export const HelpDeskPage: React.FC = () => {
                 <div className="flex gap-2">
                   <button
                     onClick={handleCloseTicket}
-                    className="px-3.5 py-1.5 bg-slate-950 hover:bg-black text-white rounded-lg text-xs font-semibold shadow-xs transition"
+                    className="px-3.5 py-1.5 bg-[#0e4a5c] hover:bg-[#083543] text-white rounded-xl text-xs font-bold shadow-xs transition"
                   >
                     Accept &amp; Close Ticket
                   </button>
                   <button
                     onClick={handleReopenTicket}
-                    className="px-3.5 py-1.5 bg-white border border-emerald-300 text-emerald-900 hover:bg-emerald-100 rounded-lg text-xs font-semibold transition"
+                    className="px-3.5 py-1.5 bg-white border border-emerald-300 text-emerald-900 hover:bg-emerald-100 rounded-xl text-xs font-semibold transition"
                   >
                     Reopen (Issue Not Fixed)
                   </button>
@@ -571,9 +631,9 @@ export const HelpDeskPage: React.FC = () => {
             )}
 
             {/* Attachments Section */}
-            <div className="space-y-3 bg-slate-50/70 p-3.5 rounded-xl border border-blue-100">
+            <div className="space-y-3 bg-[#f8fbfb] p-3.5 rounded-xl border border-teal-100">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                <h3 className="text-xs font-bold text-[#0d2836] uppercase tracking-wider">
                   Attachments ({selectedTicket.attachments?.length || 0})
                 </h3>
               </div>
@@ -583,10 +643,10 @@ export const HelpDeskPage: React.FC = () => {
                   {selectedTicket.attachments.map((att) => (
                     <div
                       key={att.id}
-                      className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200 text-xs"
+                      className="flex items-center justify-between p-2 rounded-xl bg-white border border-teal-100 text-xs"
                     >
                       <div className="flex items-center gap-2 truncate">
-                        <span className="font-medium text-slate-800 truncate">{att.fileName}</span>
+                        <span className="font-semibold text-slate-800 truncate">{att.fileName}</span>
                         <span className="text-[10px] text-slate-400">
                           ({Math.round(att.fileSizeBytes / 1024)} KB)
                         </span>
@@ -594,7 +654,7 @@ export const HelpDeskPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => helpdeskApi.downloadAttachment(selectedTicket.id, att.id, att.fileName)}
-                        className="text-xs text-blue-700 hover:text-blue-900 font-semibold px-2 py-1 rounded bg-blue-50 hover:bg-blue-100 transition"
+                        className="text-xs text-[#0e4a5c] hover:text-[#083543] font-bold px-2 py-1 rounded-lg bg-[#e3f4f1] hover:bg-teal-100 transition"
                       >
                         Download
                       </button>
@@ -606,16 +666,16 @@ export const HelpDeskPage: React.FC = () => {
               )}
 
               {selectedTicket.status !== 'CLOSED' && (
-                <form onSubmit={handleUploadAttachment} className="flex items-center gap-2 pt-2 border-t border-slate-200">
+                <form onSubmit={handleUploadAttachment} className="flex items-center gap-2 pt-2 border-t border-teal-100">
                   <input
                     type="file"
                     onChange={(e) => setAttachmentFile(e.target.files?.[0] || null)}
-                    className="text-xs text-slate-600 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-800 hover:file:bg-slate-300"
+                    className="text-xs text-slate-600 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-800 hover:file:bg-slate-300"
                   />
                   <button
                     type="submit"
                     disabled={isUploadingAttachment || !attachmentFile}
-                    className="px-3 py-1 bg-slate-900 hover:bg-black text-white text-xs font-medium rounded-lg disabled:opacity-50 transition shrink-0"
+                    className="px-3 py-1 bg-[#0e4a5c] hover:bg-[#083543] text-white text-xs font-bold rounded-xl disabled:opacity-50 transition shrink-0 shadow-xs"
                   >
                     {isUploadingAttachment ? 'Uploading...' : 'Upload'}
                   </button>
@@ -625,7 +685,7 @@ export const HelpDeskPage: React.FC = () => {
 
             {/* Comments Thread */}
             <div className="space-y-3">
-              <h3 className="text-sm font-bold text-slate-950">
+              <h3 className="text-sm font-bold text-[#0d2836]">
                 Conversation Thread ({selectedTicket.comments?.length || 0})
               </h3>
 
@@ -641,7 +701,7 @@ export const HelpDeskPage: React.FC = () => {
                         className={`p-3 rounded-xl text-xs ${
                           isInternal
                             ? 'bg-amber-50/80 border border-amber-200 text-amber-950'
-                            : 'bg-white border border-blue-100 text-slate-900 shadow-2xs'
+                            : 'bg-white border border-teal-100 text-slate-900 shadow-2xs'
                         }`}
                       >
                         <div className="flex items-center justify-between font-semibold mb-1">
@@ -673,7 +733,7 @@ export const HelpDeskPage: React.FC = () => {
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
                     placeholder="Type a response or update..."
-                    className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-xs focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
+                    className="block w-full px-3 py-2 border border-teal-200 rounded-xl text-xs focus:ring-1 focus:ring-[#0e4a5c] focus:border-[#0e4a5c] bg-white text-[#0d2836]"
                   />
 
                   <div className="flex items-center justify-between">
@@ -683,7 +743,7 @@ export const HelpDeskPage: React.FC = () => {
                           type="checkbox"
                           checked={isInternalNote}
                           onChange={(e) => setIsInternalNote(e.target.checked)}
-                          className="rounded text-slate-900 focus:ring-slate-900"
+                          className="rounded text-[#0e4a5c] focus:ring-[#0e4a5c]"
                         />
                         Internal agent note (hidden from employee)
                       </label>
@@ -692,7 +752,7 @@ export const HelpDeskPage: React.FC = () => {
                     <button
                       type="submit"
                       disabled={isPostingComment || !commentText.trim()}
-                      className="px-3.5 py-1.5 bg-slate-950 hover:bg-black text-white rounded-lg text-xs font-semibold transition disabled:opacity-50 shadow-xs"
+                      className="px-4 py-1.5 bg-[#0e4a5c] hover:bg-[#083543] text-white rounded-xl text-xs font-bold transition disabled:opacity-50 shadow-xs"
                     >
                       {isPostingComment ? 'Posting...' : 'Send Message'}
                     </button>

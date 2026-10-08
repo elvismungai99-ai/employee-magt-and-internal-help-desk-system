@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Alert } from '../components/Alert';
 import { Eye, EyeOff } from 'lucide-react';
@@ -7,7 +7,6 @@ import { Eye, EyeOff } from 'lucide-react';
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,10 +14,6 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Where to navigate after login
-  const rawFrom = (location.state as any)?.from?.pathname;
-  const from = rawFrom && rawFrom !== '/login' ? rawFrom : '/';
 
   // Purge any legacy insecure plain-text credentials from localStorage
   useEffect(() => {
@@ -43,20 +38,8 @@ export const LoginPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      const authData = await login({ email, password }, rememberMe);
-      const userRoles = (authData.roles || []).map((r) => r.replace(/^ROLE_/, '').toUpperCase());
-
-      // Role-aware destination resolution prevents redirecting users to unauthorized pages (e.g. from previous admin session)
-      let destination = from;
-      if (destination === '/admin' && !userRoles.includes('HR_ADMIN')) {
-        destination = userRoles.includes('SUPPORT_AGENT') ? '/agent-queue' : '/';
-      } else if (destination === '/approvals' && !userRoles.includes('LINE_MANAGER') && !userRoles.includes('HR_ADMIN')) {
-        destination = '/';
-      } else if (destination === '/agent-queue' && !userRoles.includes('SUPPORT_AGENT') && !userRoles.includes('HR_ADMIN')) {
-        destination = '/';
-      }
-
-      navigate(destination, { replace: true });
+      await login({ email, password }, rememberMe);
+      navigate('/', { replace: true });
     } catch (err: any) {
       if (!err.response || err.code === 'ERR_NETWORK') {
         setError('Unable to reach the server. Please check your connection and try again.');

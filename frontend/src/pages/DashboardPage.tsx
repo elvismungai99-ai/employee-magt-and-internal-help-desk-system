@@ -123,7 +123,7 @@ export const DashboardPage: React.FC = () => {
                   <span className="text-xs font-bold text-slate-800">
                     Help ticket &bull; #1042
                   </span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#e3f4f1] text-[#0e4a5c] border border-teal-200">
                     In progress
                   </span>
                 </div>
@@ -447,7 +447,7 @@ export const DashboardPage: React.FC = () => {
               </Link>
             ) : (
               <div className="flex items-center justify-between pt-1">
-                <span className="text-[10px] font-medium text-blue-800 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                <span className="text-[10px] font-medium text-[#0e4a5c] bg-[#e3f4f1] px-2 py-0.5 rounded border border-teal-200">
                   Support Agent required
                 </span>
                 <Link to="/helpdesk" className="text-xs text-[#0e4a5c] font-semibold hover:underline">

@@ -3,6 +3,8 @@ import { adminApi } from '../api/adminApi';
 import { AccrualRunResult, EventOutboxItem, PageResponse, SlaMonitorRunResult, UserProfile } from '../types';
 import { Modal } from '../components/Modal';
 import { Alert } from '../components/Alert';
+import { ConfirmModal } from '../components/ConfirmModal';
+import { TableSkeleton } from '../components/Skeleton';
 import { Search } from 'lucide-react';
 
 export const AdminDashboardPage: React.FC = () => {
@@ -12,6 +14,17 @@ export const AdminDashboardPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Generic Confirmation Dialog State
+  const [confirmAction, setConfirmAction] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: 'danger' | 'warning' | 'primary';
+    confirmLabel: string;
+    onConfirm: () => Promise<void> | void;
+  } | null>(null);
+  const [isConfirmLoading, setIsConfirmLoading] = useState(false);
 
   // Pending Employee Registrations
   const [pendingUsers, setPendingUsers] = useState<UserProfile[]>([]);
@@ -116,46 +129,64 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
-  const handleTriggerCarryover = async () => {
-    if (!window.confirm(`Execute annual year-end carryover for ${triggerYear}? This will calculate unused balances and rollover eligible days into ${triggerYear + 1}.`)) return;
-    setIsTriggering(true);
-    try {
-      const res = await adminApi.triggerYearEndCarryover(Number(triggerYear));
-      setPageAlert({
-        type: 'success',
-        message: `Year-end carryover executed: ${res.carriedOverCount ?? res.processedCount ?? 0} employee balance(s) processed.`,
-      });
-      setIsTriggerModalOpen(false);
-      await loadAdminData();
-    } catch (err: any) {
-      setPageAlert({
-        type: 'error',
-        message: err.response?.data?.message || 'Failed to trigger year-end carryover.',
-      });
-    } finally {
-      setIsTriggering(false);
-    }
+  const handleTriggerCarryover = () => {
+    setConfirmAction({
+      isOpen: true,
+      title: 'Run Annual Carryover Job',
+      message: `Execute annual year-end carryover for ${triggerYear}? This will calculate unused balances and rollover eligible days into ${triggerYear + 1}.`,
+      variant: 'primary',
+      confirmLabel: 'Run Carryover',
+      onConfirm: async () => {
+        setIsConfirmLoading(true);
+        try {
+          const res = await adminApi.triggerYearEndCarryover(Number(triggerYear));
+          setPageAlert({
+            type: 'success',
+            message: `Year-end carryover executed: ${res.carriedOverCount ?? res.processedCount ?? 0} employee balance(s) processed.`,
+          });
+          setIsTriggerModalOpen(false);
+          setConfirmAction(null);
+          await loadAdminData();
+        } catch (err: any) {
+          setPageAlert({
+            type: 'error',
+            message: err.response?.data?.message || 'Failed to trigger year-end carryover.',
+          });
+        } finally {
+          setIsConfirmLoading(false);
+        }
+      },
+    });
   };
 
-  const handleTriggerCarryoverExpiry = async () => {
-    if (!window.confirm(`Execute carryover expiry job for ${triggerYear}? Any expired unused carry-over days will be lapsed.`)) return;
-    setIsTriggering(true);
-    try {
-      const res = await adminApi.triggerCarryoverExpiry(Number(triggerYear));
-      setPageAlert({
-        type: 'success',
-        message: `Carryover expiry executed: ${res.expiredCount ?? res.processedCount ?? 0} record(s) evaluated and reset.`,
-      });
-      setIsTriggerModalOpen(false);
-      await loadAdminData();
-    } catch (err: any) {
-      setPageAlert({
-        type: 'error',
-        message: err.response?.data?.message || 'Failed to trigger carryover expiry.',
-      });
-    } finally {
-      setIsTriggering(false);
-    }
+  const handleTriggerCarryoverExpiry = () => {
+    setConfirmAction({
+      isOpen: true,
+      title: 'Run Carryover Expiry Job',
+      message: `Execute carryover expiry job for ${triggerYear}? Any expired unused carry-over days will be lapsed immediately.`,
+      variant: 'warning',
+      confirmLabel: 'Run Expiry Job',
+      onConfirm: async () => {
+        setIsConfirmLoading(true);
+        try {
+          const res = await adminApi.triggerCarryoverExpiry(Number(triggerYear));
+          setPageAlert({
+            type: 'success',
+            message: `Carryover expiry executed: ${res.expiredCount ?? res.processedCount ?? 0} record(s) evaluated and reset.`,
+          });
+          setIsTriggerModalOpen(false);
+          setConfirmAction(null);
+          await loadAdminData();
+        } catch (err: any) {
+          setPageAlert({
+            type: 'error',
+            message: err.response?.data?.message || 'Failed to trigger carryover expiry.',
+          });
+        } finally {
+          setIsConfirmLoading(false);
+        }
+      },
+    });
   };
 
   const handleAssignManager = async (e: React.FormEvent) => {
@@ -222,25 +253,33 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
-  const handleRejectRegistration = async (user: UserProfile) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to reject registration for ${user.fullName || user.email}? They will not be able to log in to the system.`
-    );
-    if (!confirmed) return;
-
-    try {
-      await adminApi.rejectUser(user.id, 'Registration rejected by HR administrator');
-      setPageAlert({
-        type: 'success',
-        message: `Registration for ${user.fullName || user.email} has been rejected.`,
-      });
-      await loadAdminData();
-    } catch (err: any) {
-      setPageAlert({
-        type: 'error',
-        message: err.response?.data?.message || 'Failed to reject employee registration.',
-      });
-    }
+  const handleRejectRegistration = (user: UserProfile) => {
+    setConfirmAction({
+      isOpen: true,
+      title: 'Reject Employee Registration',
+      message: `Are you sure you want to reject registration for ${user.fullName || user.email}? They will not be able to log in to the system.`,
+      variant: 'danger',
+      confirmLabel: 'Reject Registration',
+      onConfirm: async () => {
+        setIsConfirmLoading(true);
+        try {
+          await adminApi.rejectUser(user.id, 'Registration rejected by HR administrator');
+          setPageAlert({
+            type: 'success',
+            message: `Registration for ${user.fullName || user.email} has been rejected.`,
+          });
+          setConfirmAction(null);
+          await loadAdminData();
+        } catch (err: any) {
+          setPageAlert({
+            type: 'error',
+            message: err.response?.data?.message || 'Failed to reject employee registration.',
+          });
+        } finally {
+          setIsConfirmLoading(false);
+        }
+      },
+    });
   };
 
   const eligibleManagers = users.filter((u) =>
@@ -280,13 +319,13 @@ export const AdminDashboardPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={loadAdminData}
-            className="px-3.5 py-2 border border-blue-200 text-slate-800 bg-white hover:bg-blue-50/50 rounded-lg text-sm font-semibold transition shadow-2xs"
+            className="px-3.5 py-2 border border-teal-200 text-slate-800 bg-white hover:bg-[#f8fbfb] rounded-lg text-sm font-semibold transition shadow-2xs"
           >
             Refresh
           </button>
           <button
             onClick={() => setIsTriggerModalOpen(true)}
-            className="px-4 py-2 bg-slate-950 hover:bg-black text-white rounded-lg text-sm font-semibold transition shadow-xs"
+            className="px-4 py-2 bg-[#0e4a5c] hover:bg-[#083543] text-white rounded-lg text-sm font-semibold transition shadow-xs"
           >
             Run Accrual
           </button>
@@ -302,8 +341,8 @@ export const AdminDashboardPage: React.FC = () => {
       )}
 
       {/* Pending Employee Registrations Card */}
-      <div className="bg-white rounded-xl border border-blue-100 overflow-hidden shadow-xs">
-        <div className="px-6 py-4 border-b border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-blue-50/40">
+      <div className="bg-white rounded-xl border border-teal-100 overflow-hidden shadow-xs">
+        <div className="px-6 py-4 border-b border-teal-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#fafcfb]">
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-bold text-slate-950">Pending Employee Registrations</h2>
@@ -321,15 +360,19 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {pendingUsers.length === 0 ? (
+        {isLoading ? (
+          <div className="p-6">
+            <TableSkeleton rows={3} cols={5} />
+          </div>
+        ) : pendingUsers.length === 0 ? (
           <div className="py-8 text-center text-sm text-slate-500">
-            <p className="font-bold text-slate-950">No Pending Approvals</p>
+            <p className="font-bold text-[#0d2836]">No Pending Approvals</p>
             <p className="text-xs text-slate-500 mt-0.5">All registered employees are verified and active.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-blue-100 text-xs">
-              <thead className="bg-blue-50/50 text-slate-700 font-semibold uppercase tracking-wider text-[11px] border-b border-blue-100">
+            <table className="min-w-full divide-y divide-teal-100 text-xs">
+              <thead className="bg-[#f8fbfb] text-slate-700 font-semibold uppercase tracking-wider text-[11px] border-b border-teal-100">
                 <tr>
                   <th className="px-6 py-3 text-left">Employee</th>
                   <th className="px-6 py-3 text-left">Code</th>
@@ -338,9 +381,9 @@ export const AdminDashboardPage: React.FC = () => {
                   <th className="px-6 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-blue-50 bg-white">
+              <tbody className="divide-y divide-teal-50 bg-white">
                 {pendingUsers.map((u) => (
-                  <tr key={u.id} className="hover:bg-blue-50/30 transition">
+                  <tr key={u.id} className="hover:bg-[#f8fbfb] transition">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="font-semibold text-slate-950">{u.fullName || `${u.firstName} ${u.lastName}`}</div>
                       <div className="text-slate-500">{u.email}</div>
@@ -354,7 +397,7 @@ export const AdminDashboardPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex flex-wrap gap-1">
                         {u.roles.map((r) => (
-                          <span key={r} className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-950 border border-blue-200/60 font-semibold text-[10px]">
+                          <span key={r} className="px-2 py-0.5 rounded-md bg-[#e3f4f1] text-[#0d2836] border border-teal-200/60 font-semibold text-[10px]">
                             {r}
                           </span>
                         ))}
@@ -363,7 +406,7 @@ export const AdminDashboardPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
                       <button
                         onClick={() => handleOpenApproveModal(u)}
-                        className="px-3 py-1 bg-slate-950 hover:bg-black text-white rounded-md font-semibold transition text-xs shadow-xs"
+                        className="px-3 py-1 bg-[#0e4a5c] hover:bg-[#083543] text-white rounded-md font-semibold transition text-xs shadow-xs"
                       >
                         Approve
                       </button>
@@ -385,8 +428,8 @@ export const AdminDashboardPage: React.FC = () => {
       {/* Background Engines Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Accrual Engine Card */}
-        <div className="bg-white rounded-xl border border-blue-100 p-6 shadow-xs">
-          <div className="flex items-center justify-between pb-3 border-b border-blue-100">
+        <div className="bg-white rounded-xl border border-teal-100 p-6 shadow-xs">
+          <div className="flex items-center justify-between pb-3 border-b border-teal-100">
             <h2 className="text-sm font-bold text-slate-950">Monthly Accrual Schedule</h2>
             <span className="text-xs px-2.5 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200">
               Active Schedule (0 0 1 * *)
@@ -412,8 +455,8 @@ export const AdminDashboardPage: React.FC = () => {
                     {new Date(lastAccrual.runAt).toLocaleString()}
                   </span>
                 </div>
-                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-blue-50 text-center">
-                  <div className="bg-blue-50/40 border border-blue-100 p-2 rounded-lg">
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-teal-50 text-center">
+                  <div className="bg-[#fafcfb] border border-teal-100 p-2 rounded-lg">
                     <span className="block text-[10px] text-slate-500 font-medium">Processed</span>
                     <strong className="text-sm text-slate-950">{lastAccrual.processedCount}</strong>
                   </div>
@@ -436,10 +479,10 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
 
         {/* SLA Monitor Engine Card */}
-        <div className="bg-white rounded-xl border border-blue-100 p-6 shadow-xs">
-          <div className="flex items-center justify-between pb-3 border-b border-blue-100">
+        <div className="bg-white rounded-xl border border-teal-100 p-6 shadow-xs">
+          <div className="flex items-center justify-between pb-3 border-b border-teal-100">
             <h2 className="text-sm font-bold text-slate-950">SLA Breach Monitor</h2>
-            <span className="text-xs px-2.5 py-0.5 rounded-lg bg-blue-50 text-blue-900 font-semibold border border-blue-200">
+            <span className="text-xs px-2.5 py-0.5 rounded-lg bg-[#e3f4f1] text-[#0e4a5c] font-semibold border border-teal-200">
               Active Poller (0 */5 * * *)
             </span>
           </div>
@@ -453,8 +496,8 @@ export const AdminDashboardPage: React.FC = () => {
                     {new Date(lastSla.runAt).toLocaleString()}
                   </span>
                 </div>
-                <div className="grid grid-cols-3 gap-2 pt-4 border-t border-blue-50 text-center">
-                  <div className="bg-blue-50/40 border border-blue-100 p-2 rounded-lg">
+                <div className="grid grid-cols-3 gap-2 pt-4 border-t border-teal-50 text-center">
+                  <div className="bg-[#fafcfb] border border-teal-100 p-2 rounded-lg">
                     <span className="block text-[10px] text-slate-500 font-medium">Tickets Checked</span>
                     <strong className="text-sm text-slate-950">{lastSla.ticketsChecked}</strong>
                   </div>
@@ -478,8 +521,8 @@ export const AdminDashboardPage: React.FC = () => {
       </div>
 
       {/* Organizational Hierarchy: Assign Direct Manager */}
-      <div className="bg-white rounded-xl border border-blue-100 p-6 shadow-xs">
-        <div className="pb-4 border-b border-blue-100">
+      <div className="bg-white rounded-xl border border-teal-100 p-6 shadow-xs">
+        <div className="pb-4 border-b border-teal-100">
           <h2 className="text-sm font-bold text-slate-950">Reporting Hierarchy Assignment</h2>
           <p className="text-xs text-slate-600 mt-0.5">
             Assign or update an employee's direct line manager for leave approvals.
@@ -495,7 +538,7 @@ export const AdminDashboardPage: React.FC = () => {
               required
               value={assignForm.employeeId}
               onChange={(e) => setAssignForm({ ...assignForm, employeeId: e.target.value })}
-              className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
+              className="block w-full px-3 py-2 border border-teal-200 rounded-lg text-sm focus:ring-1 focus:ring-[#0e4a5c] focus:border-[#0e4a5c] bg-white text-slate-950"
             >
               <option value="">-- Choose Employee --</option>
               {users.map((u) => (
@@ -514,7 +557,7 @@ export const AdminDashboardPage: React.FC = () => {
               required
               value={assignForm.managerId}
               onChange={(e) => setAssignForm({ ...assignForm, managerId: e.target.value })}
-              className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
+              className="block w-full px-3 py-2 border border-teal-200 rounded-lg text-sm focus:ring-1 focus:ring-[#0e4a5c] focus:border-[#0e4a5c] bg-white text-slate-950"
             >
               <option value="">-- Choose Manager --</option>
               {eligibleManagers.map((m) => (
@@ -529,7 +572,7 @@ export const AdminDashboardPage: React.FC = () => {
             <button
               type="submit"
               disabled={isAssigning}
-              className="w-full px-4 py-2 bg-slate-950 hover:bg-black text-white rounded-lg text-sm font-semibold disabled:opacity-50 transition shadow-xs"
+              className="w-full px-4 py-2 bg-[#0e4a5c] hover:bg-[#083543] text-white rounded-lg text-sm font-semibold disabled:opacity-50 transition shadow-xs"
             >
               {isAssigning ? 'Saving...' : 'Assign'}
             </button>
@@ -538,12 +581,12 @@ export const AdminDashboardPage: React.FC = () => {
       </div>
 
       {/* Organization Employees & Staff Directory */}
-      <div className="bg-white rounded-xl border border-blue-100 shadow-xs overflow-hidden">
-        <div className="px-6 py-4 border-b border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-blue-50/40">
+      <div className="bg-white rounded-xl border border-teal-100 shadow-xs overflow-hidden">
+        <div className="px-6 py-4 border-b border-teal-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#fafcfb]">
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-bold text-slate-950">Organization Employees</h2>
-              <span className="text-xs px-2.5 py-0.5 rounded-lg font-semibold border bg-blue-50 text-blue-950 border-blue-200/80">
+              <span className="text-xs px-2.5 py-0.5 rounded-lg font-semibold border bg-[#e3f4f1] text-[#0d2836] border-teal-200/80">
                 {users.length} Total Users
               </span>
             </div>
@@ -561,8 +604,8 @@ export const AdminDashboardPage: React.FC = () => {
                   onClick={() => setAdminUserStatusFilter(st)}
                   className={`px-2.5 py-1 rounded-lg font-semibold transition text-xs ${
                     adminUserStatusFilter === st
-                      ? 'bg-blue-100 text-blue-950 border border-blue-200 shadow-2xs'
-                      : 'bg-white border border-blue-100 text-slate-700 hover:text-black hover:bg-blue-50/70'
+                      ? 'bg-[#0e4a5c] text-white border border-[#0e4a5c] shadow-2xs'
+                      : 'bg-white border border-teal-100 text-slate-700 hover:text-black hover:bg-[#f0f9f8]'
                   }`}
                 >
                   {st || 'ALL'}
@@ -578,15 +621,15 @@ export const AdminDashboardPage: React.FC = () => {
                 placeholder="Search staff, code, department..."
                 value={adminUserSearch}
                 onChange={(e) => setAdminUserSearch(e.target.value)}
-                className="pl-9 pr-3 py-1.5 border border-blue-200 rounded-lg text-xs focus:ring-1 focus:ring-slate-950 focus:border-slate-950 w-52 sm:w-60 bg-white text-slate-950 placeholder:text-slate-400"
+                className="pl-9 pr-3 py-1.5 border border-teal-200 rounded-lg text-xs focus:ring-1 focus:ring-[#0e4a5c] focus:border-[#0e4a5c] w-52 sm:w-60 bg-white text-slate-950 placeholder:text-slate-400"
               />
             </div>
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-blue-100 text-xs">
-            <thead className="bg-blue-50/50 text-slate-700 font-semibold uppercase tracking-wider text-[11px] border-b border-blue-100">
+          <table className="min-w-full divide-y divide-teal-100 text-xs">
+            <thead className="bg-[#f8fbfb] text-slate-700 font-semibold uppercase tracking-wider text-[11px] border-b border-teal-100">
               <tr>
                 <th className="px-6 py-3 text-left">Employee</th>
                 <th className="px-6 py-3 text-left">Code</th>
@@ -597,7 +640,7 @@ export const AdminDashboardPage: React.FC = () => {
                 <th className="px-6 py-3 text-right">Quick Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-blue-50 bg-white">
+            <tbody className="divide-y divide-teal-50 bg-white">
               {filteredAdminUsers.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-8 text-center text-slate-400 italic">
@@ -606,7 +649,7 @@ export const AdminDashboardPage: React.FC = () => {
                 </tr>
               ) : (
                 filteredAdminUsers.map((u) => (
-                  <tr key={u.id} className="hover:bg-blue-50/30 transition">
+                  <tr key={u.id} className="hover:bg-[#f8fbfb] transition">
                     <td className="px-6 py-3.5 whitespace-nowrap">
                       <div className="font-semibold text-slate-950">{u.fullName || `${u.firstName} ${u.lastName}`}</div>
                       <div className="text-slate-500 text-[11px]">{u.email}</div>
@@ -621,7 +664,7 @@ export const AdminDashboardPage: React.FC = () => {
                       <div className="font-medium text-slate-950">{u.jobTitle || 'Employee'}</div>
                       <div className="flex flex-wrap gap-1 mt-0.5">
                         {u.roles.map((r) => (
-                          <span key={r} className="px-1.5 py-0.2 rounded bg-blue-50 text-blue-950 border border-blue-200/50 font-semibold text-[9px]">
+                          <span key={r} className="px-1.5 py-0.2 rounded bg-[#e3f4f1] text-[#0d2836] border border-teal-200/50 font-semibold text-[9px]">
                             {r}
                           </span>
                         ))}
@@ -655,7 +698,7 @@ export const AdminDashboardPage: React.FC = () => {
                       {u.status === 'PENDING_APPROVAL' ? (
                         <button
                           onClick={() => handleOpenApproveModal(u)}
-                          className="px-2.5 py-1 bg-slate-950 hover:bg-black text-white rounded text-xs font-semibold transition shadow-xs"
+                          className="px-2.5 py-1 bg-[#0e4a5c] hover:bg-[#083543] text-white rounded text-xs font-semibold transition shadow-xs"
                         >
                           Approve
                         </button>
@@ -665,7 +708,7 @@ export const AdminDashboardPage: React.FC = () => {
                             setAssignForm((prev) => ({ ...prev, employeeId: u.id }));
                             window.scrollTo({ top: 400, behavior: 'smooth' });
                           }}
-                          className="px-2.5 py-1 bg-white hover:bg-blue-50/70 text-slate-800 rounded text-xs font-semibold border border-blue-200 transition shadow-2xs"
+                          className="px-2.5 py-1 bg-white hover:bg-[#f0f9f8] text-slate-800 rounded text-xs font-semibold border border-teal-200 transition shadow-2xs"
                         >
                           Set Manager
                         </button>
@@ -680,8 +723,8 @@ export const AdminDashboardPage: React.FC = () => {
       </div>
 
       {/* Transactional Event Outbox Inspector */}
-      <div className="bg-white rounded-xl border border-blue-100 overflow-hidden shadow-xs">
-        <div className="px-6 py-4 border-b border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-blue-50/40">
+      <div className="bg-white rounded-xl border border-teal-100 overflow-hidden shadow-xs">
+        <div className="px-6 py-4 border-b border-teal-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#fafcfb]">
           <h2 className="text-sm font-bold text-slate-950">Transactional Event Outbox</h2>
 
           {/* Outbox Status Filter */}
@@ -695,8 +738,8 @@ export const AdminDashboardPage: React.FC = () => {
                 }}
                 className={`px-2.5 py-1 rounded-lg font-semibold transition ${
                   statusFilter === st
-                    ? 'bg-blue-100 text-blue-950 border border-blue-200 shadow-2xs'
-                    : 'bg-white border border-blue-100 text-slate-700 hover:text-black hover:bg-blue-50/70'
+                    ? 'bg-[#0e4a5c] text-white border border-[#0e4a5c] shadow-2xs'
+                    : 'bg-white border border-teal-100 text-slate-700 hover:text-black hover:bg-[#f0f9f8]'
                 }`}
               >
                 {st || 'ALL'}
@@ -706,15 +749,17 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
 
         {isLoading ? (
-          <div className="p-8 text-center text-sm text-slate-500">Loading events...</div>
+          <div className="p-6">
+            <TableSkeleton rows={4} cols={6} />
+          </div>
         ) : !outboxPage || outboxPage.content.length === 0 ? (
           <div className="p-12 text-center text-slate-500 text-sm">
             No events found in outbox matching filter.
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-blue-100 text-xs">
-              <thead className="bg-blue-50/50 text-slate-700 font-semibold uppercase tracking-wider text-[11px] border-b border-blue-100">
+            <table className="min-w-full divide-y divide-teal-100 text-xs">
+              <thead className="bg-[#f8fbfb] text-slate-700 font-semibold uppercase tracking-wider text-[11px] border-b border-teal-100">
                 <tr>
                   <th className="px-6 py-3 text-left">Event Type</th>
                   <th className="px-6 py-3 text-left">Aggregate</th>
@@ -724,10 +769,10 @@ export const AdminDashboardPage: React.FC = () => {
                   <th className="px-6 py-3 text-right">Payload</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-blue-50 bg-white">
+              <tbody className="divide-y divide-teal-50 bg-white">
                 {outboxPage.content.map((ev) => (
-                  <tr key={ev.id} className="hover:bg-blue-50/30 transition">
-                    <td className="px-6 py-3 font-mono font-semibold text-blue-950">
+                  <tr key={ev.id} className="hover:bg-[#f8fbfb] transition">
+                    <td className="px-6 py-3 font-mono font-semibold text-[#0d2836]">
                       {ev.eventType}
                     </td>
                     <td className="px-6 py-3 text-slate-600 font-mono">
@@ -755,7 +800,7 @@ export const AdminDashboardPage: React.FC = () => {
                     <td className="px-6 py-3 text-right">
                       <button
                         onClick={() => setSelectedEvent(ev)}
-                        className="text-xs text-blue-700 hover:text-black font-semibold transition"
+                        className="text-xs text-[#0e4a5c] hover:text-black font-semibold transition"
                       >
                         View
                       </button>
@@ -769,7 +814,7 @@ export const AdminDashboardPage: React.FC = () => {
 
         {/* Pagination Controls */}
         {outboxPage && outboxPage.totalPages > 1 && (
-          <div className="px-6 py-3 border-t border-blue-100 flex items-center justify-between text-xs text-slate-600 bg-blue-50/20">
+          <div className="px-6 py-3 border-t border-teal-100 flex items-center justify-between text-xs text-slate-600 bg-[#fafcfb]">
             <span>
               Page {outboxPage.number + 1} of {outboxPage.totalPages} ({outboxPage.totalElements} total entries)
             </span>
@@ -777,14 +822,14 @@ export const AdminDashboardPage: React.FC = () => {
               <button
                 disabled={outboxPage.number === 0}
                 onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
-                className="px-3 py-1 border border-blue-200 rounded-lg bg-white disabled:opacity-40 hover:bg-blue-50/50 font-medium text-slate-800 transition"
+                className="px-3 py-1 border border-teal-200 rounded-lg bg-white disabled:opacity-40 hover:bg-[#f8fbfb] font-medium text-slate-800 transition"
               >
                 Previous
               </button>
               <button
                 disabled={outboxPage.number + 1 >= outboxPage.totalPages}
                 onClick={() => setCurrentPage((p) => p + 1)}
-                className="px-3 py-1 border border-blue-200 rounded-lg bg-white disabled:opacity-40 hover:bg-blue-50/50 font-medium text-slate-800 transition"
+                className="px-3 py-1 border border-teal-200 rounded-lg bg-white disabled:opacity-40 hover:bg-[#f8fbfb] font-medium text-slate-800 transition"
               >
                 Next
               </button>
@@ -815,7 +860,7 @@ export const AdminDashboardPage: React.FC = () => {
                 required
                 value={triggerYear}
                 onChange={(e) => setTriggerYear(Number(e.target.value))}
-                className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
+                className="block w-full px-3 py-2 border border-teal-200 rounded-lg text-sm focus:ring-1 focus:ring-[#0e4a5c] focus:border-[#0e4a5c] bg-white text-slate-950"
               />
             </div>
             <div>
@@ -829,12 +874,12 @@ export const AdminDashboardPage: React.FC = () => {
                 required
                 value={triggerMonth}
                 onChange={(e) => setTriggerMonth(Number(e.target.value))}
-                className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
+                className="block w-full px-3 py-2 border border-teal-200 rounded-lg text-sm focus:ring-1 focus:ring-[#0e4a5c] focus:border-[#0e4a5c] bg-white text-slate-950"
               />
             </div>
           </div>
 
-          <div className="pt-4 border-t border-blue-100 flex flex-wrap items-center justify-between gap-2">
+          <div className="pt-4 border-t border-teal-100 flex flex-wrap items-center justify-between gap-2">
             <div className="flex gap-2">
               <button
                 type="button"
@@ -858,14 +903,14 @@ export const AdminDashboardPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsTriggerModalOpen(false)}
-                className="px-3 py-1.5 border border-blue-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-blue-50/50 transition"
+                className="px-3 py-1.5 border border-teal-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-[#f8fbfb] transition"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isTriggering}
-                className="px-4 py-1.5 bg-slate-950 hover:bg-black text-white rounded-lg text-xs font-semibold disabled:opacity-50 transition shadow-xs"
+                className="px-4 py-1.5 bg-[#0e4a5c] hover:bg-[#083543] text-white rounded-lg text-xs font-semibold disabled:opacity-50 transition shadow-xs"
               >
                 {isTriggering ? 'Running...' : 'Run Accrual'}
               </button>
@@ -883,7 +928,7 @@ export const AdminDashboardPage: React.FC = () => {
           maxWidth="lg"
         >
           <div className="space-y-4 text-xs">
-            <div className="grid grid-cols-2 gap-2 bg-blue-50/40 border border-blue-100 p-3 rounded-xl text-slate-800">
+            <div className="grid grid-cols-2 gap-2 bg-[#fafcfb] border border-teal-100 p-3 rounded-xl text-slate-800">
               <div>Aggregate Type: <strong>{selectedEvent.aggregateType}</strong></div>
               <div>Aggregate ID: <strong className="font-mono">{selectedEvent.aggregateId}</strong></div>
               <div>Status: <strong>{selectedEvent.status}</strong></div>
@@ -927,7 +972,7 @@ export const AdminDashboardPage: React.FC = () => {
           maxWidth="md"
         >
           <form onSubmit={handleConfirmApprove} className="space-y-4">
-            <div className="bg-blue-50/40 p-4 rounded-xl border border-blue-100 text-xs space-y-2">
+            <div className="bg-[#fafcfb] p-4 rounded-xl border border-teal-100 text-xs space-y-2">
               <div className="flex justify-between">
                 <span className="text-slate-500">Applicant:</span>
                 <span className="font-semibold text-slate-950">{selectedPendingUser.fullName || `${selectedPendingUser.firstName} ${selectedPendingUser.lastName}`}</span>
@@ -946,9 +991,9 @@ export const AdminDashboardPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 text-blue-950 p-3.5 rounded-xl text-xs">
+            <div className="bg-[#e3f4f1] border border-teal-200 text-[#0d2836] p-3.5 rounded-xl text-xs">
               <p className="font-semibold mb-1">What happens upon approval?</p>
-              <ul className="list-disc list-inside space-y-0.5 text-blue-900">
+              <ul className="list-disc list-inside space-y-0.5 text-[#0e4a5c]">
                 <li>Account status changes from <strong>PENDING_APPROVAL</strong> to <strong>ACTIVE</strong>.</li>
                 <li>Employee can immediately log in to the portal.</li>
                 <li>Current-year leave balances are automatically allocated for all active leave types.</li>
@@ -963,7 +1008,7 @@ export const AdminDashboardPage: React.FC = () => {
               <select
                 value={approvalManagerId}
                 onChange={(e) => setApprovalManagerId(e.target.value)}
-                className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
+                className="block w-full px-3 py-2 border border-teal-200 rounded-lg text-sm focus:ring-1 focus:ring-[#0e4a5c] focus:border-[#0e4a5c] bg-white text-slate-950"
               >
                 <option value="">-- Assign Manager Later --</option>
                 {eligibleManagers.map((m) => (
@@ -977,7 +1022,7 @@ export const AdminDashboardPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="pt-4 border-t border-blue-100 flex items-center justify-end gap-3">
+            <div className="pt-4 border-t border-teal-100 flex items-center justify-end gap-3">
               <button
                 type="button"
                 disabled={isProcessingApproval}
@@ -985,20 +1030,35 @@ export const AdminDashboardPage: React.FC = () => {
                   setIsApproveModalOpen(false);
                   setSelectedPendingUser(null);
                 }}
-                className="px-4 py-2 border border-blue-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-blue-50/50 disabled:opacity-50 transition"
+                className="px-4 py-2 border border-teal-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-[#f8fbfb] disabled:opacity-50 transition"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isProcessingApproval}
-                className="px-4 py-2 bg-slate-950 hover:bg-black text-white rounded-lg text-xs font-semibold disabled:opacity-50 transition shadow-xs"
+                className="px-4 py-2 bg-[#0e4a5c] hover:bg-[#083543] text-white rounded-lg text-xs font-semibold disabled:opacity-50 transition shadow-xs"
               >
                 {isProcessingApproval ? 'Activating Employee...' : 'Approve & Activate'}
               </button>
             </div>
           </form>
         </Modal>
+      )}
+
+      {/* Enterprise Confirmation Dialog */}
+      {confirmAction && (
+        <ConfirmModal
+          isOpen={confirmAction.isOpen}
+          onClose={() => setConfirmAction(null)}
+          onConfirm={confirmAction.onConfirm}
+          title={confirmAction.title}
+          message={confirmAction.message}
+          variant={confirmAction.variant}
+          confirmLabel={confirmAction.confirmLabel}
+          cancelLabel="Cancel"
+          isLoading={isConfirmLoading}
+        />
       )}
     </div>
   );

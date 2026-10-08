@@ -4,6 +4,8 @@ import { LeaveRequest } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
 import { Modal } from '../components/Modal';
 import { Alert } from '../components/Alert';
+import { TableSkeleton } from '../components/Skeleton';
+import { RefreshCw, Check, X } from 'lucide-react';
 
 export const ManagerApprovalsPage: React.FC = () => {
   const [pendingRequests, setPendingRequests] = useState<LeaveRequest[]>([]);
@@ -99,7 +101,7 @@ export const ManagerApprovalsPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-950 tracking-tight">
+        <h1 className="text-2xl sm:text-3xl font-bold text-[#0d2836] tracking-tight">
           Manager Leave Approvals
         </h1>
         <p className="text-sm text-slate-600 mt-1">
@@ -115,36 +117,39 @@ export const ManagerApprovalsPage: React.FC = () => {
         />
       )}
 
-      <div className="bg-white rounded-xl border border-blue-100 overflow-hidden shadow-xs">
-        <div className="px-6 py-4 border-b border-blue-100 flex items-center justify-between bg-blue-50/40">
-          <span className="font-bold text-slate-950 text-sm">
+      <div className="bg-white rounded-2xl border border-teal-100 overflow-hidden shadow-2xs">
+        <div className="px-6 py-4 border-b border-teal-50 flex items-center justify-between bg-[#fafcfb]">
+          <span className="font-bold text-[#0d2836] text-sm">
             Pending Approval Queue ({pendingRequests.length})
           </span>
           <button
             onClick={loadPendingApprovals}
-            className="text-xs text-blue-700 hover:text-black font-semibold transition"
+            className="inline-flex items-center gap-1.5 text-xs text-[#0e4a5c] hover:text-[#083543] font-bold transition"
           >
-            Refresh Queue
+            <RefreshCw className="h-3.5 w-3.5" />
+            <span>Refresh Queue</span>
           </button>
         </div>
 
         {isLoading ? (
-          <div className="p-8 text-center text-sm text-slate-500">Loading requests...</div>
+          <div className="p-6">
+            <TableSkeleton rows={3} cols={4} />
+          </div>
         ) : pendingRequests.length === 0 ? (
           <div className="p-12 text-center text-slate-500">
-            <p className="font-bold text-slate-950 text-sm">No pending requests</p>
-            <p className="text-xs text-slate-600 mt-1">Leave applications submitted by your reporting staff will appear here.</p>
+            <p className="font-bold text-[#0d2836] text-sm">No pending requests</p>
+            <p className="text-xs text-slate-500 mt-1">Leave applications submitted by your reporting staff will appear here.</p>
           </div>
         ) : (
-          <div className="divide-y divide-blue-50">
+          <div className="divide-y divide-teal-50">
             {pendingRequests.map((req) => (
               <div
                 key={req.id}
-                className="p-6 hover:bg-blue-50/30 transition flex flex-col md:flex-row md:items-center justify-between gap-6"
+                className="p-6 hover:bg-[#f6faf8] transition flex flex-col md:flex-row md:items-center justify-between gap-6"
               >
                 <div className="space-y-2">
                   <div className="flex items-center gap-3">
-                    <span className="font-bold text-base text-slate-950">
+                    <span className="font-bold text-base text-[#0d2836]">
                       {req.employeeName}
                     </span>
                     <span className="text-xs text-slate-500 font-mono">
@@ -154,38 +159,40 @@ export const ManagerApprovalsPage: React.FC = () => {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
-                    <span className="font-semibold text-blue-900 bg-blue-50 px-2.5 py-0.5 rounded border border-blue-200/70">
+                    <span className="font-bold text-[#0e4a5c] bg-[#e3f4f1] px-2.5 py-0.5 rounded border border-teal-200/70">
                       {req.leaveTypeName}
                     </span>
-                    <span className="font-medium">
+                    <span className="font-medium text-slate-700">
                       {req.startDate} &rarr; {req.endDate} ({req.totalDays} day{Number(req.totalDays) > 1 ? 's' : ''})
                     </span>
-                    <span className="text-slate-500">
+                    <span className="text-slate-400">
                       Submitted: {req.createdAt ? new Date(req.createdAt).toLocaleDateString() : ''}
                     </span>
                   </div>
 
-                  <div className="text-sm text-slate-800 bg-blue-50/40 p-3 rounded-lg border border-blue-100 max-w-2xl">
-                    <span className="font-semibold text-xs text-slate-500 block mb-0.5">
+                  <div className="text-xs text-slate-700 bg-[#f8fbfb] p-3 rounded-xl border border-teal-100 max-w-2xl leading-relaxed">
+                    <span className="font-bold text-xs text-[#0d2836] block mb-0.5">
                       Employee Justification:
                     </span>
                     {req.reason}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2.5 flex-shrink-0">
+                <div className="flex items-center gap-2.5 shrink-0">
                   <button
                     onClick={() => openDecisionModal(req, 'reject')}
-                    className="px-3.5 py-1.5 border border-slate-300 bg-white text-slate-800 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 rounded-lg text-sm font-semibold transition shadow-2xs"
+                    className="inline-flex items-center gap-1 px-3.5 py-1.5 border border-rose-200 bg-white text-rose-700 hover:bg-rose-50 rounded-xl text-xs font-bold transition shadow-2xs"
                   >
-                    Reject
+                    <X className="h-3.5 w-3.5" />
+                    <span>Reject</span>
                   </button>
 
                   <button
                     onClick={() => openDecisionModal(req, 'approve')}
-                    className="px-4 py-1.5 bg-slate-950 hover:bg-black text-white rounded-lg text-sm font-semibold transition shadow-xs"
+                    className="inline-flex items-center gap-1 px-4 py-1.5 bg-[#0e4a5c] hover:bg-[#083543] text-white rounded-xl text-xs font-bold transition shadow-xs"
                   >
-                    Approve
+                    <Check className="h-3.5 w-3.5" />
+                    <span>Approve</span>
                   </button>
                 </div>
               </div>
@@ -211,17 +218,17 @@ export const ManagerApprovalsPage: React.FC = () => {
         )}
 
         <form onSubmit={handleDecisionSubmit} className="space-y-4">
-          <div className="text-sm text-slate-600">
+          <div className="text-xs text-slate-600 leading-relaxed">
             You are about to{' '}
             <strong className={decisionModal.type === 'approve' ? 'text-emerald-700' : 'text-rose-700'}>
               {decisionModal.type.toUpperCase()}
             </strong>{' '}
-            the request for <strong className="text-slate-950">{decisionModal.request?.employeeName}</strong> for{' '}
-            <strong className="text-slate-950">{decisionModal.request?.totalDays} days</strong> ({decisionModal.request?.startDate} to {decisionModal.request?.endDate}).
+            the request for <strong className="text-[#0d2836]">{decisionModal.request?.employeeName}</strong> for{' '}
+            <strong className="text-[#0d2836]">{decisionModal.request?.totalDays} days</strong> ({decisionModal.request?.startDate} to {decisionModal.request?.endDate}).
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-1">
+            <label className="block text-xs font-bold text-[#0d2836] mb-1">
               Comments / Notes {decisionModal.type === 'reject' && <span className="text-rose-500">*</span>}
             </label>
             <textarea
@@ -234,24 +241,24 @@ export const ManagerApprovalsPage: React.FC = () => {
                   ? 'Optional approval comments...'
                   : 'Please state the reason for rejecting this leave request...'
               }
-              className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
+              className="block w-full px-3 py-2 border border-teal-200 rounded-xl text-xs focus:ring-1 focus:ring-[#0e4a5c] focus:border-[#0e4a5c] bg-white text-[#0d2836]"
             />
           </div>
 
-          <div className="pt-4 border-t border-blue-100 flex items-center justify-end gap-3">
+          <div className="pt-4 border-t border-teal-100 flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={() => setDecisionModal({ isOpen: false, type: 'approve', request: null })}
-              className="px-4 py-2 border border-blue-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-blue-50/50 transition"
+              className="px-4 py-2 border border-teal-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-[#f0f9f8] transition"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`px-5 py-2 text-white rounded-lg text-sm font-semibold shadow-xs disabled:opacity-50 transition ${
+              className={`px-5 py-2 text-white rounded-xl text-xs font-bold shadow-xs disabled:opacity-50 transition ${
                 decisionModal.type === 'approve'
-                  ? 'bg-slate-950 hover:bg-black'
+                  ? 'bg-[#0e4a5c] hover:bg-[#083543]'
                   : 'bg-rose-600 hover:bg-rose-700'
               }`}
             >

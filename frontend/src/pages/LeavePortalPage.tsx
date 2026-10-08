@@ -29,6 +29,9 @@ import { authApi } from '../api/authApi';
 import { LeaveBalance, LeaveRequest, LeaveType, UserProfile } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
+import { ConfirmModal } from '../components/ConfirmModal';
+import { CardSkeleton, TableSkeleton } from '../components/Skeleton';
+import { StatusBadge } from '../components/StatusBadge';
 import {
   getKenyanHolidaysForYear,
   isKenyanPublicHoliday,
@@ -433,20 +436,30 @@ export const LeavePortalPage: React.FC = () => {
     }
   };
 
-  // Cancel own pending request
-  const handleCancelRequest = async (requestId: string) => {
-    if (!window.confirm('Are you sure you want to cancel this pending leave request?')) return;
+  // Cancel own pending request confirmation state
+  const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
+  const [isCancelling, setIsCancelling] = useState<boolean>(false);
 
+  const handleCancelRequest = (requestId: string) => {
+    setCancelTargetId(requestId);
+  };
+
+  const executeCancelRequest = async () => {
+    if (!cancelTargetId) return;
+    setIsCancelling(true);
     try {
-      await leaveApi.cancelRequest(requestId);
+      await leaveApi.cancelRequest(cancelTargetId);
       setFeedback({
         type: 'success',
         message: 'Leave request successfully cancelled and hold released from balance.',
       });
+      setCancelTargetId(null);
       await loadData();
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Unable to cancel leave request.';
       setFeedback({ type: 'error', message: msg });
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -612,7 +625,9 @@ export const LeavePortalPage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {balances.length === 0 ? (
+          {isLoading ? (
+            <CardSkeleton count={4} />
+          ) : balances.length === 0 ? (
             <div className="col-span-4 bg-white rounded-2xl p-6 text-center border border-teal-100 text-xs text-slate-500">
               No leave balance records found for year {currentYear}. Please contact your HR administrator.
             </div>
@@ -811,6 +826,31 @@ export const LeavePortalPage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Calendar Color Legend */}
+        <div className="mt-3 mb-1 flex flex-wrap items-center gap-3.5 sm:gap-5 text-[11px] bg-[#f8fbfb] p-2.5 rounded-xl border border-teal-100">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Legend:</span>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
+            <span className="font-semibold text-slate-700">Public Holiday</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+            <span className="font-semibold text-slate-700">Approved Leave</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
+            <span className="font-semibold text-slate-700">Pending Leave</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Bookmark className="h-3 w-3 fill-amber-500 text-amber-500" />
+            <span className="font-semibold text-slate-700">Bookmarked / Note</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm bg-[#0e4a5c]" />
+            <span className="font-semibold text-slate-700">Selected</span>
+          </div>
+        </div>
 
         {/* Days of Week Headers */}
         <div className="mt-2.5 grid grid-cols-7 text-center text-[11px] font-bold text-slate-400 py-1 border-b border-teal-50">
@@ -1143,7 +1183,13 @@ export const LeavePortalPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-teal-50 text-xs">
-              {displayedRequests.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7} className="py-6 px-4">
+                    <TableSkeleton rows={4} cols={7} />
+                  </td>
+                </tr>
+              ) : displayedRequests.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-10 text-center text-slate-400">
                     No leave requests found for this filter.
@@ -1194,32 +1240,7 @@ export const LeavePortalPage: React.FC = () => {
                       </td>
 
                       <td className="py-3.5 px-4">
-                        {req.status === 'APPROVED' && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
-                            <CheckCircle2 className="h-3 w-3" />
-                            <span>Approved</span>
-                          </span>
-                        )}
-
-                        {req.status === 'REJECTED' && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 border border-rose-200 px-2.5 py-0.5 text-[11px] font-bold text-rose-800">
-                            <XCircle className="h-3 w-3" />
-                            <span>Rejected</span>
-                          </span>
-                        )}
-
-                        {req.status === 'PENDING' && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[11px] font-bold text-amber-800">
-                            <Clock className="h-3 w-3" />
-                            <span>Pending Approval</span>
-                          </span>
-                        )}
-
-                        {req.status === 'CANCELLED' && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-[11px] font-bold text-slate-600">
-                            Cancelled
-                          </span>
-                        )}
+                        <StatusBadge status={req.status} />
                       </td>
 
                       <td className="py-3.5 px-4 text-right">
@@ -1469,6 +1490,19 @@ export const LeavePortalPage: React.FC = () => {
           </form>
         </Modal>
       )}
+
+      {/* Confirmation Modal for Leave Request Cancellation */}
+      <ConfirmModal
+        isOpen={Boolean(cancelTargetId)}
+        onClose={() => setCancelTargetId(null)}
+        onConfirm={executeCancelRequest}
+        title="Cancel Leave Application"
+        message="Are you sure you want to cancel this pending leave request? Any reserved days will be immediately released back to your available balance."
+        confirmLabel="Yes, Cancel Request"
+        cancelLabel="Keep Request"
+        variant="danger"
+        isLoading={isCancelling}
+      />
     </div>
   );
 };

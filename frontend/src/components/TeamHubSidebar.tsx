@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -12,6 +12,8 @@ import {
   LifeBuoy
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { leaveApi } from '../api/leaveApi';
+import { helpdeskApi } from '../api/helpdeskApi';
 
 interface TeamHubSidebarProps {
   mobileOpen?: boolean;
@@ -21,6 +23,33 @@ interface TeamHubSidebarProps {
 export const TeamHubSidebar: React.FC<TeamHubSidebarProps> = ({ mobileOpen, onCloseMobile }) => {
   const location = useLocation();
   const { user, roles, hasRole, hasAnyRole } = useAuth();
+
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number | null>(null);
+  const [queueCount, setQueueCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (hasAnyRole(['LINE_MANAGER', 'HR_ADMIN'])) {
+      leaveApi.getPendingApprovals()
+        .then((res) => {
+          if (isMounted) setPendingApprovalsCount(res?.length || 0);
+        })
+        .catch(() => {});
+    }
+    if (hasAnyRole(['SUPPORT_AGENT', 'HR_ADMIN'])) {
+      helpdeskApi.getQueueTickets()
+        .then((res) => {
+          if (isMounted) {
+            const openCount = res?.filter((t) => t.status === 'NEW' || t.status === 'OPEN' || t.status === 'IN_PROGRESS')?.length || 0;
+            setQueueCount(openCount);
+          }
+        })
+        .catch(() => {});
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [roles, location.pathname]);
 
   const isLeaveActive = location.pathname.startsWith('/leave');
   const isDashboardActive = location.pathname === '/' || location.pathname === '/dashboard';
@@ -133,9 +162,19 @@ export const TeamHubSidebar: React.FC<TeamHubSidebarProps> = ({ mobileOpen, onCl
                   <ShieldCheck className="h-4 w-4 shrink-0 text-teal-600" />
                   <span>Approvals</span>
                 </div>
-                <span className="text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded">
-                  Pending
-                </span>
+                {pendingApprovalsCount !== null && pendingApprovalsCount > 0 ? (
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    isApprovalsActive ? 'bg-white text-[#0e4a5c]' : 'bg-amber-100 text-amber-800 border border-amber-300'
+                  }`}>
+                    {pendingApprovalsCount}
+                  </span>
+                ) : (
+                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                    isApprovalsActive ? 'text-teal-100' : 'text-slate-400'
+                  }`}>
+                    0
+                  </span>
+                )}
               </NavLink>
             </div>
           )}
@@ -145,14 +184,23 @@ export const TeamHubSidebar: React.FC<TeamHubSidebarProps> = ({ mobileOpen, onCl
             <NavLink
               to="/agent-queue"
               onClick={onCloseMobile}
-              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+              className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                 isAgentQueueActive
                   ? 'bg-[#0e4a5c] text-white shadow-xs font-bold'
                   : 'text-slate-600 hover:text-[#0d2836] hover:bg-[#f0f9f8]'
               }`}
             >
-              <Headphones className="h-4 w-4 shrink-0 text-teal-600" />
-              <span>Agent Queue</span>
+              <div className="flex items-center gap-3">
+                <Headphones className="h-4 w-4 shrink-0 text-teal-600" />
+                <span>Agent Queue</span>
+              </div>
+              {queueCount !== null && queueCount > 0 ? (
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  isAgentQueueActive ? 'bg-white text-[#0e4a5c]' : 'bg-teal-100 text-[#0e4a5c] border border-teal-300'
+                }`}>
+                  {queueCount}
+                </span>
+              ) : null}
             </NavLink>
           )}
 

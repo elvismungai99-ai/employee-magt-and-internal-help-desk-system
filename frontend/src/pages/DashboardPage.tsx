@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 
 export const DashboardPage: React.FC = () => {
-  const { hasRole } = useAuth();
+  const { hasRole, hasAnyRole } = useAuth();
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-12 sm:space-y-16 selection:bg-teal-200 selection:text-teal-900">
@@ -185,7 +185,7 @@ export const DashboardPage: React.FC = () => {
 
           {/* Step 2: Approvals and Team Calendars */}
           <Link 
-            to="/approvals"
+            to={hasAnyRole(['LINE_MANAGER', 'HR_ADMIN']) ? '/approvals' : '/leave'}
             className="bg-white rounded-2xl border border-teal-100 p-6 shadow-xs hover:border-teal-300 hover:shadow-sm transition space-y-3 group block"
           >
             <div className="w-9 h-9 rounded-xl bg-[#e3f4f1] text-[#0e4a5c] flex items-center justify-center group-hover:bg-[#0e4a5c] group-hover:text-white transition">
@@ -198,7 +198,7 @@ export const DashboardPage: React.FC = () => {
               Give managers full team visibility to review applications quickly, avoid coverage gaps, and coordinate department availability smoothly.
             </p>
             <span className="text-xs font-semibold text-[#0e4a5c] inline-flex items-center gap-1 group-hover:underline pt-1">
-              View manager approvals &rarr;
+              {hasAnyRole(['LINE_MANAGER', 'HR_ADMIN']) ? 'View manager approvals →' : 'View my leave schedule →'}
             </span>
           </Link>
 
@@ -333,12 +333,28 @@ export const DashboardPage: React.FC = () => {
                 Create consistent service experiences with visibility, accountability, audit logging, and fewer manual handoffs across the company.
               </p>
             </div>
-            <Link
-              to="/approvals"
-              className="text-xs font-semibold text-[#0e4a5c] hover:underline inline-flex items-center gap-1"
-            >
-              Access manager queue &rarr;
-            </Link>
+            {hasAnyRole(['LINE_MANAGER', 'HR_ADMIN']) ? (
+              <Link
+                to="/approvals"
+                className="text-xs font-semibold text-[#0e4a5c] hover:underline inline-flex items-center gap-1"
+              >
+                Access manager queue &rarr;
+              </Link>
+            ) : hasRole('SUPPORT_AGENT') ? (
+              <Link
+                to="/agent-queue"
+                className="text-xs font-semibold text-[#0e4a5c] hover:underline inline-flex items-center gap-1"
+              >
+                Access agent queue &rarr;
+              </Link>
+            ) : (
+              <Link
+                to="/helpdesk"
+                className="text-xs font-semibold text-[#0e4a5c] hover:underline inline-flex items-center gap-1"
+              >
+                Access help desk &rarr;
+              </Link>
+            )}
           </div>
         </div>
       </section>
@@ -398,9 +414,20 @@ export const DashboardPage: React.FC = () => {
             <p className="text-xs text-slate-600">
               Department leave queue for line managers and HR admins to review, approve, or reject subordinate leave requests with notes.
             </p>
-            <Link to="/approvals" className="text-xs text-[#0e4a5c] font-semibold hover:underline block pt-1">
-              Go to Approvals &rarr;
-            </Link>
+            {hasAnyRole(['LINE_MANAGER', 'HR_ADMIN']) ? (
+              <Link to="/approvals" className="text-xs text-[#0e4a5c] font-semibold hover:underline block pt-1">
+                Go to Approvals &rarr;
+              </Link>
+            ) : (
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[10px] font-medium text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                  Manager access required
+                </span>
+                <Link to="/leave" className="text-xs text-[#0e4a5c] font-semibold hover:underline">
+                  My requests &rarr;
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Card D: Support Agent Queue */}
@@ -414,9 +441,20 @@ export const DashboardPage: React.FC = () => {
             <p className="text-xs text-slate-600">
               Triage console for support agents to pick up unassigned tickets, investigate issues, update resolution status, and meet SLA timers.
             </p>
-            <Link to="/agent-queue" className="text-xs text-[#0e4a5c] font-semibold hover:underline block pt-1">
-              Go to Agent Queue &rarr;
-            </Link>
+            {hasAnyRole(['SUPPORT_AGENT', 'HR_ADMIN']) ? (
+              <Link to="/agent-queue" className="text-xs text-[#0e4a5c] font-semibold hover:underline block pt-1">
+                Go to Agent Queue &rarr;
+              </Link>
+            ) : (
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[10px] font-medium text-blue-800 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                  Support Agent required
+                </span>
+                <Link to="/helpdesk" className="text-xs text-[#0e4a5c] font-semibold hover:underline">
+                  My tickets &rarr;
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Card E: Administration */}
@@ -430,9 +468,20 @@ export const DashboardPage: React.FC = () => {
             <p className="text-xs text-slate-600">
               Organization user management, employee verification and account approvals, department hierarchies, and system configuration.
             </p>
-            <Link to="/admin" className="text-xs text-[#0e4a5c] font-semibold hover:underline block pt-1">
-              Go to Admin Console &rarr;
-            </Link>
+            {hasRole('HR_ADMIN') ? (
+              <Link to="/admin" className="text-xs text-[#0e4a5c] font-semibold hover:underline block pt-1">
+                Go to Admin Console &rarr;
+              </Link>
+            ) : (
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[10px] font-medium text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                  HR Admin required
+                </span>
+                <Link to="/leave" className="text-xs text-[#0e4a5c] font-semibold hover:underline">
+                  Leave Portal &rarr;
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Card F: Policy & Compliance */}

@@ -22,7 +22,7 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
   title = 'Leave Management',
   breadcrumb = 'Dashboard / Leave Management',
 }) => {
-  const { user, logout, roles } = useAuth();
+  const { user, logout, roles, hasRole } = useAuth();
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -143,7 +143,7 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
                   <span>Internal Help Desk</span>
                 </Link>
 
-                {roles.includes('HR_ADMIN') && (
+                {hasRole('HR_ADMIN') && (
                   <Link
                     to="/admin"
                     onClick={() => setUserDropdownOpen(false)}

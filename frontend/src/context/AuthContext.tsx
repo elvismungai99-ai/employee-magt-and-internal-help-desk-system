@@ -106,10 +106,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const hasRole = (role: UserRole | string): boolean => {
-    return roles.includes(role) || roles.includes(`ROLE_${role}`);
+    if (!role || !roles || roles.length === 0) return false;
+    const cleanTarget = String(role).toUpperCase().replace(/^ROLE_/, '').trim();
+    return roles.some((r) => String(r || '').toUpperCase().replace(/^ROLE_/, '').trim() === cleanTarget);
   };
 
   const hasAnyRole = (targetRoles: string[]): boolean => {
+    if (!targetRoles || targetRoles.length === 0) return false;
     return targetRoles.some((r) => hasRole(r));
   };
 

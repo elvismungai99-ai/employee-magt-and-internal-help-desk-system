@@ -382,6 +382,37 @@ export const AgentQueuePage: React.FC = () => {
               </div>
             </div>
 
+            {/* Attachments Section */}
+            {activeTicket.attachments && activeTicket.attachments.length > 0 && (
+              <div className="space-y-2 bg-slate-50/70 p-3 rounded-xl border border-blue-100">
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Attachments ({activeTicket.attachments.length})
+                </h3>
+                <div className="space-y-1.5">
+                  {activeTicket.attachments.map((att) => (
+                    <div
+                      key={att.id}
+                      className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200 text-xs"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="font-medium text-slate-800 truncate">{att.fileName}</span>
+                        <span className="text-[10px] text-slate-400">
+                          ({Math.round(att.fileSizeBytes / 1024)} KB)
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => helpdeskApi.downloadAttachment(activeTicket.id, att.id, att.fileName)}
+                        className="text-xs text-blue-700 hover:text-blue-900 font-semibold px-2 py-1 rounded bg-blue-50 hover:bg-blue-100 transition"
+                      >
+                        Download
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Comments Thread */}
             <div className="space-y-3">
               <h3 className="text-xs font-bold text-slate-950 uppercase tracking-wider">

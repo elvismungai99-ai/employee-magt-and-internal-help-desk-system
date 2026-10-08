@@ -89,8 +89,16 @@ public class LeaveRequestService {
             throw new IllegalArgumentException("Start date cannot be after end date");
         }
 
+        boolean isRetroactivePermitted = leaveType.getName().toLowerCase().contains("sick") ||
+                                         leaveType.getName().toLowerCase().contains("emergency") ||
+                                         leaveType.getName().toLowerCase().contains("compassionate");
         if (startDate.isBefore(LocalDate.now())) {
-            throw new IllegalArgumentException("Leave start date cannot be in the past");
+            if (!isRetroactivePermitted) {
+                throw new IllegalArgumentException("Leave start date cannot be in the past for " + leaveType.getName());
+            }
+            if (startDate.isBefore(LocalDate.now().minusDays(14))) {
+                throw new IllegalArgumentException("Retroactive leave request for " + leaveType.getName() + " cannot exceed 14 days in the past");
+            }
         }
 
         // 4. Calculate working days (Monday - Friday)
@@ -117,17 +125,30 @@ public class LeaveRequestService {
             throw new IllegalArgumentException("A pending or approved leave request already exists for the selected date range");
         }
 
-        // 6. Find reporting line manager for approval routing
+        // 6. Find reporting line manager for approval routing (with HR Admin fallback)
         List<ReportingHierarchy> hierarchyList = reportingHierarchyRepository.findActiveHierarchyForEmployeeAndType(
                 employeeId, RelationshipType.DIRECT, LocalDate.now());
         if (hierarchyList.isEmpty()) {
             hierarchyList = reportingHierarchyRepository.findActiveHierarchyForEmployee(employeeId, LocalDate.now());
         }
 
-        if (hierarchyList.isEmpty() || hierarchyList.get(0).getManager() == null) {
-            throw new IllegalArgumentException("Cannot submit leave request: No active direct manager assigned in reporting hierarchy");
+        User manager = null;
+        if (!hierarchyList.isEmpty() && hierarchyList.get(0).getManager() != null) {
+            manager = hierarchyList.get(0).getManager();
+        } else {
+            // Graceful fallback to HR Admin when direct manager is unassigned
+            manager = userRepository.findAll().stream()
+                    .filter(u -> "ACTIVE".equalsIgnoreCase(u.getStatus()))
+                    .filter(u -> u.getRoles().stream().anyMatch(r -> "HR_ADMIN".equalsIgnoreCase(r.getName()) || "ROLE_HR_ADMIN".equalsIgnoreCase(r.getName())))
+                    .filter(u -> !u.getId().equals(employeeId))
+                    .findFirst()
+                    .orElse(null);
+            if (manager == null) {
+                throw new IllegalArgumentException("Cannot submit leave request: No active direct manager assigned in reporting hierarchy");
+            }
+            log.info("No direct manager assigned for employee {}; routing approval to HR Admin {}",
+                    employee.getEmail(), manager.getEmail());
         }
-        User manager = hierarchyList.get(0).getManager();
 
         // 7. Balance check & pessimistic hold
         int year = startDate.getYear();

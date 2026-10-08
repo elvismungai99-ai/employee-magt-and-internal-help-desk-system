@@ -7,11 +7,21 @@ import com.leavemgt.identity.entity.Role;
 import com.leavemgt.identity.entity.User;
 import com.leavemgt.identity.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -35,6 +45,9 @@ public class TicketService {
 
     @org.springframework.beans.factory.annotation.Value("${app.helpdesk.allowed-attachment-extensions:pdf,png,jpg,jpeg,gif,webp,txt,csv,doc,docx,xls,xlsx,zip}")
     private String allowedAttachmentExtensions;
+
+    @org.springframework.beans.factory.annotation.Value("${app.helpdesk.attachment-storage-dir:uploads/tickets}")
+    private String attachmentStorageDir;
 
     public TicketService(TicketRepository ticketRepository,
                          TicketCommentRepository ticketCommentRepository,
@@ -565,6 +578,121 @@ public class TicketService {
         return mapAttachment(saved);
     }
 
+    @Transactional
+    public TicketAttachmentResponse uploadMultipartAttachment(UUID ticketId, MultipartFile file, UUID commentId, UUID callerId, boolean isHrAdmin, boolean isSupportAgent) throws IOException {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found with ID: " + ticketId));
+
+        boolean isRequester = ticket.getRequester().getId().equals(callerId);
+        boolean isAssigned = ticket.getAssignedAgent() != null && ticket.getAssignedAgent().getId().equals(callerId);
+        boolean isQueueMember = ticket.getQueue() != null && queueMemberRepository.isAgentActiveInQueue(ticket.getQueue().getId(), callerId);
+
+        if (!isRequester && !isAssigned && !isQueueMember && !isHrAdmin) {
+            throw new AccessDeniedException("Not authorized to upload attachments to ticket " + ticket.getTicketNumber());
+        }
+
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Attachment file cannot be empty");
+        }
+
+        if (file.getSize() > maxAttachmentSizeBytes) {
+            long maxMb = maxAttachmentSizeBytes / (1024 * 1024);
+            throw new IllegalArgumentException("Attachment file size exceeds maximum limit of " + maxMb + "MB");
+        }
+
+        String rawFileName = file.getOriginalFilename() != null ? file.getOriginalFilename().trim() : "attachment";
+        String baseName = Paths.get(rawFileName).getFileName().toString();
+        String sanitizedFileName = baseName.replaceAll("[^a-zA-Z0-9._-]", "_");
+
+        String lowerName = sanitizedFileName.toLowerCase();
+        if (lowerName.endsWith(".exe") || lowerName.endsWith(".bat") || lowerName.endsWith(".sh") || lowerName.endsWith(".dll") || lowerName.endsWith(".cmd")) {
+            throw new IllegalArgumentException("Executable file types are strictly prohibited");
+        }
+
+        int dotIndex = sanitizedFileName.lastIndexOf('.');
+        if (dotIndex <= 0 || dotIndex == sanitizedFileName.length() - 1) {
+            throw new IllegalArgumentException("File must have a valid extension");
+        }
+
+        Set<String> permittedExtensions = Arrays.stream(allowedAttachmentExtensions.split(","))
+                .map(String::trim)
+                .map(String::toLowerCase)
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.toSet());
+
+        String extension = sanitizedFileName.substring(dotIndex + 1).toLowerCase();
+        if (!permittedExtensions.contains(extension)) {
+            throw new IllegalArgumentException("File extension ." + extension + " is not permitted. Permitted types: " + String.join(", ", permittedExtensions));
+        }
+
+        User uploader = userRepository.findById(callerId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + callerId));
+
+        TicketComment comment = null;
+        if (commentId != null) {
+            comment = ticketCommentRepository.findById(commentId).orElse(null);
+        }
+
+        Path targetDir = Paths.get(attachmentStorageDir, ticketId.toString());
+        Files.createDirectories(targetDir);
+        String uniqueFileName = UUID.randomUUID() + "_" + sanitizedFileName;
+        Path targetPath = targetDir.resolve(uniqueFileName);
+        Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+        String mimeType = file.getContentType();
+        if (mimeType == null || mimeType.isBlank()) {
+            mimeType = "application/octet-stream";
+        }
+
+        TicketAttachment attachment = TicketAttachment.builder()
+                .ticket(ticket)
+                .comment(comment)
+                .uploadedBy(uploader)
+                .fileName(sanitizedFileName)
+                .filePath(targetPath.toString())
+                .fileSizeBytes(file.getSize())
+                .mimeType(mimeType)
+                .build();
+
+        TicketAttachment saved = ticketAttachmentRepository.save(attachment);
+        log.info("Binary attachment uploaded for ticket {}: fileName={}, size={} bytes, uploadedBy={}",
+                ticket.getTicketNumber(), sanitizedFileName, file.getSize(), uploader.getEmail());
+        return mapAttachment(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public Map.Entry<TicketAttachment, Resource> downloadAttachmentResource(
+            UUID ticketId, UUID attachmentId, UUID callerId, boolean isHrAdmin, boolean isSupportAgent) throws IOException {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found with ID: " + ticketId));
+
+        boolean isRequester = ticket.getRequester().getId().equals(callerId);
+        boolean isAssigned = ticket.getAssignedAgent() != null && ticket.getAssignedAgent().getId().equals(callerId);
+        boolean isQueueMember = ticket.getQueue() != null && queueMemberRepository.isAgentActiveInQueue(ticket.getQueue().getId(), callerId);
+
+        if (!isRequester && !isAssigned && !isQueueMember && !isHrAdmin) {
+            throw new AccessDeniedException("Not authorized to download attachments from ticket " + ticket.getTicketNumber());
+        }
+
+        TicketAttachment attachment = ticketAttachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new IllegalArgumentException("Attachment not found with ID: " + attachmentId));
+
+        if (!attachment.getTicket().getId().equals(ticketId)) {
+            throw new IllegalArgumentException("Attachment does not belong to specified ticket");
+        }
+
+        Path filePath = Paths.get(attachment.getFilePath());
+        Resource resource;
+        if (Files.exists(filePath)) {
+            resource = new UrlResource(filePath.toUri());
+        } else {
+            resource = new ByteArrayResource(
+                    ("Placeholder binary content for " + attachment.getFileName()).getBytes(StandardCharsets.UTF_8));
+        }
+
+        return Map.entry(attachment, resource);
+    }
+
     // =========================================================================
     // 7. ROUTING HISTORY
     // =========================================================================
@@ -598,6 +726,10 @@ public class TicketService {
         SupportQueue queue = t.getQueue();
         SlaPolicy sla = t.getSlaPolicy();
 
+        List<TicketAttachmentResponse> attachments = ticketAttachmentRepository.findByTicketId(t.getId()).stream()
+                .map(this::mapAttachment)
+                .collect(Collectors.toList());
+
         return TicketResponse.builder()
                 .id(t.getId())
                 .ticketNumber(t.getTicketNumber())
@@ -624,6 +756,7 @@ public class TicketService {
                 .resolvedAt(t.getResolvedAt())
                 .closedAt(t.getClosedAt())
                 .comments(comments)
+                .attachments(attachments)
                 .build();
     }
 

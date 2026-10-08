@@ -114,9 +114,6 @@ public class SecurityConfig {
         if (!patterns.contains("https://*.vercel.app")) {
             patterns.add("https://*.vercel.app");
         }
-        if (!patterns.contains("*")) {
-            patterns.add("*");
-        }
         config.setAllowedOriginPatterns(patterns);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
         config.setAllowedHeaders(List.of("*"));

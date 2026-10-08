@@ -201,8 +201,21 @@ export interface Ticket {
   createdAt?: string;
   updatedAt?: string;
   resolvedAt?: string;
-  closedAt?: string;
   comments?: TicketComment[];
+  attachments?: TicketAttachment[];
+}
+
+export interface TicketAttachment {
+  id: string;
+  ticketId: string;
+  commentId?: string;
+  uploadedById: string;
+  uploadedByName?: string;
+  fileName: string;
+  filePath: string;
+  fileSizeBytes: number;
+  mimeType?: string;
+  createdAt: string;
 }
 
 export interface CreateTicketDto {

@@ -178,6 +178,49 @@ public class TicketController {
                 .body(ApiResponse.success(response, "Attachment uploaded successfully"));
     }
 
+    @PostMapping(value = "/{id}/attachments/upload", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<TicketAttachmentResponse>> uploadAttachment(
+            @PathVariable("id") UUID id,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @RequestParam(value = "commentId", required = false) UUID commentId,
+            Authentication authentication) throws java.io.IOException {
+        UUID callerId = extractUserId(authentication);
+        if (callerId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Unauthorized"));
+        }
+        boolean isHrAdmin = isHrAdmin(authentication);
+        boolean isSupportAgent = isSupportAgent(authentication);
+        TicketAttachmentResponse response = ticketService.uploadMultipartAttachment(id, file, commentId, callerId, isHrAdmin, isSupportAgent);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response, "Attachment uploaded successfully"));
+    }
+
+    @GetMapping("/{id}/attachments/{attachmentId}/download")
+    public ResponseEntity<org.springframework.core.io.Resource> downloadAttachment(
+            @PathVariable("id") UUID id,
+            @PathVariable("attachmentId") UUID attachmentId,
+            Authentication authentication) throws java.io.IOException {
+        UUID callerId = extractUserId(authentication);
+        if (callerId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        boolean isHrAdmin = isHrAdmin(authentication);
+        boolean isSupportAgent = isSupportAgent(authentication);
+        Map.Entry<com.leavemgt.helpdesk.entity.TicketAttachment, org.springframework.core.io.Resource> entry =
+                ticketService.downloadAttachmentResource(id, attachmentId, callerId, isHrAdmin, isSupportAgent);
+
+        String contentType = entry.getKey().getMimeType();
+        if (contentType == null || contentType.isBlank()) {
+            contentType = org.springframework.http.MediaType.APPLICATION_OCTET_STREAM_VALUE;
+        }
+
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.parseMediaType(contentType))
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + entry.getKey().getFileName() + "\"")
+                .body(entry.getValue());
+    }
+
     @GetMapping("/{id}/history")
     public ResponseEntity<ApiResponse<List<TicketRoutingHistoryResponse>>> getRoutingHistory(
             @PathVariable("id") UUID id,

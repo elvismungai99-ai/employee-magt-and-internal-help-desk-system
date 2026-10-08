@@ -4,6 +4,7 @@ import {
   CreateTicketDto, 
   SupportQueue, 
   Ticket, 
+  TicketAttachment,
   TicketCategory, 
   TicketComment 
 } from '../types';
@@ -75,5 +76,37 @@ export const helpdeskApi = {
       reason,
     });
     return res.data.data;
+  },
+
+  uploadAttachment: async (ticketId: string, file: File, commentId?: string): Promise<TicketAttachment> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (commentId) {
+      formData.append('commentId', commentId);
+    }
+    const res = await apiClient.post<ApiResponse<TicketAttachment>>(
+      `/api/helpdesk/tickets/${ticketId}/attachments/upload`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return res.data.data;
+  },
+
+  downloadAttachment: async (ticketId: string, attachmentId: string, fileName: string): Promise<void> => {
+    const response = await apiClient.get(`/api/helpdesk/tickets/${ticketId}/attachments/${attachmentId}/download`, {
+      responseType: 'blob',
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    link.parentNode?.removeChild(link);
+    window.URL.revokeObjectURL(url);
   },
 };

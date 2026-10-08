@@ -262,6 +262,7 @@ CREATE TABLE public.sla_policies (
 );
 
 -- Tickets (Triage & Lifecycle)
+CREATE SCHEMA IF NOT EXISTS helpdesk;
 CREATE SEQUENCE IF NOT EXISTS helpdesk.ticket_number_seq START WITH 1001 INCREMENT BY 1;
 
 CREATE TABLE public.tickets (
@@ -360,6 +361,8 @@ CREATE INDEX IF NOT EXISTS idx_tickets_sla_breached ON public.tickets(sla_due_at
 -- 4. PLATFORM DOMAIN (Asynchronous Event Outbox & Notifications)
 -- ==============================================================================
 
+CREATE SCHEMA IF NOT EXISTS platform;
+
 CREATE TABLE IF NOT EXISTS platform.event_outbox (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     event_type VARCHAR(100) NOT NULL,
@@ -372,7 +375,7 @@ CREATE TABLE IF NOT EXISTS platform.event_outbox (
 
 CREATE TABLE IF NOT EXISTS platform.notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    recipient_id UUID NOT NULL REFERENCES identity.users(id),
+    recipient_id UUID NOT NULL REFERENCES public.users(id),
     event_id UUID REFERENCES platform.event_outbox(id),
     channel VARCHAR(20) NOT NULL CHECK (channel IN ('EMAIL', 'SLACK')),
     message TEXT,

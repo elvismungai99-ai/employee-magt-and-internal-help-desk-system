@@ -47,6 +47,10 @@ export const HelpDeskPage: React.FC = () => {
   const [reopenReason, setReopenReason] = useState('');
   const [actionAlert, setActionAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  // Attachment upload state
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+
   const loadData = async () => {
     setIsLoading(true);
     try {
@@ -175,6 +179,26 @@ export const HelpDeskPage: React.FC = () => {
         type: 'error',
         message: err.response?.data?.message || 'Failed to reopen ticket.',
       });
+    }
+  };
+
+  const handleUploadAttachment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTicket || !attachmentFile) return;
+    setIsUploadingAttachment(true);
+    try {
+      await helpdeskApi.uploadAttachment(selectedTicket.id, attachmentFile);
+      setAttachmentFile(null);
+      const refreshed = await helpdeskApi.getTicketById(selectedTicket.id);
+      setSelectedTicket(refreshed);
+      setActionAlert({ type: 'success', message: 'Attachment uploaded successfully.' });
+    } catch (err: any) {
+      setActionAlert({
+        type: 'error',
+        message: err.response?.data?.message || 'Failed to upload attachment.',
+      });
+    } finally {
+      setIsUploadingAttachment(false);
     }
   };
 
@@ -472,6 +496,59 @@ export const HelpDeskPage: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Attachments Section */}
+            <div className="space-y-3 bg-slate-50/70 p-3.5 rounded-xl border border-blue-100">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Attachments ({selectedTicket.attachments?.length || 0})
+                </h3>
+              </div>
+
+              {selectedTicket.attachments && selectedTicket.attachments.length > 0 ? (
+                <div className="space-y-1.5">
+                  {selectedTicket.attachments.map((att) => (
+                    <div
+                      key={att.id}
+                      className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200 text-xs"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="font-medium text-slate-800 truncate">{att.fileName}</span>
+                        <span className="text-[10px] text-slate-400">
+                          ({Math.round(att.fileSizeBytes / 1024)} KB)
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => helpdeskApi.downloadAttachment(selectedTicket.id, att.id, att.fileName)}
+                        className="text-xs text-blue-700 hover:text-blue-900 font-semibold px-2 py-1 rounded bg-blue-50 hover:bg-blue-100 transition"
+                      >
+                        Download
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-slate-400 italic">No attachments uploaded.</div>
+              )}
+
+              {selectedTicket.status !== 'CLOSED' && (
+                <form onSubmit={handleUploadAttachment} className="flex items-center gap-2 pt-2 border-t border-slate-200">
+                  <input
+                    type="file"
+                    onChange={(e) => setAttachmentFile(e.target.files?.[0] || null)}
+                    className="text-xs text-slate-600 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-800 hover:file:bg-slate-300"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isUploadingAttachment || !attachmentFile}
+                    className="px-3 py-1 bg-slate-900 hover:bg-black text-white text-xs font-medium rounded-lg disabled:opacity-50 transition shrink-0"
+                  >
+                    {isUploadingAttachment ? 'Uploading...' : 'Upload'}
+                  </button>
+                </form>
+              )}
+            </div>
 
             {/* Comments Thread */}
             <div className="space-y-3">

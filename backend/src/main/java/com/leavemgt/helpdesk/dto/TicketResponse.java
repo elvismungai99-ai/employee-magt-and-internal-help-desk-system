@@ -47,4 +47,5 @@ public class TicketResponse {
     private OffsetDateTime closedAt;
 
     private List<TicketCommentResponse> comments;
+    private List<TicketAttachmentResponse> attachments;
 }

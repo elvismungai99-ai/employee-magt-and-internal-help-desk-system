@@ -99,13 +99,54 @@ public class OooSyncHandler implements DomainEventHandler {
         log.info("Created OutOfOfficeRecord for employee {} ({} to {}) linked to event {}",
                 employee.getEmail(), startDate, endDate, event.getId());
 
-        // 3. Query open tickets assigned to employee
+        // 3. Reroute open tickets assigned to employee
+        int reroutedCount = rerouteOpenTicketsForEmployee(employeeId, employee.getEmail(), "OOO_REROUTE");
+        log.info("OOO sync processed for employee {}: {} ticket(s) returned to queue", employee.getEmail(), reroutedCount);
+    }
+
+    /**
+     * Daily background sweep that ensures any agent currently out of office on this date
+     * does not have active tickets assigned to them (e.g. if assigned in the interim).
+     */
+    @org.springframework.scheduling.annotation.Scheduled(cron = "${app.scheduling.ooo-sweep-cron:0 0 6 * * *}")
+    @Transactional
+    public int sweepActiveOooRecords() {
+        LocalDate today = LocalDate.now();
+        List<OutOfOfficeRecord> activeRecords = oooRecordRepository
+                .findBySyncStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqual(
+                        OooSyncStatus.SYNCED, today, today);
+
+        if (activeRecords.isEmpty()) {
+            return 0;
+        }
+
+        int totalRerouted = 0;
+        for (OutOfOfficeRecord record : activeRecords) {
+            if (record.getUser() != null) {
+                totalRerouted += rerouteOpenTicketsForEmployee(
+                        record.getUser().getId(),
+                        record.getUser().getEmail(),
+                        "OOO_DAILY_SWEEP"
+                );
+            }
+        }
+
+        if (totalRerouted > 0) {
+            log.info("Daily OOO sweep completed: rerouted {} ticket(s) across {} active OOO agent(s)",
+                    totalRerouted, activeRecords.size());
+        }
+        return totalRerouted;
+    }
+
+    /**
+     * Atomically unassigns open tickets for an OOO employee and returns them to queue triage.
+     */
+    public int rerouteOpenTicketsForEmployee(UUID employeeId, String employeeEmail, String reason) {
         List<Ticket> openTickets = ticketRepository.findOpenTicketsByAssignedAgentId(
                 employeeId,
                 List.of(TicketStatus.RESOLVED, TicketStatus.CLOSED)
         );
 
-        // 4. For each ticket, unassign and return to queue with OOO_REROUTE routing history
         for (Ticket ticket : openTickets) {
             User previousAgent = ticket.getAssignedAgent();
             ticket.setAssignedAgent(null);
@@ -116,15 +157,14 @@ public class OooSyncHandler implements DomainEventHandler {
                     .ticket(ticket)
                     .previousAgent(previousAgent)
                     .newAgent(null)
-                    .reason("OOO_REROUTE")
+                    .reason(reason)
                     .changedBy(previousAgent)
                     .build();
             routingHistoryRepository.save(history);
 
-            log.info("Unassigned ticket {} from OOO agent {}: status set to TRIAGED",
-                    ticket.getTicketNumber(), employee.getEmail());
+            log.info("Unassigned ticket {} from OOO agent {} (reason={}): status set to TRIAGED",
+                    ticket.getTicketNumber(), employeeEmail, reason);
 
-            // 5. Publish follow-up TicketUnassigned event for notifications
             eventPublisherService.publishEvent(
                     "TicketUnassigned",
                     "HELPDESK",
@@ -133,10 +173,11 @@ public class OooSyncHandler implements DomainEventHandler {
                             "ticketNumber", ticket.getTicketNumber(),
                             "queueId", ticket.getQueue() != null ? ticket.getQueue().getId().toString() : "",
                             "previousAgentId", employeeId.toString(),
-                            "reason", "OOO_REROUTE"
+                            "reason", reason
                     )
             );
         }
+        return openTickets.size();
     }
 
     private void handleLeaveCancelled(EventOutbox event) throws Exception {

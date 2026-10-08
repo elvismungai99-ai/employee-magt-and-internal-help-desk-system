@@ -18,4 +18,10 @@ public interface OutOfOfficeRecordRepository extends JpaRepository<OutOfOfficeRe
     List<OutOfOfficeRecord> findByLeaveRequestId(UUID leaveRequestId);
 
     List<OutOfOfficeRecord> findByUserIdOrderByStartDateDesc(UUID userId);
+
+    List<OutOfOfficeRecord> findBySyncStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqual(
+            com.leavemgt.leave.entity.OooSyncStatus syncStatus,
+            java.time.LocalDate startMax,
+            java.time.LocalDate endMin
+    );
 }

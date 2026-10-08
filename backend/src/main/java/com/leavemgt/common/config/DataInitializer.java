@@ -140,9 +140,11 @@ public class DataInitializer implements CommandLineRunner {
                 "CREATE SCHEMA IF NOT EXISTS helpdesk",
                 "CREATE SCHEMA IF NOT EXISTS platform",
                 "ALTER TABLE leave.leave_requests ADD COLUMN IF NOT EXISTS is_half_day BOOLEAN DEFAULT FALSE",
+                "UPDATE leave.leave_requests SET is_half_day = FALSE WHERE is_half_day IS NULL",
                 "ALTER TABLE leave.leave_requests ADD COLUMN IF NOT EXISTS half_day_period VARCHAR(20)",
                 "ALTER TABLE leave.leave_requests ADD COLUMN IF NOT EXISTS delegate_id UUID",
                 "ALTER TABLE public.leave_requests ADD COLUMN IF NOT EXISTS is_half_day BOOLEAN DEFAULT FALSE",
+                "UPDATE public.leave_requests SET is_half_day = FALSE WHERE is_half_day IS NULL",
                 "ALTER TABLE public.leave_requests ADD COLUMN IF NOT EXISTS half_day_period VARCHAR(20)",
                 "ALTER TABLE public.leave_requests ADD COLUMN IF NOT EXISTS delegate_id UUID",
                 "CREATE TABLE IF NOT EXISTS leave.out_of_office_records (" +

@@ -55,7 +55,7 @@ public class LeaveRequest {
     private String attachmentUrl;
 
     @Builder.Default
-    @Column(name = "is_half_day", nullable = false)
+    @Column(name = "is_half_day")
     private Boolean isHalfDay = false;
 
     @Column(name = "half_day_period", length = 20)

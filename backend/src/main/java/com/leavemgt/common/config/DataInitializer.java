@@ -100,7 +100,6 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     @Override
-    @Transactional
     public void run(String... args) {
         log.info("Starting seed data initialization...");
 
@@ -134,19 +133,27 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void applySchemaPatches() {
-        String[] patches = {
+        String[] schemas = {
                 "CREATE SCHEMA IF NOT EXISTS leave",
                 "CREATE SCHEMA IF NOT EXISTS identity",
                 "CREATE SCHEMA IF NOT EXISTS helpdesk",
-                "CREATE SCHEMA IF NOT EXISTS platform",
+                "CREATE SCHEMA IF NOT EXISTS platform"
+        };
+
+        for (String sql : schemas) {
+            try {
+                jdbcTemplate.execute(sql);
+            } catch (Exception e) {
+                log.debug("Schema creation skipped: {}", e.getMessage());
+            }
+        }
+
+        // Schema patches for leave domain
+        String[] leavePatches = {
                 "ALTER TABLE leave.leave_requests ADD COLUMN IF NOT EXISTS is_half_day BOOLEAN DEFAULT FALSE",
                 "UPDATE leave.leave_requests SET is_half_day = FALSE WHERE is_half_day IS NULL",
                 "ALTER TABLE leave.leave_requests ADD COLUMN IF NOT EXISTS half_day_period VARCHAR(20)",
                 "ALTER TABLE leave.leave_requests ADD COLUMN IF NOT EXISTS delegate_id UUID",
-                "ALTER TABLE public.leave_requests ADD COLUMN IF NOT EXISTS is_half_day BOOLEAN DEFAULT FALSE",
-                "UPDATE public.leave_requests SET is_half_day = FALSE WHERE is_half_day IS NULL",
-                "ALTER TABLE public.leave_requests ADD COLUMN IF NOT EXISTS half_day_period VARCHAR(20)",
-                "ALTER TABLE public.leave_requests ADD COLUMN IF NOT EXISTS delegate_id UUID",
                 "CREATE TABLE IF NOT EXISTS leave.out_of_office_records (" +
                         "id UUID PRIMARY KEY DEFAULT gen_random_uuid(), " +
                         "leave_request_id UUID NOT NULL, " +
@@ -157,16 +164,43 @@ public class DataInitializer implements CommandLineRunner {
                         "sync_status VARCHAR(30) NOT NULL DEFAULT 'SYNCED', " +
                         "synced_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, " +
                         "source_event_id UUID UNIQUE)",
-                "ALTER TABLE leave.out_of_office_records ADD COLUMN IF NOT EXISTS delegate_id UUID",
-                "ALTER TABLE public.out_of_office_records ADD COLUMN IF NOT EXISTS delegate_id UUID"
+                "ALTER TABLE leave.out_of_office_records ADD COLUMN IF NOT EXISTS delegate_id UUID"
         };
 
-        for (String sql : patches) {
+        for (String sql : leavePatches) {
             try {
                 jdbcTemplate.execute(sql);
             } catch (Exception e) {
-                log.debug("Schema patch skipped or already applied: {}", e.getMessage());
+                log.debug("Leave schema patch skipped: {}", e.getMessage());
             }
+        }
+
+        // Safe check for public schema tables if ever present
+        try {
+            Integer hasPublicLeave = jdbcTemplate.queryForObject(
+                    "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'leave_requests'",
+                    Integer.class
+            );
+            if (hasPublicLeave != null && hasPublicLeave > 0) {
+                jdbcTemplate.execute("ALTER TABLE public.leave_requests ADD COLUMN IF NOT EXISTS is_half_day BOOLEAN DEFAULT FALSE");
+                jdbcTemplate.execute("UPDATE public.leave_requests SET is_half_day = FALSE WHERE is_half_day IS NULL");
+                jdbcTemplate.execute("ALTER TABLE public.leave_requests ADD COLUMN IF NOT EXISTS half_day_period VARCHAR(20)");
+                jdbcTemplate.execute("ALTER TABLE public.leave_requests ADD COLUMN IF NOT EXISTS delegate_id UUID");
+            }
+        } catch (Exception e) {
+            log.debug("Public leave_requests patch skipped: {}", e.getMessage());
+        }
+
+        try {
+            Integer hasPublicOoo = jdbcTemplate.queryForObject(
+                    "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'out_of_office_records'",
+                    Integer.class
+            );
+            if (hasPublicOoo != null && hasPublicOoo > 0) {
+                jdbcTemplate.execute("ALTER TABLE public.out_of_office_records ADD COLUMN IF NOT EXISTS delegate_id UUID");
+            }
+        } catch (Exception e) {
+            log.debug("Public out_of_office_records patch skipped: {}", e.getMessage());
         }
     }
 

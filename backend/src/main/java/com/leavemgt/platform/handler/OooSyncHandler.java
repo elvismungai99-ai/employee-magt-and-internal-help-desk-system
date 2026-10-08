@@ -59,7 +59,6 @@ public class OooSyncHandler implements DomainEventHandler {
     }
 
     @Override
-    @Transactional
     public void handle(EventOutbox event) throws Exception {
         if ("LeaveApproved".equalsIgnoreCase(event.getEventType())) {
             handleLeaveApproved(event);
@@ -81,10 +80,17 @@ public class OooSyncHandler implements DomainEventHandler {
         LocalDate startDate = LocalDate.parse(payload.get("startDate").asText());
         LocalDate endDate = LocalDate.parse(payload.get("endDate").asText());
 
-        LeaveRequest leaveRequest = leaveRequestRepository.findById(leaveRequestId)
-                .orElseThrow(() -> new IllegalStateException("LeaveRequest not found: " + leaveRequestId));
-        User employee = userRepository.findById(employeeId)
-                .orElseThrow(() -> new IllegalStateException("User not found: " + employeeId));
+        LeaveRequest leaveRequest = leaveRequestRepository.findById(leaveRequestId).orElse(null);
+        if (leaveRequest == null) {
+            log.warn("LeaveRequest {} not found for Outbox event {}. Skipping OOO record generation.", leaveRequestId, event.getId());
+            return;
+        }
+
+        User employee = userRepository.findById(employeeId).orElse(null);
+        if (employee == null) {
+            log.warn("Employee {} not found for Outbox event {}. Skipping OOO record generation.", employeeId, event.getId());
+            return;
+        }
 
         UUID delegateId = null;
         if (payload.has("delegateId") && !payload.get("delegateId").asText().isBlank()) {

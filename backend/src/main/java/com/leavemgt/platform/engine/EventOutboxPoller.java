@@ -64,19 +64,23 @@ public class EventOutboxPoller {
      * Processes a single event in its own isolated transaction to prevent batch failures.
      */
     public boolean processSingleEvent(java.util.UUID eventId) {
-        return Boolean.TRUE.equals(transactionTemplate.execute(status -> {
-            EventOutbox event = outboxRepository.findById(eventId).orElse(null);
-            if (event == null || event.getStatus() != OutboxStatus.PENDING) {
-                return false;
-            }
+        try {
+            return Boolean.TRUE.equals(transactionTemplate.execute(status -> {
+                EventOutbox event = outboxRepository.findById(eventId).orElse(null);
+                if (event == null || event.getStatus() != OutboxStatus.PENDING) {
+                    return false;
+                }
 
-            event.setStatus(OutboxStatus.PROCESSING);
-            outboxRepository.saveAndFlush(event);
+                event.setStatus(OutboxStatus.PROCESSING);
+                outboxRepository.saveAndFlush(event);
 
-            try {
                 for (DomainEventHandler handler : eventHandlers) {
                     if (handler.canHandle(event.getEventType())) {
-                        handler.handle(event);
+                        try {
+                            handler.handle(event);
+                        } catch (Exception ex) {
+                            throw new RuntimeException("Handler error: " + ex.getMessage(), ex);
+                        }
                     }
                 }
 
@@ -85,12 +89,25 @@ public class EventOutboxPoller {
                 outboxRepository.save(event);
                 log.info("Successfully published outbox event [id={}, type={}]", event.getId(), event.getEventType());
                 return true;
-            } catch (Exception e) {
-                log.error("Failed to process outbox event [id={}, type={}]: {}", event.getId(), event.getEventType(), e.getMessage(), e);
-                event.setStatus(OutboxStatus.FAILED);
-                outboxRepository.save(event);
-                return false;
-            }
-        }));
+            }));
+        } catch (Exception e) {
+            log.error("Failed to process outbox event [id={}]: {}", eventId, e.getMessage());
+            markEventFailed(eventId);
+            return false;
+        }
+    }
+
+    private void markEventFailed(java.util.UUID eventId) {
+        try {
+            transactionTemplate.execute(status -> {
+                outboxRepository.findById(eventId).ifPresent(event -> {
+                    event.setStatus(OutboxStatus.FAILED);
+                    outboxRepository.save(event);
+                });
+                return null;
+            });
+        } catch (Exception ex) {
+            log.warn("Could not mark event {} as FAILED: {}", eventId, ex.getMessage());
+        }
     }
 }

@@ -19,7 +19,10 @@ import {
   X,
   FileText,
   ShieldCheck,
-  RotateCcw
+  RotateCcw,
+  Bookmark,
+  StickyNote,
+  Trash2
 } from 'lucide-react';
 import { leaveApi } from '../api/leaveApi';
 import { LeaveBalance, LeaveRequest, LeaveType } from '../types';
@@ -50,6 +53,71 @@ export const LeavePortalPage: React.FC = () => {
   // Calendar Selection State (Range selection from the calendar)
   const [calendarSelectedStart, setCalendarSelectedStart] = useState<string | null>(null);
   const [calendarSelectedEnd, setCalendarSelectedEnd] = useState<string | null>(null);
+
+  // Calendar Bookmarks and Notes State (Persisted in localStorage)
+  const [dayAnnotations, setDayAnnotations] = useState<Record<string, { isBookmarked: boolean; note?: string }>>(() => {
+    try {
+      const saved = localStorage.getItem(`leave_calendar_annotations_${user?.id || 'default'}`);
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Note & Bookmark Modal State
+  const [noteModalDate, setNoteModalDate] = useState<string | null>(null);
+  const [noteDraftText, setNoteDraftText] = useState<string>('');
+  const [noteDraftBookmarked, setNoteDraftBookmarked] = useState<boolean>(false);
+
+  const openNoteModal = (dateStr: string) => {
+    setNoteModalDate(dateStr);
+    const existing = dayAnnotations[dateStr];
+    setNoteDraftText(existing?.note || '');
+    setNoteDraftBookmarked(Boolean(existing?.isBookmarked));
+  };
+
+  const handleSaveNoteModal = () => {
+    if (!noteModalDate) return;
+    const updated = { ...dayAnnotations };
+    if (noteDraftBookmarked || noteDraftText.trim()) {
+      updated[noteModalDate] = {
+        isBookmarked: noteDraftBookmarked,
+        note: noteDraftText.trim() || undefined,
+      };
+    } else {
+      delete updated[noteModalDate];
+    }
+    setDayAnnotations(updated);
+    try {
+      localStorage.setItem(
+        `leave_calendar_annotations_${user?.id || 'default'}`,
+        JSON.stringify(updated)
+      );
+    } catch {}
+    setNoteModalDate(null);
+    setFeedback({
+      type: 'success',
+      message: `Note and bookmark for ${noteModalDate} saved successfully.`,
+    });
+  };
+
+  const handleDeleteNoteModal = () => {
+    if (!noteModalDate) return;
+    const updated = { ...dayAnnotations };
+    delete updated[noteModalDate];
+    setDayAnnotations(updated);
+    try {
+      localStorage.setItem(
+        `leave_calendar_annotations_${user?.id || 'default'}`,
+        JSON.stringify(updated)
+      );
+    } catch {}
+    setNoteModalDate(null);
+    setFeedback({
+      type: 'success',
+      message: `Bookmark and note for ${noteModalDate} removed.`,
+    });
+  };
 
   // Apply Leave Modal state
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
@@ -156,6 +224,7 @@ export const LeavePortalPage: React.FC = () => {
       holidayInfo: { isHoliday: boolean; holidayName?: string };
       hasApprovedLeave: boolean;
       hasPendingLeave: boolean;
+      annotation?: { isBookmarked: boolean; note?: string };
     }> = [];
 
     const pad = (n: number) => n.toString().padStart(2, '0');
@@ -175,6 +244,7 @@ export const LeavePortalPage: React.FC = () => {
         holidayInfo: isKenyanPublicHoliday(dateStr),
         hasApprovedLeave: false,
         hasPendingLeave: false,
+        annotation: dayAnnotations[dateStr],
       });
     }
 
@@ -215,6 +285,7 @@ export const LeavePortalPage: React.FC = () => {
         holidayInfo: isKenyanPublicHoliday(dateStr),
         hasApprovedLeave: hasApproved,
         hasPendingLeave: hasPending,
+        annotation: dayAnnotations[dateStr],
       });
     }
 
@@ -233,11 +304,12 @@ export const LeavePortalPage: React.FC = () => {
         holidayInfo: isKenyanPublicHoliday(dateStr),
         hasApprovedLeave: false,
         hasPendingLeave: false,
+        annotation: dayAnnotations[dateStr],
       });
     }
 
     return days;
-  }, [currentYear, currentMonthIndex, today, myRequests]);
+  }, [currentYear, currentMonthIndex, today, myRequests, dayAnnotations]);
 
   // Click handler to select leave days from calendar
   const handleCalendarDayClick = (dateStr: string) => {
@@ -600,93 +672,119 @@ export const LeavePortalPage: React.FC = () => {
       </div>
 
       {/* =========================================================================
-          SECTION 3: KENYAN CALENDAR & INTERACTIVE DATE PICKER
+          SECTION 3: LEAVE CALENDAR & INTERACTIVE DATE PICKER
          ========================================================================= */}
-      <div className="bg-white rounded-2xl p-5 border border-teal-100 shadow-2xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-teal-50 gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e3f4f1] text-[#0e4a5c]">
-              <CalendarDays className="h-5 w-5" />
+      <div className="bg-white rounded-2xl p-4 sm:p-4.5 border border-teal-100 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-teal-50 gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e3f4f1] text-[#0e4a5c]">
+              <CalendarDays className="h-4.5 w-4.5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-[#0d2836]">
-                  Kenyan Leave Calendar &bull; {monthNames[currentMonthIndex]} {currentYear}
-                </h3>
-                <span className="text-[10px] font-bold bg-[#e3f4f1] text-[#0e4a5c] px-2 py-0.5 rounded-full border border-teal-200/80">
-                  Kenya Public Holidays (Cap. 110)
-                </span>
-              </div>
-              <p className="text-xs text-slate-500">
-                Click any start date and end date directly on the calendar to pick your leave period.
+              <h3 className="text-sm font-bold text-[#0d2836]">
+                Leave Calendar
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Choose leave days or click any day to add bookmarks and notes.
               </p>
             </div>
           </div>
 
-          {/* Month & Year Navigation Controls */}
-          <div className="flex items-center gap-2">
+          {/* Month & Year Dropdown Controls */}
+          <div className="flex items-center gap-1.5 flex-wrap">
             <button
               type="button"
               onClick={handleResetToCurrentMonth}
-              className="px-2.5 py-1 text-xs font-semibold text-[#0e4a5c] hover:bg-[#f0f9f8] rounded-lg border border-teal-100"
+              className="px-2 py-1 text-xs font-semibold text-[#0e4a5c] hover:bg-[#f0f9f8] rounded-lg border border-teal-200"
             >
               Today
             </button>
-            <div className="flex items-center rounded-xl border border-teal-200/80 bg-white shadow-2xs overflow-hidden">
-              <button
-                type="button"
-                onClick={handlePrevMonth}
-                className="p-1.5 text-slate-600 hover:bg-[#f0f9f8] hover:text-[#0d2836] border-r border-teal-100"
-                title="Previous Month"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <span className="px-3 text-xs font-bold text-[#0d2836] min-w-[120px] text-center">
-                {monthNames[currentMonthIndex]} {currentYear}
-              </span>
-              <button
-                type="button"
-                onClick={handleNextMonth}
-                className="p-1.5 text-slate-600 hover:bg-[#f0f9f8] hover:text-[#0d2836] border-l border-teal-100"
-                title="Next Month"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handlePrevMonth}
+              className="p-1 rounded-lg border border-teal-200 text-slate-600 hover:bg-[#f0f9f8] hover:text-[#0d2836]"
+              title="Previous Month"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+
+            {/* Month Dropdown */}
+            <select
+              value={currentMonthIndex}
+              onChange={(e) => setCurrentMonthIndex(Number(e.target.value))}
+              className="rounded-lg border border-teal-200 bg-white px-2 py-1 text-xs font-bold text-[#0d2836] focus:border-[#0e4a5c] focus:outline-none"
+            >
+              {monthNames.map((name, idx) => (
+                <option key={name} value={idx}>
+                  {name}
+                </option>
+              ))}
+            </select>
+
+            {/* Year Dropdown */}
+            <select
+              value={currentYear}
+              onChange={(e) => setCurrentYear(Number(e.target.value))}
+              className="rounded-lg border border-teal-200 bg-white px-2 py-1 text-xs font-bold text-[#0d2836] focus:border-[#0e4a5c] focus:outline-none"
+            >
+              {[2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032].map((yr) => (
+                <option key={yr} value={yr}>
+                  {yr}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              className="p-1 rounded-lg border border-teal-200 text-slate-600 hover:bg-[#f0f9f8] hover:text-[#0d2836]"
+              title="Next Month"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
         </div>
 
-        {/* Calendar Interactive Selection Banner (Appears when user clicks dates) */}
+        {/* Calendar Interactive Selection Banner */}
         {calendarSelectedStart && (
-          <div className="mt-4 rounded-xl bg-[#e3f4f1] border border-teal-200 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="mt-3 rounded-xl bg-[#e3f4f1] border border-teal-200 p-2.5 sm:p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
             <div>
-              <div className="flex items-center gap-2 text-xs font-bold text-[#0e4a5c]">
-                <Clock className="h-4 w-4" />
-                <span>Selected Leave Period:</span>
-                <span className="bg-white px-2.5 py-0.5 rounded border border-teal-200">
+              <div className="flex items-center gap-2 font-bold text-[#0e4a5c]">
+                <Clock className="h-3.5 w-3.5" />
+                <span>Selected Range:</span>
+                <span className="bg-white px-2 py-0.5 rounded border border-teal-200 text-[#0d2836]">
                   {calendarSelectedStart} {calendarSelectedEnd && calendarSelectedEnd !== calendarSelectedStart ? `to ${calendarSelectedEnd}` : ''}
                 </span>
-                <span className="ml-2 font-bold text-[#0d2836]">
+                <span className="font-bold text-[#0d2836]">
                   ({calendarWorkingDaysSelected} working day{calendarWorkingDaysSelected !== 1 ? 's' : ''})
                 </span>
               </div>
-              <p className="text-[11px] text-[#155b6e] mt-0.5">
-                Statutory calculation: Weekends and Kenyan gazetted public holidays are automatically excluded.
+              <p className="text-[10px] text-[#155b6e] mt-0.5">
+                Statutory calculation: Weekends and public holidays are automatically excluded.
               </p>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
+                onClick={() => openNoteModal(calendarSelectedStart)}
+                className="px-2.5 py-1 rounded-lg border border-teal-200 text-xs font-semibold text-[#0e4a5c] bg-white hover:bg-slate-50 flex items-center gap-1"
+                title="Add or edit note and bookmark for this date"
+              >
+                <Bookmark className="h-3 w-3 text-amber-500 fill-amber-500" />
+                <span>Note / Bookmark</span>
+              </button>
+              <button
+                type="button"
                 onClick={clearCalendarSelection}
-                className="px-3 py-1.5 rounded-lg border border-teal-200 text-xs font-semibold text-slate-600 bg-white hover:bg-slate-50"
+                className="px-2.5 py-1 rounded-lg border border-teal-200 text-xs font-semibold text-slate-600 bg-white hover:bg-slate-50"
               >
                 Clear
               </button>
               <button
                 type="button"
                 onClick={() => handleApplyWithSelectedCalendarDates()}
-                className="px-4 py-1.5 rounded-lg bg-[#0e4a5c] hover:bg-[#083543] text-xs font-bold text-white shadow-xs"
+                className="px-3.5 py-1 rounded-lg bg-[#0e4a5c] hover:bg-[#083543] text-xs font-bold text-white shadow-xs"
               >
                 Apply for These Dates
               </button>
@@ -695,7 +793,7 @@ export const LeavePortalPage: React.FC = () => {
         )}
 
         {/* Days of Week Headers */}
-        <div className="mt-4 grid grid-cols-7 text-center text-xs font-bold text-slate-400 py-2 border-b border-teal-50">
+        <div className="mt-2.5 grid grid-cols-7 text-center text-[11px] font-bold text-slate-400 py-1 border-b border-teal-50">
           <span className="text-rose-500">Sun</span>
           <span>Mon</span>
           <span>Tue</span>
@@ -705,8 +803,8 @@ export const LeavePortalPage: React.FC = () => {
           <span className="text-rose-500">Sat</span>
         </div>
 
-        {/* Calendar Days Grid */}
-        <div className="grid grid-cols-7 gap-1 pt-2">
+        {/* Resized, Compact Calendar Days Grid */}
+        <div className="grid grid-cols-7 gap-1 pt-1.5">
           {calendarDays.map((dayItem, index) => {
             const isSelectedStart = calendarSelectedStart === dayItem.dateStr;
             const isSelectedEnd = calendarSelectedEnd === dayItem.dateStr;
@@ -720,7 +818,7 @@ export const LeavePortalPage: React.FC = () => {
               <div
                 key={`${dayItem.dateStr}-${index}`}
                 onClick={() => handleCalendarDayClick(dayItem.dateStr)}
-                className={`min-h-[72px] sm:min-h-[82px] p-1.5 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+                className={`min-h-[46px] sm:min-h-[50px] p-1 rounded-lg border text-left cursor-pointer transition-all flex flex-col justify-between relative group ${
                   !dayItem.isCurrentMonth
                     ? 'bg-slate-50/50 border-transparent text-slate-300 opacity-60'
                     : isSelectedStart || isSelectedEnd
@@ -735,11 +833,17 @@ export const LeavePortalPage: React.FC = () => {
                     ? 'bg-amber-50/70 border-amber-200 hover:border-amber-300'
                     : 'bg-white border-slate-100 hover:border-teal-200 hover:bg-[#f0f9f8]'
                 }`}
-                title={dayItem.holidayInfo.holidayName ? `Public Holiday: ${dayItem.holidayInfo.holidayName}` : dayItem.dateStr}
+                title={
+                  dayItem.holidayInfo.holidayName
+                    ? `Public Holiday: ${dayItem.holidayInfo.holidayName}`
+                    : dayItem.annotation?.note
+                    ? `Note: ${dayItem.annotation.note}`
+                    : dayItem.dateStr
+                }
               >
                 <div className="flex items-center justify-between">
                   <span
-                    className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                    className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
                       dayItem.isToday
                         ? isSelectedStart || isSelectedEnd
                           ? 'bg-white text-[#0e4a5c]'
@@ -754,46 +858,57 @@ export const LeavePortalPage: React.FC = () => {
                     {dayItem.dayNumber}
                   </span>
 
-                  {/* Badges for Holidays or Leaves */}
-                  {dayItem.holidayInfo.isHoliday && (
-                    <span
-                      className={`text-[9px] font-bold px-1 rounded truncate max-w-[70px] ${
-                        isSelectedStart || isSelectedEnd
-                          ? 'bg-white/20 text-white'
-                          : 'bg-rose-100 text-rose-800'
-                      }`}
+                  {/* Badges / Icons for Bookmarks, Notes, Holidays */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {dayItem.annotation?.isBookmarked && (
+                      <Bookmark className="h-3 w-3 fill-amber-500 text-amber-500 shrink-0" title="Bookmarked Date" />
+                    )}
+                    {dayItem.annotation?.note && (
+                      <StickyNote className="h-3 w-3 text-teal-700 shrink-0" title={`Note: ${dayItem.annotation.note}`} />
+                    )}
+                    {dayItem.holidayInfo.isHoliday && (
+                      <span className="h-2 w-2 rounded-full bg-rose-500 shrink-0" title={dayItem.holidayInfo.holidayName} />
+                    )}
+                    {dayItem.hasApprovedLeave && (
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" title="Approved Leave" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openNoteModal(dayItem.dateStr);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-400 hover:text-[#0e4a5c] transition-opacity"
+                      title="Add / Edit Note & Bookmark"
                     >
-                      Holiday
-                    </span>
-                  )}
+                      <Bookmark className="h-2.5 w-2.5" />
+                    </button>
+                  </div>
                 </div>
 
-                {/* Day Content Badges */}
-                <div className="space-y-0.5">
-                  {dayItem.holidayInfo.isHoliday && (
+                {/* Compact Day Content Label */}
+                <div className="leading-none overflow-hidden">
+                  {dayItem.holidayInfo.isHoliday ? (
                     <p
-                      className={`text-[10px] font-bold leading-tight truncate ${
+                      className={`text-[9px] font-bold leading-tight truncate ${
                         isSelectedStart || isSelectedEnd ? 'text-white/90' : 'text-rose-700'
                       }`}
                       title={dayItem.holidayInfo.holidayName}
                     >
                       {dayItem.holidayInfo.holidayName}
                     </p>
-                  )}
-
-                  {dayItem.hasApprovedLeave && (
-                    <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-700">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 shrink-0" />
-                      <span className="truncate">On Leave</span>
-                    </div>
-                  )}
-
-                  {dayItem.hasPendingLeave && (
-                    <div className="flex items-center gap-1 text-[10px] font-bold text-amber-700">
-                      <span className="h-1.5 w-1.5 rounded-full bg-amber-600 shrink-0" />
-                      <span className="truncate">Pending</span>
-                    </div>
-                  )}
+                  ) : dayItem.annotation?.note ? (
+                    <p
+                      className="text-[9px] truncate text-slate-500 italic leading-tight"
+                      title={dayItem.annotation.note}
+                    >
+                      {dayItem.annotation.note}
+                    </p>
+                  ) : dayItem.hasApprovedLeave ? (
+                    <p className="text-[9px] font-semibold text-emerald-700 leading-tight">Leave</p>
+                  ) : dayItem.hasPendingLeave ? (
+                    <p className="text-[9px] font-semibold text-amber-700 leading-tight">Pending</p>
+                  ) : null}
                 </div>
               </div>
             );
@@ -801,30 +916,118 @@ export const LeavePortalPage: React.FC = () => {
         </div>
 
         {/* Calendar Legend */}
-        <div className="mt-4 pt-3 border-t border-teal-50 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-3">
-          <div className="flex flex-wrap items-center gap-4">
+        <div className="mt-3 pt-2.5 border-t border-teal-50 flex flex-wrap items-center justify-between text-[11px] text-slate-500 gap-2.5">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             <div className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded bg-rose-500" />
-              <span>Kenyan Public Holiday</span>
+              <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
+              <span>Public Holiday</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded bg-emerald-500" />
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
               <span>Approved Leave</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded bg-amber-500" />
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
               <span>Pending Approval</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded bg-[#0e4a5c]" />
-              <span>Selected Dates</span>
+              <span className="h-2.5 w-2.5 rounded bg-[#0e4a5c]" />
+              <span>Selected Range</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Bookmark className="h-3 w-3 fill-amber-500 text-amber-500" />
+              <span>Bookmark / Note</span>
             </div>
           </div>
-          <div className="text-[11px] text-teal-800 font-medium">
-            &bull; Weekends &amp; holidays automatically deducted from working leave count.
+          <div className="text-[10px] text-teal-800 font-medium">
+            &bull; Weekends &amp; holidays automatically excluded from working leave days.
           </div>
         </div>
       </div>
+
+      {/* Day Note & Bookmark Modal */}
+      {noteModalDate && (
+        <Modal
+          isOpen={Boolean(noteModalDate)}
+          onClose={() => setNoteModalDate(null)}
+          title={`Date Note & Bookmark (${noteModalDate})`}
+        >
+          <div className="space-y-4 text-xs">
+            {/* Holiday / status indicator banner */}
+            {(() => {
+              const holiday = isKenyanPublicHoliday(noteModalDate);
+              if (holiday.isHoliday) {
+                return (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-rose-800 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+                    <span>Public Holiday: <strong>{holiday.holidayName}</strong></span>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+            {/* Bookmark Checkbox Toggle */}
+            <label className="flex items-center gap-2.5 p-3 rounded-xl border border-teal-100 bg-[#f8faf9] cursor-pointer hover:bg-[#eef7f5] transition">
+              <input
+                type="checkbox"
+                checked={noteDraftBookmarked}
+                onChange={(e) => setNoteDraftBookmarked(e.target.checked)}
+                className="h-4 w-4 rounded border-teal-300 text-[#0e4a5c] focus:ring-[#0e4a5c]"
+              />
+              <div className="flex items-center gap-1.5">
+                <Bookmark className={`h-4 w-4 ${noteDraftBookmarked ? 'fill-amber-500 text-amber-500' : 'text-slate-400'}`} />
+                <span className="font-bold text-[#0d2836]">Bookmark this date</span>
+              </div>
+            </label>
+
+            {/* Personal Note Textarea */}
+            <div>
+              <label className="block text-xs font-bold text-[#0d2836] mb-1">
+                Personal Note / Reminder
+              </label>
+              <textarea
+                value={noteDraftText}
+                onChange={(e) => setNoteDraftText(e.target.value)}
+                rows={3}
+                placeholder="Add notes, schedule reminders, handover info, appointments..."
+                className="w-full rounded-xl border border-teal-200/90 bg-white p-2.5 text-xs text-slate-800 focus:border-[#0e4a5c] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c]"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-between pt-2 border-t border-teal-50">
+              {dayAnnotations[noteModalDate] ? (
+                <button
+                  type="button"
+                  onClick={handleDeleteNoteModal}
+                  className="flex items-center gap-1 text-xs font-semibold text-rose-600 hover:text-rose-800"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Delete Note</span>
+                </button>
+              ) : <span />}
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNoteModalDate(null)}
+                  className="rounded-xl border border-teal-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveNoteModal}
+                  className="rounded-xl bg-[#0e4a5c] hover:bg-[#083543] px-4 py-1.5 text-xs font-bold text-white shadow-xs"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* =========================================================================
           SECTION 4: BALANCED TASKS & LEAVE ACTIVITY QUEUE

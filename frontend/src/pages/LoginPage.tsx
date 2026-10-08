@@ -16,20 +16,6 @@ export const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [submitSeconds, setSubmitSeconds] = useState(0);
-
-  useEffect(() => {
-    let timer: any;
-    if (isSubmitting) {
-      timer = setInterval(() => {
-        setSubmitSeconds((s) => s + 1);
-      }, 1000);
-    } else {
-      setSubmitSeconds(0);
-    }
-    return () => clearInterval(timer);
-  }, [isSubmitting]);
-
   // Where to navigate after login
   const rawFrom = (location.state as any)?.from?.pathname;
   const from = rawFrom && rawFrom !== '/login' ? rawFrom : '/';
@@ -43,7 +29,7 @@ export const LoginPage: React.FC = () => {
     }
   }, []);
 
-  // Proactively ping the cloud backend to wake it from standby if idle
+  // Proactively ping the backend on mount
   useEffect(() => {
     const apiBase = import.meta.env.VITE_API_BASE_URL || '';
     if (apiBase) {
@@ -61,9 +47,7 @@ export const LoginPage: React.FC = () => {
       navigate(from, { replace: true });
     } catch (err: any) {
       if (!err.response || err.code === 'ERR_NETWORK') {
-        setError(
-          'The cloud server was waking up from idle standby (free-tier cold boot). Please wait a few seconds and click Sign In again.'
-        );
+        setError('Unable to reach the server. Please check your connection and try again.');
       } else {
         const msg = err.response?.data?.message || err.message || 'Authentication failed. Please verify your email and password.';
         setError(msg);
@@ -166,14 +150,6 @@ export const LoginPage: React.FC = () => {
             >
               {isSubmitting ? 'Signing in...' : 'Sign In'}
             </button>
-
-            {isSubmitting && submitSeconds >= 4 && (
-              <p className="mt-2 text-center text-xs text-slate-500 animate-pulse">
-                {submitSeconds < 15
-                  ? 'Connecting to secure server...'
-                  : 'Waking up cloud server from standby (free tier takes ~30–60s on first request)...'}
-              </p>
-            )}
           </form>
 
           <div className="mt-6 text-center text-xs text-slate-500 border-t border-teal-100 pt-5">

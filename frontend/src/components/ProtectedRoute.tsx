@@ -33,18 +33,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
           
           <div className="space-y-1">
             <h3 className="text-base font-bold text-slate-950">
-              {elapsedSeconds < 4 
+              {elapsedSeconds < 6 
                 ? 'Verifying secure session...' 
-                : elapsedSeconds < 15 
-                ? 'Connecting to backend service...' 
-                : 'Waking up cloud backend...'}
+                : 'Loading your workspace...'}
             </h3>
             <p className="text-xs text-slate-600 max-w-sm">
-              {elapsedSeconds < 4
-                ? 'Validating authorization credentials with the server.'
-                : elapsedSeconds < 15
-                ? 'Establishing a secure connection with cloud infrastructure.'
-                : 'The cloud backend is spinning up from idle standby. Free-tier instances take ~30–60 seconds on initial boot.'}
+              Please wait while your session and permissions are being loaded.
             </p>
           </div>
 
@@ -61,7 +55,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
                 onClick={() => logout()}
                 className="mt-2 text-xs text-blue-700 hover:text-black font-semibold underline transition cursor-pointer"
               >
-                Cancel and go to Sign In screen &rarr;
+                Return to Sign In screen &rarr;
               </button>
             </div>
           )}

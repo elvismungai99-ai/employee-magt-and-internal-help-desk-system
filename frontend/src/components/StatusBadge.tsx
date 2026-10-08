@@ -5,79 +5,119 @@ interface StatusBadgeProps {
   status?: LeaveRequestStatus | TicketStatus | string;
   priority?: TicketPriority | string;
   className?: string;
+  showDot?: boolean;
 }
 
-export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, priority, className = '' }) => {
+export const StatusBadge: React.FC<StatusBadgeProps> = ({
+  status,
+  priority,
+  className = '',
+  showDot = true,
+}) => {
   if (priority) {
-    let colorClasses = 'bg-gray-100 text-gray-800 border-gray-200';
+    let badgeClasses = 'bg-slate-100 text-slate-700 border-slate-200';
+    let dotColor = 'bg-slate-400';
+
     switch (priority) {
       case 'LOW':
-        colorClasses = 'bg-blue-50 text-blue-700 border-blue-200';
+        badgeClasses = 'bg-slate-50 text-slate-700 border-slate-200';
+        dotColor = 'bg-slate-400';
         break;
       case 'MEDIUM':
-        colorClasses = 'bg-yellow-50 text-yellow-700 border-yellow-200';
+        badgeClasses = 'bg-teal-50 text-[#0e4a5c] border-teal-200';
+        dotColor = 'bg-teal-600';
         break;
       case 'HIGH':
-        colorClasses = 'bg-orange-50 text-orange-700 border-orange-200';
+        badgeClasses = 'bg-amber-50 text-amber-800 border-amber-200';
+        dotColor = 'bg-amber-500';
         break;
       case 'URGENT':
-        colorClasses = 'bg-red-50 text-red-700 border-red-200 font-semibold';
+        badgeClasses = 'bg-rose-50 text-rose-700 border-rose-200 font-bold';
+        dotColor = 'bg-rose-600';
         break;
     }
+
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${colorClasses} ${className}`}>
-        {priority}
+      <span
+        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${badgeClasses} ${className}`}
+      >
+        {showDot && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor}`} />}
+        <span>{priority}</span>
       </span>
     );
   }
 
   if (status) {
-    let colorClasses = 'bg-gray-100 text-gray-800 border-gray-200';
+    let badgeClasses = 'bg-slate-100 text-slate-700 border-slate-200';
+    let dotColor = 'bg-slate-400';
+    let label = status.replace(/_/g, ' ');
+
     switch (status) {
-      // Leave statuses
+      // Positive/Approved/Resolved
       case 'APPROVED':
-        colorClasses = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'RESOLVED':
+        badgeClasses = 'bg-emerald-50 text-emerald-800 border-emerald-200';
+        dotColor = 'bg-emerald-600';
         break;
+
+      // Pending/Waiting
       case 'PENDING':
       case 'SUBMITTED':
-        colorClasses = 'bg-amber-50 text-amber-700 border-amber-200';
+      case 'PENDING_APPROVAL':
+        badgeClasses = 'bg-amber-50 text-amber-800 border-amber-200';
+        dotColor = 'bg-amber-500';
         break;
+
+      case 'PENDING_USER':
+        badgeClasses = 'bg-sky-50 text-sky-800 border-sky-200 font-semibold';
+        dotColor = 'bg-sky-600';
+        label = 'Waiting on Requester';
+        break;
+
+      // In Progress / Active Triage
+      case 'NEW':
+        badgeClasses = 'bg-[#e3f4f1] text-[#0e4a5c] border-teal-200 font-bold';
+        dotColor = 'bg-[#0e4a5c]';
+        break;
+
+      case 'ASSIGNED':
+      case 'TRIAGED':
+        badgeClasses = 'bg-[#f0f9f8] text-[#0e4a5c] border-teal-200';
+        dotColor = 'bg-teal-600';
+        break;
+
+      case 'IN_PROGRESS':
+        badgeClasses = 'bg-[#eef7f6] text-[#0e4a5c] border-teal-300 font-semibold';
+        dotColor = 'bg-[#0e4a5c]';
+        break;
+
+      case 'REOPENED':
+        badgeClasses = 'bg-orange-50 text-orange-800 border-orange-200 font-semibold';
+        dotColor = 'bg-orange-500';
+        break;
+
+      // Negative/Rejected/Cancelled
       case 'REJECTED':
       case 'CANCELLED':
       case 'REVOKED':
-        colorClasses = 'bg-rose-50 text-rose-700 border-rose-200';
-        break;
-      case 'DRAFT':
-        colorClasses = 'bg-slate-50 text-slate-700 border-slate-200';
+        badgeClasses = 'bg-rose-50 text-rose-800 border-rose-200';
+        dotColor = 'bg-rose-500';
         break;
 
-      // Ticket statuses
-      case 'NEW':
-        colorClasses = 'bg-sky-50 text-sky-700 border-sky-200';
-        break;
-      case 'ASSIGNED':
-      case 'TRIAGED':
-        colorClasses = 'bg-indigo-50 text-indigo-700 border-indigo-200';
-        break;
-      case 'IN_PROGRESS':
-        colorClasses = 'bg-blue-50 text-blue-700 border-blue-200';
-        break;
-      case 'PENDING_USER':
-        colorClasses = 'bg-purple-50 text-purple-700 border-purple-200';
-        break;
-      case 'RESOLVED':
-        colorClasses = 'bg-teal-50 text-teal-700 border-teal-200';
-        break;
+      // Neutral/Draft/Closed
       case 'CLOSED':
-        colorClasses = 'bg-zinc-100 text-zinc-700 border-zinc-300';
-        break;
-      case 'REOPENED':
-        colorClasses = 'bg-orange-50 text-orange-700 border-orange-200';
+      case 'DRAFT':
+        badgeClasses = 'bg-slate-100 text-slate-700 border-slate-200';
+        dotColor = 'bg-slate-400';
         break;
     }
+
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${colorClasses} ${className}`}>
-        {status.replace('_', ' ')}
+      <span
+        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${badgeClasses} ${className}`}
+      >
+        {showDot && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor}`} />}
+        <span className="capitalize">{label.toLowerCase()}</span>
       </span>
     );
   }

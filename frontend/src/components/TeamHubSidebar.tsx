@@ -1,18 +1,15 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  LayoutGrid,
+  LayoutDashboard,
+  CalendarDays,
   Inbox,
-  Calendar,
-  Users,
-  Clock,
-  TrendingUp,
-  Wallet,
-  CalendarCheck,
-  UserCheck,
-  Sparkles,
   ShieldCheck,
-  Headphones
+  Headphones,
+  Users,
+  User,
+  Building2,
+  LifeBuoy
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -23,9 +20,9 @@ interface TeamHubSidebarProps {
 
 export const TeamHubSidebar: React.FC<TeamHubSidebarProps> = ({ mobileOpen, onCloseMobile }) => {
   const location = useLocation();
-  const { user, hasRole, hasAnyRole } = useAuth();
+  const { user, roles, hasRole, hasAnyRole } = useAuth();
 
-  const isLeaveActive = location.pathname === '/leave';
+  const isLeaveActive = location.pathname.startsWith('/leave');
   const isDashboardActive = location.pathname === '/' || location.pathname === '/dashboard';
   const isInboxActive = location.pathname.startsWith('/helpdesk');
   const isApprovalsActive = location.pathname.startsWith('/approvals');
@@ -43,211 +40,158 @@ export const TeamHubSidebar: React.FC<TeamHubSidebarProps> = ({ mobileOpen, onCl
       )}
 
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 flex w-64 flex-col bg-[#fbfdfc] border-r border-[#e3edea] px-4 py-5 transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-50 flex w-64 flex-col bg-white border-r border-teal-100 px-4 py-5 transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
           mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
         }`}
       >
-        {/* Brand Logo */}
-        <div className="flex items-center gap-3 px-3 mb-7">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-md shadow-emerald-500/20">
-            <svg
-              className="h-5 w-5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="12" y1="2" x2="12" y2="22" />
-              <line x1="2" y1="12" x2="22" y2="12" />
-              <circle cx="12" cy="12" r="3" fill="currentColor" />
-            </svg>
+        {/* Authentic System Brand Header */}
+        <div className="flex items-center gap-3 px-2 mb-7">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0e4a5c] text-white font-bold text-base shadow-sm">
+            EM
           </div>
-          <div>
-            <span className="text-xl font-bold tracking-tight text-slate-800">TeamHub</span>
+          <div className="flex flex-col min-w-0">
+            <span className="text-sm font-bold tracking-tight text-[#0d2836] truncate leading-tight">
+              Employee Mgmt
+            </span>
+            <span className="text-[11px] text-[#155b6e] font-medium tracking-normal mt-0.5 truncate">
+              Internal Help Desk
+            </span>
           </div>
         </div>
 
-        {/* Navigation Links */}
-        <nav className="flex-1 space-y-1 overflow-y-auto pr-1">
+        {/* Functional Navigation Links (Only buttons with real destinations) */}
+        <nav className="flex-1 space-y-1.5 overflow-y-auto pr-1">
+          {/* 1. Dashboard Overview */}
           <NavLink
             to="/"
             onClick={onCloseMobile}
-            className={`flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
               isDashboardActive
-                ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30 font-semibold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-[#eef5f3]'
+                ? 'bg-[#0e4a5c] text-white shadow-xs font-bold'
+                : 'text-slate-600 hover:text-[#0d2836] hover:bg-[#f0f9f8]'
             }`}
           >
-            <LayoutGrid className="h-4 w-4" />
+            <LayoutDashboard className="h-4 w-4 shrink-0" />
             <span>Dashboard</span>
           </NavLink>
 
-          <NavLink
-            to="/helpdesk"
-            onClick={onCloseMobile}
-            className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              isInboxActive
-                ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30 font-semibold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-[#eef5f3]'
-            }`}
-          >
-            <div className="flex items-center gap-3.5">
-              <Inbox className="h-4 w-4" />
-              <span>Inbox</span>
-            </div>
-            <span
-              className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                isInboxActive
-                  ? 'bg-white/20 text-white'
-                  : 'bg-emerald-100 text-emerald-800'
-              }`}
-            >
-              Desk
-            </span>
-          </NavLink>
-
+          {/* 2. Leave Management */}
           <NavLink
             to="/leave"
             onClick={onCloseMobile}
-            className={`flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              location.pathname === '/calendar'
-                ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30 font-semibold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-[#eef5f3]'
-            }`}
-          >
-            <Calendar className="h-4 w-4" />
-            <span>Calendar</span>
-          </NavLink>
-
-          {/* Role-Specific quick link for Admin / Employees */}
-          {hasRole('HR_ADMIN') ? (
-            <NavLink
-              to="/admin"
-              onClick={onCloseMobile}
-              className={`flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                isAdminActive
-                  ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30 font-semibold'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-[#eef5f3]'
-              }`}
-            >
-              <Users className="h-4 w-4" />
-              <span>Employees</span>
-            </NavLink>
-          ) : (
-            <div
-              className="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-500 cursor-not-allowed opacity-80"
-              title="Employee Directory is managed by HR Admin"
-            >
-              <Users className="h-4 w-4" />
-              <span>Employees</span>
-            </div>
-          )}
-
-          <div
-            className="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-500 cursor-default"
-            title="Standard full-time 40h attendance synced"
-          >
-            <Clock className="h-4 w-4" />
-            <span>Attendance</span>
-          </div>
-
-          <div
-            className="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-500 cursor-default"
-            title="Annual reviews scheduled in Q4"
-          >
-            <TrendingUp className="h-4 w-4" />
-            <span>Performance</span>
-          </div>
-
-          <div
-            className="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-500 cursor-default"
-            title="Payroll cycle active: 28th of every month"
-          >
-            <Wallet className="h-4 w-4" />
-            <span>Payroll</span>
-          </div>
-
-          {/* Active Leave Management Tab as shown in mockup */}
-          <NavLink
-            to="/leave"
-            onClick={onCloseMobile}
-            className={`flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
               isLeaveActive
-                ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30 font-semibold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-[#eef5f3]'
+                ? 'bg-[#0e4a5c] text-white shadow-xs font-bold'
+                : 'text-slate-600 hover:text-[#0d2836] hover:bg-[#f0f9f8]'
             }`}
           >
-            <CalendarCheck className="h-4 w-4" />
+            <CalendarDays className="h-4 w-4 shrink-0" />
             <span>Leave Management</span>
           </NavLink>
 
-          <div
-            className="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-500 cursor-default"
-            title="Recruitment portal available for HR managers"
+          {/* 3. Help Desk (Inbox) */}
+          <NavLink
+            to="/helpdesk"
+            onClick={onCloseMobile}
+            className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+              isInboxActive
+                ? 'bg-[#0e4a5c] text-white shadow-xs font-bold'
+                : 'text-slate-600 hover:text-[#0d2836] hover:bg-[#f0f9f8]'
+            }`}
           >
-            <UserCheck className="h-4 w-4" />
-            <span>Recruitment</span>
-          </div>
+            <div className="flex items-center gap-3">
+              <Inbox className="h-4 w-4 shrink-0" />
+              <span>Help Desk</span>
+            </div>
+            <span
+              className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
+                isInboxActive
+                  ? 'bg-white/20 text-white'
+                  : 'bg-[#e3f4f1] text-[#0e4a5c]'
+              }`}
+            >
+              Tickets
+            </span>
+          </NavLink>
 
-          {/* Role-Specific Approvals Menu */}
+          {/* 4. Manager Approvals (Visible to LINE_MANAGER and HR_ADMIN) */}
           {hasAnyRole(['LINE_MANAGER', 'HR_ADMIN']) && (
-            <div className="pt-2 border-t border-[#e3edea] my-2">
+            <div className="pt-2">
+              <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Management
+              </div>
               <NavLink
                 to="/approvals"
                 onClick={onCloseMobile}
-                className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                   isApprovalsActive
-                    ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30 font-semibold'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-[#eef5f3]'
+                    ? 'bg-[#0e4a5c] text-white shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-[#0d2836] hover:bg-[#f0f9f8]'
                 }`}
               >
-                <div className="flex items-center gap-3.5">
-                  <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="h-4 w-4 shrink-0 text-teal-600" />
                   <span>Approvals</span>
                 </div>
-                <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
-                  Action
+                <span className="text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded">
+                  Pending
                 </span>
               </NavLink>
             </div>
           )}
 
-          {/* Support Queue for Support Agents */}
+          {/* 5. Support Queue (Visible to SUPPORT_AGENT and HR_ADMIN) */}
           {hasAnyRole(['SUPPORT_AGENT', 'HR_ADMIN']) && (
             <NavLink
               to="/agent-queue"
               onClick={onCloseMobile}
-              className={`flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                 isAgentQueueActive
-                  ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30 font-semibold'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-[#eef5f3]'
+                  ? 'bg-[#0e4a5c] text-white shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-[#0d2836] hover:bg-[#f0f9f8]'
               }`}
             >
-              <Headphones className="h-4 w-4 text-teal-600" />
+              <Headphones className="h-4 w-4 shrink-0 text-teal-600" />
               <span>Agent Queue</span>
+            </NavLink>
+          )}
+
+          {/* 6. Employee Directory & Admin (Visible to HR_ADMIN) */}
+          {hasRole('HR_ADMIN') && (
+            <NavLink
+              to="/admin"
+              onClick={onCloseMobile}
+              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                isAdminActive
+                  ? 'bg-[#0e4a5c] text-white shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-[#0d2836] hover:bg-[#f0f9f8]'
+              }`}
+            >
+              <Users className="h-4 w-4 shrink-0 text-teal-600" />
+              <span>Administration</span>
             </NavLink>
           )}
         </nav>
 
-        {/* Bottom "Level Up Your HR" promotional action card */}
-        <div className="mt-4 rounded-2xl bg-gradient-to-br from-[#d4f3e9] to-[#ebf9f3] p-4 border border-[#c1e8dc] text-slate-800 relative overflow-hidden">
-          <div className="flex items-center gap-2 mb-1.5">
-            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm">
-              <Sparkles className="h-3.5 w-3.5" />
+        {/* User Employment Badge at Bottom */}
+        <div className="mt-4 rounded-xl bg-[#f2f8f8] p-3.5 border border-teal-100 text-[#0d2836]">
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0e4a5c] text-white font-bold text-xs">
+              <User className="h-4 w-4" />
             </div>
-            <span className="font-bold text-xs text-slate-800 tracking-tight">Level Up Your HR</span>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-[#0d2836] truncate leading-tight">
+                {user?.fullName || 'User Account'}
+              </p>
+              <p className="text-[10px] text-slate-500 truncate leading-tight">
+                {user?.employeeCode || 'Employee'}
+              </p>
+            </div>
           </div>
-          <p className="text-[11px] leading-tight text-slate-600 mb-3">
-            Boost employee satisfaction &amp; automate approvals effortlessly.
-          </p>
-          <NavLink
-            to="/leave"
-            className="inline-flex items-center justify-center w-full py-1.5 px-3 rounded-xl bg-white hover:bg-slate-50 text-[11px] font-semibold text-emerald-800 border border-emerald-200 shadow-sm transition-all"
-          >
-            Leave Policy Guide
-          </NavLink>
+          <div className="flex items-center gap-1.5 pt-2 border-t border-teal-100/80 text-[10px] text-slate-600">
+            <Building2 className="h-3 w-3 text-teal-700 shrink-0" />
+            <span className="truncate">{user?.department?.name || 'General Operations'}</span>
+          </div>
         </div>
       </aside>
     </>

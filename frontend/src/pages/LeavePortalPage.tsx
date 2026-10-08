@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
+  CalendarDays,
   Calendar as CalendarIcon,
+  Clock,
+  User,
   Briefcase,
-  HeartPulse,
-  Coffee,
+  Building2,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
   Search,
   Filter,
   Plus,
@@ -12,207 +17,39 @@ import {
   ChevronDown,
   Check,
   X,
-  MoreHorizontal,
-  Clock,
-  Sparkles,
-  AlertCircle,
-  CheckCircle2,
-  CalendarCheck2
+  FileText,
+  ShieldCheck,
+  RotateCcw
 } from 'lucide-react';
 import { leaveApi } from '../api/leaveApi';
 import { LeaveBalance, LeaveRequest, LeaveType } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
-
-// Unified Leave Activity row interface
-interface LeaveActivityItem {
-  id: string;
-  isBackendRecord?: boolean;
-  employeeName: string;
-  employeeCode: string;
-  avatarUrl: string;
-  jobTitle: string;
-  department: string;
-  leaveType: string;
-  leaveTypeCode?: string;
-  submitDate: string;
-  period: string;
-  duration: string;
-  durationDays: number;
-  reason: string;
-  status: 'Approved' | 'Rejected' | 'Pending';
-  rawStatus?: string;
-}
-
-// Initial realistic data matching the mockup exactly
-const INITIAL_MOCKUP_ACTIVITIES: LeaveActivityItem[] = [
-  {
-    id: 'mock-1',
-    employeeName: 'Lina Armand',
-    employeeCode: 'EMP-0312',
-    avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80',
-    jobTitle: 'Lab Analyst',
-    department: 'R&D',
-    leaveType: 'Sick Leave',
-    leaveTypeCode: 'SICK',
-    submitDate: '18 Jun 2035',
-    period: '20–22 Jun 2035',
-    duration: '3 Days',
-    durationDays: 3,
-    reason: "Doctor's note attached",
-    status: 'Approved',
-  },
-  {
-    id: 'mock-2',
-    employeeName: 'Jacob Yuen',
-    employeeCode: 'EMP-0115',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
-    jobTitle: 'Site Supervisor',
-    department: 'Operations',
-    leaveType: 'Annual Leave',
-    leaveTypeCode: 'ANNUAL',
-    submitDate: '10 Jun 2035',
-    period: '17–21 Jun 2035',
-    duration: '5 Days',
-    durationDays: 5,
-    reason: 'Family trip',
-    status: 'Approved',
-  },
-  {
-    id: 'mock-3',
-    employeeName: 'Anya Rodriguez',
-    employeeCode: 'EMP-0275',
-    avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80',
-    jobTitle: 'Graphic Designer',
-    department: 'Marketing',
-    leaveType: 'Other Leave',
-    leaveTypeCode: 'OTHER',
-    submitDate: '17 Jun 2035',
-    period: '19 Jun 2035',
-    duration: '1 Day',
-    durationDays: 1,
-    reason: 'Personal matter',
-    status: 'Pending',
-  },
-  {
-    id: 'mock-4',
-    employeeName: 'Olivia Mason',
-    employeeCode: 'EMP-0234',
-    avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&auto=format&fit=crop&q=80',
-    jobTitle: 'Marketing',
-    department: 'Executive Marketing',
-    leaveType: 'Annual Leave',
-    leaveTypeCode: 'ANNUAL',
-    submitDate: '02 Jun 2035',
-    period: '05–07 Jun 2035',
-    duration: '3 Days',
-    durationDays: 3,
-    reason: 'Conference attendance',
-    status: 'Approved',
-  },
-  {
-    id: 'mock-5',
-    employeeName: 'Sara Kim',
-    employeeCode: 'EMP-0358',
-    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=120&auto=format&fit=crop&q=80',
-    jobTitle: 'Customer Support',
-    department: 'Customer Service',
-    leaveType: 'Sick Leave',
-    leaveTypeCode: 'SICK',
-    submitDate: '14 Jun 2035',
-    period: '15–16 Jun 2035',
-    duration: '2 Days',
-    durationDays: 2,
-    reason: 'Fever',
-    status: 'Approved',
-  },
-  {
-    id: 'mock-6',
-    employeeName: 'Daniel Cheung',
-    employeeCode: 'EMP-0251',
-    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80',
-    jobTitle: 'Compliance Specialist',
-    department: 'Operations',
-    leaveType: 'Annual Leave',
-    leaveTypeCode: 'ANNUAL',
-    submitDate: '01 Jun 2035',
-    period: '10–12 Jun 2035',
-    duration: '3 Days',
-    durationDays: 3,
-    reason: 'Holiday',
-    status: 'Pending',
-  },
-  {
-    id: 'mock-7',
-    employeeName: 'Mia Torres',
-    employeeCode: 'EMP-0389',
-    avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=120&auto=format&fit=crop&q=80',
-    jobTitle: 'HR Officer',
-    department: 'Human Resources',
-    leaveType: 'Annual Leave',
-    leaveTypeCode: 'ANNUAL',
-    submitDate: '06 Jun 2035',
-    period: '09–10 Jun 2035',
-    duration: '2 Days',
-    durationDays: 2,
-    reason: 'Personal retreat',
-    status: 'Approved',
-  },
-  {
-    id: 'mock-8',
-    employeeName: 'Ethan Roy',
-    employeeCode: 'EMP-0178',
-    avatarUrl: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=120&auto=format&fit=crop&q=80',
-    jobTitle: 'UI Designer',
-    department: 'Product Design',
-    leaveType: 'Casual Leave',
-    leaveTypeCode: 'CASUAL',
-    submitDate: '05 Jun 2035',
-    period: '07 Jun 2035',
-    duration: '1 Day',
-    durationDays: 1,
-    reason: '—',
-    status: 'Rejected',
-  },
-  {
-    id: 'mock-9',
-    employeeName: 'Farah Nabila',
-    employeeCode: 'EMP-0120',
-    avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120&auto=format&fit=crop&q=80',
-    jobTitle: 'Customer Experience Lead',
-    department: 'Customer Service',
-    leaveType: 'Sick Leave',
-    leaveTypeCode: 'SICK',
-    submitDate: '11 Jun 2035',
-    period: '12 Jun 2035',
-    duration: '1 Day',
-    durationDays: 1,
-    reason: 'Headache',
-    status: 'Approved',
-  },
-];
+import {
+  getKenyanHolidaysForYear,
+  isKenyanPublicHoliday,
+  calculateKenyanWorkingDays
+} from '../utils/kenyaHolidays';
 
 export const LeavePortalPage: React.FC = () => {
   const { user, hasAnyRole } = useAuth();
 
-  // Backend state
-  const [backendRequests, setBackendRequests] = useState<LeaveRequest[]>([]);
+  // Core state from backend
   const [balances, setBalances] = useState<LeaveBalance[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
+  const [myRequests, setMyRequests] = useState<LeaveRequest[]>([]);
+  const [pendingApprovals, setPendingApprovals] = useState<LeaveRequest[]>([]);
+  const [allRequests, setAllRequests] = useState<LeaveRequest[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Local state for table & interactions
-  const [activityList, setActivityList] = useState<LeaveActivityItem[]>(INITIAL_MOCKUP_ACTIVITIES);
-  const [selectedIds, setSelectedIds] = useState<string[]>(['mock-3']); // Anya Rodriguez selected in mockup
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'Approved' | 'Pending' | 'Rejected'>('ALL');
-  const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
+  // Calendar State (Defaults to current system year & month)
+  const today = useMemo(() => new Date(), []);
+  const [currentYear, setCurrentYear] = useState<number>(today.getFullYear());
+  const [currentMonthIndex, setCurrentMonthIndex] = useState<number>(today.getMonth()); // 0-indexed
 
-  // Chart hover state
-  const [hoveredDay, setHoveredDay] = useState<string>('Mon');
-
-  // Calendar state
-  const [selectedCalendarDay, setSelectedCalendarDay] = useState<number | null>(null);
+  // Calendar Selection State (Range selection from the calendar)
+  const [calendarSelectedStart, setCalendarSelectedStart] = useState<string | null>(null);
+  const [calendarSelectedEnd, setCalendarSelectedEnd] = useState<string | null>(null);
 
   // Apply Leave Modal state
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
@@ -224,64 +61,48 @@ export const LeavePortalPage: React.FC = () => {
   });
   const [applyError, setApplyError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Fetch real backend data
+  // Feedback notifications
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Table filters & active tab
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
+  const [activeTab, setActiveTab] = useState<'MY_REQUESTS' | 'APPROVALS' | 'ALL_ACTIVITY'>('MY_REQUESTS');
+
+  // Load backend data
   const loadData = async () => {
+    setIsLoading(true);
     try {
-      const [balData, typesData, reqData] = await Promise.all([
-        leaveApi.getMyBalances().catch(() => []),
+      const [balData, typesData, myReqData] = await Promise.all([
+        leaveApi.getMyBalances(currentYear).catch(() => []),
         leaveApi.getLeaveTypes().catch(() => []),
-        leaveApi.getAllRequests().catch(() => leaveApi.getMyRequests().catch(() => [])),
+        leaveApi.getMyRequests().catch(() => []),
       ]);
 
       setBalances(balData);
       setLeaveTypes(typesData);
-      setBackendRequests(reqData);
+      setMyRequests(myReqData);
 
       if (typesData.length > 0 && !applyForm.leaveTypeId) {
         setApplyForm((prev) => ({ ...prev, leaveTypeId: typesData[0].id }));
       }
 
-      // Convert backend requests into LeaveActivityItem rows
-      if (reqData && reqData.length > 0) {
-        const mappedBackendItems: LeaveActivityItem[] = reqData.map((r) => {
-          const statusMapped: 'Approved' | 'Rejected' | 'Pending' =
-            r.status === 'APPROVED' ? 'Approved' : r.status === 'REJECTED' ? 'Rejected' : 'Pending';
-
-          const formatPeriod = (start: string, end: string) => {
-            if (start === end) return start;
-            return `${start} to ${end}`;
-          };
-
-          return {
-            id: r.id,
-            isBackendRecord: true,
-            employeeName: r.employeeName || user?.fullName || 'Current User',
-            employeeCode: user?.employeeCode || 'EMP-0099',
-            avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
-            jobTitle: user?.jobTitle || 'Team Member',
-            department: user?.department?.name || 'Department',
-            leaveType: r.leaveTypeName || 'Annual Leave',
-            leaveTypeCode: r.leaveTypeCode || 'ANNUAL',
-            submitDate: r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Today',
-            period: formatPeriod(r.startDate, r.endDate),
-            duration: `${r.totalDays} Day${r.totalDays > 1 ? 's' : ''}`,
-            durationDays: r.totalDays,
-            reason: r.reason || '—',
-            status: statusMapped,
-            rawStatus: r.status,
-          };
-        });
-
-        // Merge backend items at top of the initial mockup items (deduplicating)
-        setActivityList([
-          ...mappedBackendItems,
-          ...INITIAL_MOCKUP_ACTIVITIES.filter((m) => !mappedBackendItems.some((b) => b.id === m.id)),
+      // If user has manager or admin privileges, fetch approvals and team activity
+      if (hasAnyRole(['LINE_MANAGER', 'HR_ADMIN'])) {
+        const [pendingData, allData] = await Promise.all([
+          leaveApi.getPendingApprovals().catch(() => []),
+          leaveApi.getAllRequests().catch(() => []),
         ]);
+        setPendingApprovals(pendingData);
+        setAllRequests(allData);
       }
     } catch (err: any) {
-      console.warn('Backend load notice:', err);
+      console.error('Failed to load leave portal data', err);
+      setFeedback({
+        type: 'error',
+        message: 'Unable to refresh latest leave records from server.',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -289,36 +110,187 @@ export const LeavePortalPage: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [currentYear]);
 
-  // Compute working days helper
-  const calculateWorkingDays = (startStr: string, endStr: string): number => {
-    if (!startStr || !endStr) return 0;
-    const [sY, sM, sD] = startStr.split('-').map(Number);
-    const [eY, eM, eD] = endStr.split('-').map(Number);
-    if (!sY || !eY) return 0;
-
-    const start = new Date(sY, sM - 1, sD);
-    const end = new Date(eY, eM - 1, eD);
-    if (start > end) return 0;
-
-    let count = 0;
-    const cur = new Date(start);
-    while (cur <= end) {
-      const day = cur.getDay();
-      if (day !== 0 && day !== 6) {
-        count++;
-      }
-      cur.setDate(cur.getDate() + 1);
+  // Calendar Navigation handlers
+  const handlePrevMonth = () => {
+    if (currentMonthIndex === 0) {
+      setCurrentMonthIndex(11);
+      setCurrentYear((y) => y - 1);
+    } else {
+      setCurrentMonthIndex((m) => m - 1);
     }
-    return count;
   };
 
-  const selectedBalance = balances.find((b) => b.leaveTypeId === applyForm.leaveTypeId);
-  const availableDays = selectedBalance ? Number(selectedBalance.availableDays) || 0 : 15;
-  const requestedWorkingDays = calculateWorkingDays(applyForm.startDate, applyForm.endDate);
+  const handleNextMonth = () => {
+    if (currentMonthIndex === 11) {
+      setCurrentMonthIndex(0);
+      setCurrentYear((y) => y + 1);
+    } else {
+      setCurrentMonthIndex((m) => m + 1);
+    }
+  };
 
-  // Form submission handler
+  const handleResetToCurrentMonth = () => {
+    setCurrentYear(today.getFullYear());
+    setCurrentMonthIndex(today.getMonth());
+  };
+
+  // Calendar days generation
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const calendarDays = useMemo(() => {
+    const firstDayOfMonth = new Date(currentYear, currentMonthIndex, 1).getDay(); // 0 = Sun
+    const totalDaysInMonth = new Date(currentYear, currentMonthIndex + 1, 0).getDate();
+    const daysInPrevMonth = new Date(currentYear, currentMonthIndex, 0).getDate();
+
+    const days: Array<{
+      dateStr: string;
+      dayNumber: number;
+      isCurrentMonth: boolean;
+      isToday: boolean;
+      isWeekend: boolean;
+      holidayInfo: { isHoliday: boolean; holidayName?: string };
+      hasApprovedLeave: boolean;
+      hasPendingLeave: boolean;
+    }> = [];
+
+    const pad = (n: number) => n.toString().padStart(2, '0');
+
+    // Previous month padding
+    for (let i = firstDayOfMonth - 1; i >= 0; i--) {
+      const dayNum = daysInPrevMonth - i;
+      const prevMonth = currentMonthIndex === 0 ? 11 : currentMonthIndex - 1;
+      const prevYear = currentMonthIndex === 0 ? currentYear - 1 : currentYear;
+      const dateStr = `${prevYear}-${pad(prevMonth + 1)}-${pad(dayNum)}`;
+      days.push({
+        dateStr,
+        dayNumber: dayNum,
+        isCurrentMonth: false,
+        isToday: false,
+        isWeekend: new Date(prevYear, prevMonth, dayNum).getDay() === 0 || new Date(prevYear, prevMonth, dayNum).getDay() === 6,
+        holidayInfo: isKenyanPublicHoliday(dateStr),
+        hasApprovedLeave: false,
+        hasPendingLeave: false,
+      });
+    }
+
+    // Current month days
+    for (let d = 1; d <= totalDaysInMonth; d++) {
+      const dateStr = `${currentYear}-${pad(currentMonthIndex + 1)}-${pad(d)}`;
+      const dateObj = new Date(currentYear, currentMonthIndex, d);
+      const dayOfWeek = dateObj.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      const isToday =
+        dateObj.getDate() === today.getDate() &&
+        dateObj.getMonth() === today.getMonth() &&
+        dateObj.getFullYear() === today.getFullYear();
+
+      // Check user's leave requests falling on this date
+      const hasApproved = myRequests.some((req) => {
+        return (
+          req.status === 'APPROVED' &&
+          dateStr >= req.startDate &&
+          dateStr <= req.endDate
+        );
+      });
+
+      const hasPending = myRequests.some((req) => {
+        return (
+          req.status === 'PENDING' &&
+          dateStr >= req.startDate &&
+          dateStr <= req.endDate
+        );
+      });
+
+      days.push({
+        dateStr,
+        dayNumber: d,
+        isCurrentMonth: true,
+        isToday,
+        isWeekend,
+        holidayInfo: isKenyanPublicHoliday(dateStr),
+        hasApprovedLeave: hasApproved,
+        hasPendingLeave: hasPending,
+      });
+    }
+
+    // Trailing padding to complete 35 or 42 grid cells
+    const remaining = (7 - (days.length % 7)) % 7;
+    for (let j = 1; j <= remaining; j++) {
+      const nextMonth = currentMonthIndex === 11 ? 0 : currentMonthIndex + 1;
+      const nextYear = currentMonthIndex === 11 ? currentYear + 1 : currentYear;
+      const dateStr = `${nextYear}-${pad(nextMonth + 1)}-${pad(j)}`;
+      days.push({
+        dateStr,
+        dayNumber: j,
+        isCurrentMonth: false,
+        isToday: false,
+        isWeekend: new Date(nextYear, nextMonth, j).getDay() === 0 || new Date(nextYear, nextMonth, j).getDay() === 6,
+        holidayInfo: isKenyanPublicHoliday(dateStr),
+        hasApprovedLeave: false,
+        hasPendingLeave: false,
+      });
+    }
+
+    return days;
+  }, [currentYear, currentMonthIndex, today, myRequests]);
+
+  // Click handler to select leave days from calendar
+  const handleCalendarDayClick = (dateStr: string) => {
+    if (!calendarSelectedStart || (calendarSelectedStart && calendarSelectedEnd)) {
+      // First click: Select start date
+      setCalendarSelectedStart(dateStr);
+      setCalendarSelectedEnd(null);
+    } else {
+      // Second click: Select end date
+      if (dateStr < calendarSelectedStart) {
+        setCalendarSelectedEnd(calendarSelectedStart);
+        setCalendarSelectedStart(dateStr);
+      } else {
+        setCalendarSelectedEnd(dateStr);
+      }
+    }
+  };
+
+  const clearCalendarSelection = () => {
+    setCalendarSelectedStart(null);
+    setCalendarSelectedEnd(null);
+  };
+
+  // Selected calendar working days calculation (using Kenyan holiday rules)
+  const calendarWorkingDaysSelected = useMemo(() => {
+    if (!calendarSelectedStart) return 0;
+    const end = calendarSelectedEnd || calendarSelectedStart;
+    return calculateKenyanWorkingDays(calendarSelectedStart, end);
+  }, [calendarSelectedStart, calendarSelectedEnd]);
+
+  // Open modal with calendar selected dates
+  const handleApplyWithSelectedCalendarDates = (leaveTypeId?: string) => {
+    setApplyForm({
+      leaveTypeId: leaveTypeId || applyForm.leaveTypeId || (leaveTypes[0]?.id || ''),
+      startDate: calendarSelectedStart || '',
+      endDate: calendarSelectedEnd || calendarSelectedStart || '',
+      reason: '',
+    });
+    setApplyError(null);
+    setIsApplyModalOpen(true);
+  };
+
+  // Calculate working days for current apply form
+  const requestedWorkingDays = useMemo(() => {
+    return calculateKenyanWorkingDays(applyForm.startDate, applyForm.endDate);
+  }, [applyForm.startDate, applyForm.endDate]);
+
+  // Selected balance in apply form
+  const selectedBalance = balances.find((b) => b.leaveTypeId === applyForm.leaveTypeId);
+  const availableDays = selectedBalance ? Number(selectedBalance.availableDays) || 0 : 0;
+  const isInsufficient = requestedWorkingDays > availableDays && Boolean(applyForm.startDate && applyForm.endDate);
+
+  // Submit leave request to backend API
   const handleApplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setApplyError(null);
@@ -328,33 +300,39 @@ export const LeavePortalPage: React.FC = () => {
       return;
     }
     if (requestedWorkingDays === 0) {
-      setApplyError('Leave request must include at least one working day (weekends are excluded).');
+      setApplyError('Leave request must include at least one working day (Kenyan public holidays and weekends are excluded).');
+      return;
+    }
+    if (isInsufficient) {
+      setApplyError(`Insufficient balance. You requested ${requestedWorkingDays} day(s), but only have ${availableDays} available.`);
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const created = await leaveApi.submitRequest({
+      await leaveApi.submitRequest({
         leaveTypeId: applyForm.leaveTypeId,
         startDate: applyForm.startDate,
         endDate: applyForm.endDate,
-        reason: applyForm.reason,
+        reason: applyForm.reason.trim(),
       });
 
-      setToastMessage({
+      setFeedback({
         type: 'success',
-        text: `Leave request for ${requestedWorkingDays} day(s) submitted successfully!`,
+        message: `Leave application for ${requestedWorkingDays} working day(s) submitted successfully. Routed to line manager for approval.`,
       });
 
-      // Reload fresh state from backend
-      await loadData();
       setIsApplyModalOpen(false);
+      clearCalendarSelection();
       setApplyForm({
         leaveTypeId: leaveTypes[0]?.id || '',
         startDate: '',
         endDate: '',
         reason: '',
       });
+
+      // Reload balances and request queue
+      await loadData();
     } catch (err: any) {
       const msg = err.response?.data?.message || err.response?.data?.error?.details || 'Failed to submit leave request.';
       setApplyError(msg);
@@ -363,106 +341,99 @@ export const LeavePortalPage: React.FC = () => {
     }
   };
 
-  // Quick Action Approve / Reject handler
-  const handleAction = async (item: LeaveActivityItem, decision: 'APPROVE' | 'REJECT') => {
+  // Cancel own pending request
+  const handleCancelRequest = async (requestId: string) => {
+    if (!window.confirm('Are you sure you want to cancel this pending leave request?')) return;
+
     try {
-      if (item.isBackendRecord) {
-        if (decision === 'APPROVE') {
-          await leaveApi.approveRequest(item.id, 'Approved via Leave Management Dashboard');
-        } else {
-          await leaveApi.rejectRequest(item.id, 'Declined via Leave Management Dashboard');
-        }
+      await leaveApi.cancelRequest(requestId);
+      setFeedback({
+        type: 'success',
+        message: 'Leave request successfully cancelled and hold released from balance.',
+      });
+      await loadData();
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Unable to cancel leave request.';
+      setFeedback({ type: 'error', message: msg });
+    }
+  };
+
+  // Manager Approve / Reject actions
+  const handleManagerDecision = async (requestId: string, decision: 'APPROVE' | 'REJECT') => {
+    const reasonPrompt = decision === 'REJECT' ? window.prompt('Optional reason for rejection:') : undefined;
+    if (decision === 'REJECT' && reasonPrompt === null) return; // User cancelled prompt
+
+    try {
+      if (decision === 'APPROVE') {
+        await leaveApi.approveRequest(requestId, 'Approved by manager');
+      } else {
+        await leaveApi.rejectRequest(requestId, reasonPrompt || 'Rejected by manager');
       }
 
-      // Update local row state immediately
-      setActivityList((prev) =>
-        prev.map((row) =>
-          row.id === item.id
-            ? { ...row, status: decision === 'APPROVE' ? 'Approved' : 'Rejected' }
-            : row
-        )
-      );
-
-      setToastMessage({
+      setFeedback({
         type: 'success',
-        text: `Request for ${item.employeeName} marked as ${decision === 'APPROVE' ? 'Approved' : 'Rejected'}.`,
+        message: `Leave request successfully ${decision === 'APPROVE' ? 'approved' : 'rejected'}.`,
       });
+      await loadData();
     } catch (err: any) {
       const msg = err.response?.data?.message || `Failed to ${decision.toLowerCase()} request.`;
-      setToastMessage({ type: 'error', text: msg });
+      setFeedback({ type: 'error', message: msg });
     }
   };
 
-  // Checkbox selection toggle
-  const toggleSelectAll = () => {
-    if (selectedIds.length === filteredActivities.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(filteredActivities.map((a) => a.id));
+  // Filtered requests for the active table
+  const displayedRequests = useMemo(() => {
+    let source = myRequests;
+    if (activeTab === 'APPROVALS') {
+      source = pendingApprovals;
+    } else if (activeTab === 'ALL_ACTIVITY') {
+      source = allRequests;
     }
-  };
 
-  const toggleSelectRow = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-  };
-
-  // Filtering activities
-  const filteredActivities = useMemo(() => {
-    return activityList.filter((item) => {
+    return source.filter((req) => {
       const matchesSearch =
-        item.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.employeeCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.jobTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.leaveType.toLowerCase().includes(searchQuery.toLowerCase());
+        (req.employeeName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (req.leaveTypeName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (req.reason || '').toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesStatus =
-        statusFilter === 'ALL' || item.status === statusFilter;
+        statusFilter === 'ALL' || req.status === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
-  }, [activityList, searchQuery, statusFilter]);
+  }, [activeTab, myRequests, pendingApprovals, allRequests, searchQuery, statusFilter]);
 
-  // Dynamic KPI counts based on active list
-  const totalOnLeave = 6;
-  const annualLeaveCount = 3;
-  const sickLeaveCount = 2;
-  const otherLeaveCount = 1;
+  // Overall totals calculation
+  const totalAvailableAcrossTypes = useMemo(() => {
+    return balances.reduce((sum, b) => sum + (Number(b.availableDays) || 0), 0);
+  }, [balances]);
 
-  // Chart data for Leave Overview
-  const chartDays = [
-    { day: 'Mon', fullDate: 'Monday, 11 Jun', count: 6, percent: 75 },
-    { day: 'Tue', fullDate: 'Tuesday, 12 Jun', count: 4, percent: 50 },
-    { day: 'Wed', fullDate: 'Wednesday, 13 Jun', count: 5, percent: 62 },
-    { day: 'Thu', fullDate: 'Thursday, 14 Jun', count: 6, percent: 75 },
-    { day: 'Fri', fullDate: 'Friday, 15 Jun', count: 4, percent: 50 },
-  ];
-
-  const currentHoveredDay = chartDays.find((d) => d.day === hoveredDay) || chartDays[0];
+  const totalUsedAcrossTypes = useMemo(() => {
+    return balances.reduce((sum, b) => sum + (Number(b.usedDays) || 0), 0);
+  }, [balances]);
 
   return (
-    <div className="space-y-6">
-      {/* Toast feedback banner */}
-      {toastMessage && (
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* Feedback Alert Banner */}
+      {feedback && (
         <div
-          className={`flex items-center justify-between rounded-xl px-4 py-3 shadow-sm border transition-all ${
-            toastMessage.type === 'success'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-              : 'bg-red-50 border-red-200 text-red-800'
+          className={`flex items-center justify-between rounded-xl px-4 py-3 shadow-2xs border transition-all ${
+            feedback.type === 'success'
+              ? 'bg-[#e3f4f1] border-teal-200 text-[#0e4a5c]'
+              : 'bg-rose-50 border-rose-200 text-rose-800'
           }`}
         >
           <div className="flex items-center gap-2.5">
-            {toastMessage.type === 'success' ? (
-              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+            {feedback.type === 'success' ? (
+              <CheckCircle2 className="h-5 w-5 text-teal-700 shrink-0" />
             ) : (
-              <AlertCircle className="h-5 w-5 text-red-600" />
+              <AlertCircle className="h-5 w-5 text-rose-600 shrink-0" />
             )}
-            <span className="text-xs font-semibold">{toastMessage.text}</span>
+            <span className="text-xs font-semibold">{feedback.message}</span>
           </div>
           <button
-            onClick={() => setToastMessage(null)}
-            className="text-xs font-bold text-slate-400 hover:text-slate-700"
+            onClick={() => setFeedback(null)}
+            className="text-xs font-bold text-slate-400 hover:text-slate-700 ml-4"
           >
             ✕
           </button>
@@ -470,688 +441,584 @@ export const LeavePortalPage: React.FC = () => {
       )}
 
       {/* =========================================================================
-          TOP ROW: 4 KPI METRIC CARDS (Exact match to Mockup)
+          SECTION 1: EMPLOYEE DETAILS & EMPLOYMENT HEADER
          ========================================================================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Total On Leave (Today) */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#e4edea] flex flex-col justify-between transition-all hover:shadow-md">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e3f6f0] text-emerald-600">
-              <CalendarCheck2 className="h-5 w-5" />
+      <div className="bg-white rounded-2xl p-5 border border-teal-100 shadow-2xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0e4a5c] text-white font-bold text-lg shadow-sm">
+              {user ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase() : 'EM'}
             </div>
-            <span className="text-xs font-semibold text-slate-500">
-              Total On Leave (Today)
-            </span>
-          </div>
-
-          <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
-              {totalOnLeave}
-            </span>
-            <span className="text-xs font-medium text-slate-500">Employees</span>
-          </div>
-
-          <div className="mt-2 flex items-center">
-            <span className="inline-flex items-center rounded-md bg-[#e3f6f0] px-2 py-0.5 text-[11px] font-bold text-emerald-700">
-              4.7%
-            </span>
-            <span className="ml-1.5 text-[11px] text-slate-500">
-              from total employee
-            </span>
-          </div>
-        </div>
-
-        {/* Card 2: Annual Leave */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#e4edea] flex flex-col justify-between transition-all hover:shadow-md">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e3f6f0] text-emerald-600">
-              <Briefcase className="h-5 w-5" />
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-[#0d2836]">
+                  {user?.fullName || 'Authenticated Employee'}
+                </h2>
+                <span className="rounded-md bg-[#e3f4f1] px-2 py-0.5 text-[11px] font-bold text-[#0e4a5c] border border-teal-200/80">
+                  {user?.employeeCode || 'EMP-2026'}
+                </span>
+              </div>
+              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                <div className="flex items-center gap-1.5">
+                  <Briefcase className="h-3.5 w-3.5 text-teal-700" />
+                  <span>{user?.jobTitle || 'Team Member'}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Building2 className="h-3.5 w-3.5 text-teal-700" />
+                  <span>{user?.department?.name || 'Department'}</span>
+                </div>
+                {user?.manager && (
+                  <div className="flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5 text-teal-700" />
+                    <span>Manager: <strong className="text-slate-700">{user.manager.fullName}</strong></span>
+                  </div>
+                )}
+              </div>
             </div>
-            <span className="text-xs font-semibold text-slate-500">
-              Annual Leave
-            </span>
           </div>
 
-          <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
-              {annualLeaveCount}
-            </span>
-            <span className="text-xs font-medium text-slate-500">Employees</span>
-          </div>
-
-          <div className="mt-2 flex items-center">
-            <span className="inline-flex items-center rounded-md bg-[#e3f6f0] px-2 py-0.5 text-[11px] font-bold text-emerald-700">
-              50%
-            </span>
-            <span className="ml-1.5 text-[11px] text-slate-500">
-              of total leave
-            </span>
-          </div>
-        </div>
-
-        {/* Card 3: Sick Leave */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#e4edea] flex flex-col justify-between transition-all hover:shadow-md">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e3f6f0] text-emerald-600">
-              <HeartPulse className="h-5 w-5" />
-            </div>
-            <span className="text-xs font-semibold text-slate-500">
-              Sick Leave
-            </span>
-          </div>
-
-          <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
-              {sickLeaveCount}
-            </span>
-            <span className="text-xs font-medium text-slate-500">Employees</span>
-          </div>
-
-          <div className="mt-2 flex items-center">
-            <span className="inline-flex items-center rounded-md bg-[#e3f6f0] px-2 py-0.5 text-[11px] font-bold text-emerald-700">
-              33.3%
-            </span>
-            <span className="ml-1.5 text-[11px] text-slate-500">
-              of total leave
-            </span>
-          </div>
-        </div>
-
-        {/* Card 4: Other Leaves */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#e4edea] flex flex-col justify-between transition-all hover:shadow-md">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e3f6f0] text-emerald-600">
-              <Coffee className="h-5 w-5" />
-            </div>
-            <span className="text-xs font-semibold text-slate-500">
-              Other Leaves
-            </span>
-          </div>
-
-          <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
-              {otherLeaveCount}
-            </span>
-            <span className="text-xs font-medium text-slate-500">Employees</span>
-          </div>
-
-          <div className="mt-2 flex items-center">
-            <span className="inline-flex items-center rounded-md bg-[#e3f6f0] px-2 py-0.5 text-[11px] font-bold text-emerald-700">
-              16.7%
-            </span>
-            <span className="ml-1.5 text-[11px] text-slate-500">
-              of total leave
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* =========================================================================
-          MIDDLE ROW: 4 CARDS (Leave Overview, Calendar, Employee Leaves, Donut)
-         ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Card 1: Leave Overview Chart (4 cols on lg) */}
-        <div className="lg:col-span-4 bg-white rounded-2xl p-5 shadow-sm border border-[#e4edea] flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold text-slate-800">Leave Overview</h3>
             <button
               type="button"
-              className="flex items-center gap-1 rounded-lg border border-slate-200 bg-[#f8faf9] px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
-            >
-              <span>This Week</span>
-              <ChevronDown className="h-3 w-3 text-slate-400" />
-            </button>
-          </div>
-
-          {/* Interactive Bar + Line SVG Chart matching mockup */}
-          <div className="relative pt-6 pb-2">
-            {/* Tooltip on active day */}
-            <div
-              className="absolute top-0 z-10 -translate-x-1/2 rounded-xl bg-white px-3 py-1.5 text-center shadow-lg border border-slate-100 transition-all pointer-events-none"
-              style={{
-                left:
-                  hoveredDay === 'Mon'
-                    ? '18%'
-                    : hoveredDay === 'Tue'
-                    ? '34%'
-                    : hoveredDay === 'Wed'
-                    ? '50%'
-                    : hoveredDay === 'Thu'
-                    ? '66%'
-                    : '82%',
+              onClick={() => {
+                setApplyForm({
+                  leaveTypeId: leaveTypes[0]?.id || '',
+                  startDate: '',
+                  endDate: '',
+                  reason: '',
+                });
+                setIsApplyModalOpen(true);
               }}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#0e4a5c] hover:bg-[#083543] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition"
             >
-              <p className="text-[10px] text-slate-400 font-medium">{currentHoveredDay.fullDate}</p>
-              <div className="flex items-center justify-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                <span className="text-xs font-bold text-slate-800">{currentHoveredDay.count} employees</span>
-              </div>
-            </div>
-
-            {/* SVG Plot */}
-            <div className="h-44 w-full flex items-end justify-between px-3 relative">
-              {/* Horizontal Grid lines */}
-              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none text-[10px] text-slate-300">
-                <div className="border-b border-dashed border-slate-100 w-full flex items-center justify-between"><span>8</span></div>
-                <div className="border-b border-dashed border-slate-100 w-full flex items-center justify-between"><span>6</span></div>
-                <div className="border-b border-dashed border-slate-100 w-full flex items-center justify-between"><span>4</span></div>
-                <div className="border-b border-dashed border-slate-100 w-full flex items-center justify-between"><span>2</span></div>
-                <div className="border-b border-slate-200 w-full flex items-center justify-between"><span>0</span></div>
-              </div>
-
-              {/* Day Bars */}
-              {chartDays.map((item) => (
-                <div
-                  key={item.day}
-                  onMouseEnter={() => setHoveredDay(item.day)}
-                  className="group relative flex flex-col items-center flex-1 h-full justify-end cursor-pointer z-1"
-                >
-                  <div
-                    className={`w-6 rounded-t-lg transition-all duration-300 ${
-                      hoveredDay === item.day
-                        ? 'bg-emerald-500/80 shadow-md shadow-emerald-500/20'
-                        : 'bg-[#e4edea] group-hover:bg-[#cbe2da]'
-                    }`}
-                    style={{ height: `${item.percent}%` }}
-                  />
-                  <span
-                    className={`mt-2 text-xs font-medium transition-colors ${
-                      hoveredDay === item.day ? 'font-bold text-emerald-700' : 'text-slate-500'
-                    }`}
-                  >
-                    {item.day}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Card 2: Interactive Mini Calendar (3 cols on lg) */}
-        <div className="lg:col-span-3 bg-white rounded-2xl p-5 shadow-sm border border-[#e4edea] flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-1 font-bold text-xs text-slate-800 cursor-pointer hover:text-emerald-700">
-              <span>June 2035</span>
-              <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                className="flex h-6 w-6 items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500"
-              >
-                <ChevronLeft className="h-3.5 w-3.5" />
-              </button>
-              <button
-                type="button"
-                className="flex h-6 w-6 items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500"
-              >
-                <ChevronRight className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Days of week header */}
-          <div className="grid grid-cols-7 text-center text-[11px] font-semibold text-slate-400 mb-1">
-            <span>S</span>
-            <span>M</span>
-            <span>T</span>
-            <span>W</span>
-            <span>T</span>
-            <span>F</span>
-            <span>S</span>
-          </div>
-
-          {/* Calendar Day Grid */}
-          <div className="grid grid-cols-7 gap-y-1 text-center text-xs">
-            {/* Previous month days */}
-            <span className="py-1 text-slate-300">27</span>
-            <span className="py-1 text-slate-300">28</span>
-            <span className="py-1 text-slate-300">29</span>
-            <span className="py-1 text-slate-300">30</span>
-            <span className="py-1 text-slate-300">31</span>
-
-            {/* Current month days 1..6 */}
-            <span className="py-1 text-slate-700">1</span>
-            <span className="py-1 text-slate-700">2</span>
-            <span className="py-1 text-slate-700">3</span>
-            <span className="py-1 text-slate-700">4</span>
-            <span className="py-1 text-slate-700">5</span>
-            <span className="py-1 text-slate-700">6</span>
-
-            {/* Day 7: Red circle (Public Holiday) */}
-            <span className="py-1 flex items-center justify-center">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 font-bold text-white shadow-sm">
-                7
-              </span>
-            </span>
-
-            <span className="py-1 text-slate-700">8</span>
-            <span className="py-1 text-slate-700">9</span>
-            <span className="py-1 text-slate-700">10</span>
-            <span className="py-1 text-slate-700">11</span>
-            <span className="py-1 text-slate-700">12</span>
-            <span className="py-1 text-slate-700">13</span>
-            <span className="py-1 text-slate-700">14</span>
-            <span className="py-1 text-slate-700">15</span>
-            <span className="py-1 text-slate-700">16</span>
-
-            {/* Days 17-22: Green highlighted pills (Leaves) */}
-            {[17, 18, 19, 20, 21, 22].map((day) => (
-              <span key={day} className="py-1 flex items-center justify-center">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 font-semibold text-white shadow-sm">
-                  {day}
-                </span>
-              </span>
-            ))}
-
-            <span className="py-1 text-slate-700">23</span>
-            <span className="py-1 text-slate-700">24</span>
-            <span className="py-1 text-slate-700">25</span>
-            <span className="py-1 text-slate-700">26</span>
-            <span className="py-1 text-slate-700">27</span>
-            <span className="py-1 text-slate-700">28</span>
-            <span className="py-1 text-slate-700">29</span>
-            <span className="py-1 text-slate-700">30</span>
-          </div>
-
-          {/* Calendar Legend */}
-          <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-center gap-4 text-[11px] text-slate-500">
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              <span>Leave</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-rose-500" />
-              <span>Public Holiday</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 3: Employee Leaves List (2.5 cols on lg) */}
-        <div className="lg:col-span-2.5 bg-white rounded-2xl p-5 shadow-sm border border-[#e4edea] flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-slate-800">Employee Leaves</h3>
-            <button type="button" className="text-slate-400 hover:text-slate-600">
-              <MoreHorizontal className="h-4 w-4" />
+              <Plus className="h-4 w-4" />
+              <span>Apply for Leave</span>
             </button>
-          </div>
-
-          <div className="space-y-3.5 my-auto">
-            {/* 1. Lina Armand */}
-            <div className="flex items-center gap-2.5">
-              <img
-                src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&auto=format&fit=crop&q=80"
-                alt="Lina Armand"
-                className="h-8 w-8 rounded-full object-cover shrink-0"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-slate-800 truncate">Lina Armand</p>
-                <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                  <span className="text-emerald-700 font-semibold">Sick Leave</span>
-                  <span>&bull;</span>
-                  <span>20–22 June 2035</span>
-                </div>
-              </div>
-            </div>
-
-            {/* 2. Jacob Yuen */}
-            <div className="flex items-center gap-2.5">
-              <img
-                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&auto=format&fit=crop&q=80"
-                alt="Jacob Yuen"
-                className="h-8 w-8 rounded-full object-cover shrink-0"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-slate-800 truncate">Jacob Yuen</p>
-                <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                  <span className="text-emerald-700 font-semibold">Annual Leave</span>
-                  <span>&bull;</span>
-                  <span>17–21 June 2035</span>
-                </div>
-              </div>
-            </div>
-
-            {/* 3. Anya Rodriguez */}
-            <div className="flex items-center gap-2.5">
-              <img
-                src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=80&auto=format&fit=crop&q=80"
-                alt="Anya Rodriguez"
-                className="h-8 w-8 rounded-full object-cover shrink-0"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-slate-800 truncate">Anya Rodriguez</p>
-                <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                  <span className="text-emerald-700 font-semibold">Other Leave</span>
-                  <span>&bull;</span>
-                  <span>19 June 2035</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 4: Leave Types Donut Chart Widget (2.5 cols on lg) */}
-        <div className="lg:col-span-2.5 bg-white rounded-2xl p-5 shadow-sm border border-[#e4edea] flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-bold text-slate-800">Leave Types</h3>
-            <button type="button" className="text-slate-400 hover:text-slate-600">
-              <MoreHorizontal className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* SVG Donut Ring with 6 Employees in Center */}
-          <div className="relative flex items-center justify-center my-1">
-            <svg className="h-28 w-28 -rotate-90 transform" viewBox="0 0 100 100">
-              {/* Background circle track */}
-              <circle
-                cx="50"
-                cy="50"
-                r="38"
-                fill="none"
-                stroke="#eef5f3"
-                strokeWidth="11"
-              />
-              {/* Segment 1: Annual Leave 50% (emerald) */}
-              <circle
-                cx="50"
-                cy="50"
-                r="38"
-                fill="none"
-                stroke="#059669"
-                strokeWidth="11"
-                strokeDasharray="119.38 238.76"
-                strokeDashoffset="0"
-                strokeLinecap="round"
-              />
-              {/* Segment 2: Sick Leave 33.3% (mint/cyan) */}
-              <circle
-                cx="50"
-                cy="50"
-                r="38"
-                fill="none"
-                stroke="#10b981"
-                strokeWidth="11"
-                strokeDasharray="79.5 238.76"
-                strokeDashoffset="-125"
-                strokeLinecap="round"
-              />
-              {/* Segment 3: Other Leave 16.7% (pale mint) */}
-              <circle
-                cx="50"
-                cy="50"
-                r="38"
-                fill="none"
-                stroke="#34d399"
-                strokeWidth="11"
-                strokeDasharray="39.8 238.76"
-                strokeDashoffset="-205"
-                strokeLinecap="round"
-              />
-            </svg>
-
-            {/* Center Text: 6 Employees */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-              <span className="text-2xl font-black text-slate-900 tracking-tight leading-none">6</span>
-              <span className="text-[10px] font-medium text-slate-400">Employees</span>
-            </div>
-          </div>
-
-          {/* Breakdown percentages */}
-          <div className="space-y-1.5 mt-2 text-xs">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <span className="rounded bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 text-[10px]">
-                  50%
-                </span>
-                <span className="text-slate-600 text-[11px] font-medium">Annual Leave</span>
-              </div>
-              <span className="text-slate-400 text-[10px]">3 employee</span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <span className="rounded bg-teal-100 text-teal-800 font-bold px-1.5 py-0.5 text-[10px]">
-                  33.3%
-                </span>
-                <span className="text-slate-600 text-[11px] font-medium">Sick Leave</span>
-              </div>
-              <span className="text-slate-400 text-[10px]">2 employee</span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <span className="rounded bg-emerald-50 text-emerald-600 font-bold px-1.5 py-0.5 text-[10px]">
-                  16.7%
-                </span>
-                <span className="text-slate-600 text-[11px] font-medium">Other Leaves</span>
-              </div>
-              <span className="text-slate-400 text-[10px]">1 employee</span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <span className="rounded bg-slate-100 text-slate-600 font-bold px-1.5 py-0.5 text-[10px]">
-                  0%
-                </span>
-                <span className="text-slate-600 text-[11px] font-medium">Casual Leave</span>
-              </div>
-              <span className="text-slate-400 text-[10px]">0 employee</span>
-            </div>
           </div>
         </div>
       </div>
 
       {/* =========================================================================
-          BOTTOM SECTION: LEAVE ACTIVITY TABLE
+          SECTION 2: ALL LEAVE TYPES & LIVE BALANCES GRID
          ========================================================================= */}
-      <div className="bg-white rounded-2xl shadow-sm border border-[#e4edea] overflow-hidden">
-        {/* Table Top Controls: Title, Search, Filter & + Apply Leave */}
-        <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100">
+      <div>
+        <div className="flex items-center justify-between mb-3 px-1">
           <div>
-            <h2 className="text-base font-bold text-slate-900 tracking-tight">Leave Activity</h2>
+            <h3 className="text-sm font-bold text-[#0d2836]">
+              Leave Entitlements &amp; Balances ({currentYear})
+            </h3>
+            <p className="text-xs text-slate-500">
+              Your real-time statutory allocations and remaining available working days.
+            </p>
+          </div>
+          <div className="text-right">
+            <span className="text-xs text-slate-500 block">Total Available</span>
+            <span className="text-base font-bold text-[#0e4a5c]">
+              {totalAvailableAcrossTypes} Days
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {balances.length === 0 ? (
+            <div className="col-span-4 bg-white rounded-2xl p-6 text-center border border-teal-100 text-xs text-slate-500">
+              No leave balance records found for year {currentYear}. Please contact your HR administrator.
+            </div>
+          ) : (
+            balances.map((balance) => {
+              const entitled = Number(balance.entitledDays) || 0;
+              const used = Number(balance.usedDays) || 0;
+              const pending = Number(balance.pendingDays) || 0;
+              const available = Number(balance.availableDays) || 0;
+              const carried = Number(balance.carriedOverDays) || 0;
+              const totalQuota = entitled + carried;
+              const percentageUsed = totalQuota > 0 ? Math.min(100, Math.round((used / totalQuota) * 100)) : 0;
+
+              return (
+                <div
+                  key={balance.id || balance.leaveTypeId}
+                  className="bg-white rounded-2xl p-5 border border-teal-100 shadow-2xs flex flex-col justify-between transition-all hover:border-teal-200"
+                >
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#0d2836] truncate">
+                        {balance.leaveTypeName}
+                      </span>
+                      <span className="text-[10px] font-mono font-bold text-[#0e4a5c] bg-[#e3f4f1] px-1.5 py-0.5 rounded">
+                        {balance.leaveTypeCode}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 flex items-baseline gap-1.5">
+                      <span className="text-3xl font-extrabold text-[#0e4a5c]">
+                        {available}
+                      </span>
+                      <span className="text-xs font-medium text-slate-500">Days Available</span>
+                    </div>
+
+                    {/* Usage Progress Bar */}
+                    <div className="mt-2.5">
+                      <div className="flex justify-between text-[10px] text-slate-500 mb-1">
+                        <span>Used: {used} d</span>
+                        <span>Quota: {totalQuota} d</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                        <div
+                          className="h-full bg-[#0e4a5c] rounded-full transition-all duration-300"
+                          style={{ width: `${percentageUsed}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-teal-50 flex items-center justify-between text-[11px]">
+                    <div className="text-slate-500">
+                      <span>Pending: </span>
+                      <strong className="text-amber-700">{pending} d</strong>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setApplyForm({
+                          leaveTypeId: balance.leaveTypeId,
+                          startDate: calendarSelectedStart || '',
+                          endDate: calendarSelectedEnd || calendarSelectedStart || '',
+                          reason: '',
+                        });
+                        setIsApplyModalOpen(true);
+                      }}
+                      className="text-xs font-bold text-[#0e4a5c] hover:text-[#083543] hover:underline"
+                    >
+                      Apply &rarr;
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* =========================================================================
+          SECTION 3: KENYAN CALENDAR & INTERACTIVE DATE PICKER
+         ========================================================================= */}
+      <div className="bg-white rounded-2xl p-5 border border-teal-100 shadow-2xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-teal-50 gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e3f4f1] text-[#0e4a5c]">
+              <CalendarDays className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-[#0d2836]">
+                  Kenyan Leave Calendar &bull; {monthNames[currentMonthIndex]} {currentYear}
+                </h3>
+                <span className="text-[10px] font-bold bg-[#e3f4f1] text-[#0e4a5c] px-2 py-0.5 rounded-full border border-teal-200/80">
+                  Kenya Public Holidays (Cap. 110)
+                </span>
+              </div>
+              <p className="text-xs text-slate-500">
+                Click any start date and end date directly on the calendar to pick your leave period.
+              </p>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Search Input */}
-            <div className="relative">
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                <Search className="h-3.5 w-3.5" />
+          {/* Month & Year Navigation Controls */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleResetToCurrentMonth}
+              className="px-2.5 py-1 text-xs font-semibold text-[#0e4a5c] hover:bg-[#f0f9f8] rounded-lg border border-teal-100"
+            >
+              Today
+            </button>
+            <div className="flex items-center rounded-xl border border-teal-200/80 bg-white shadow-2xs overflow-hidden">
+              <button
+                type="button"
+                onClick={handlePrevMonth}
+                className="p-1.5 text-slate-600 hover:bg-[#f0f9f8] hover:text-[#0d2836] border-r border-teal-100"
+                title="Previous Month"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="px-3 text-xs font-bold text-[#0d2836] min-w-[120px] text-center">
+                {monthNames[currentMonthIndex]} {currentYear}
+              </span>
+              <button
+                type="button"
+                onClick={handleNextMonth}
+                className="p-1.5 text-slate-600 hover:bg-[#f0f9f8] hover:text-[#0d2836] border-l border-teal-100"
+                title="Next Month"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Calendar Interactive Selection Banner (Appears when user clicks dates) */}
+        {calendarSelectedStart && (
+          <div className="mt-4 rounded-xl bg-[#e3f4f1] border border-teal-200 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-bold text-[#0e4a5c]">
+                <Clock className="h-4 w-4" />
+                <span>Selected Leave Period:</span>
+                <span className="bg-white px-2.5 py-0.5 rounded border border-teal-200">
+                  {calendarSelectedStart} {calendarSelectedEnd && calendarSelectedEnd !== calendarSelectedStart ? `to ${calendarSelectedEnd}` : ''}
+                </span>
+                <span className="ml-2 font-bold text-[#0d2836]">
+                  ({calendarWorkingDaysSelected} working day{calendarWorkingDaysSelected !== 1 ? 's' : ''})
+                </span>
               </div>
+              <p className="text-[11px] text-[#155b6e] mt-0.5">
+                Statutory calculation: Weekends and Kenyan gazetted public holidays are automatically excluded.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={clearCalendarSelection}
+                className="px-3 py-1.5 rounded-lg border border-teal-200 text-xs font-semibold text-slate-600 bg-white hover:bg-slate-50"
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                onClick={() => handleApplyWithSelectedCalendarDates()}
+                className="px-4 py-1.5 rounded-lg bg-[#0e4a5c] hover:bg-[#083543] text-xs font-bold text-white shadow-xs"
+              >
+                Apply for These Dates
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Days of Week Headers */}
+        <div className="mt-4 grid grid-cols-7 text-center text-xs font-bold text-slate-400 py-2 border-b border-teal-50">
+          <span className="text-rose-500">Sun</span>
+          <span>Mon</span>
+          <span>Tue</span>
+          <span>Wed</span>
+          <span>Thu</span>
+          <span>Fri</span>
+          <span className="text-rose-500">Sat</span>
+        </div>
+
+        {/* Calendar Days Grid */}
+        <div className="grid grid-cols-7 gap-1 pt-2">
+          {calendarDays.map((dayItem, index) => {
+            const isSelectedStart = calendarSelectedStart === dayItem.dateStr;
+            const isSelectedEnd = calendarSelectedEnd === dayItem.dateStr;
+            const isInSelectedRange =
+              calendarSelectedStart &&
+              calendarSelectedEnd &&
+              dayItem.dateStr >= calendarSelectedStart &&
+              dayItem.dateStr <= calendarSelectedEnd;
+
+            return (
+              <div
+                key={`${dayItem.dateStr}-${index}`}
+                onClick={() => handleCalendarDayClick(dayItem.dateStr)}
+                className={`min-h-[72px] sm:min-h-[82px] p-1.5 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+                  !dayItem.isCurrentMonth
+                    ? 'bg-slate-50/50 border-transparent text-slate-300 opacity-60'
+                    : isSelectedStart || isSelectedEnd
+                    ? 'bg-[#0e4a5c] border-[#0e4a5c] text-white shadow-xs'
+                    : isInSelectedRange
+                    ? 'bg-[#e3f4f1] border-teal-200 text-[#0e4a5c]'
+                    : dayItem.holidayInfo.isHoliday
+                    ? 'bg-rose-50/60 border-rose-200 hover:border-rose-300'
+                    : dayItem.hasApprovedLeave
+                    ? 'bg-emerald-50/70 border-emerald-200 hover:border-emerald-300'
+                    : dayItem.hasPendingLeave
+                    ? 'bg-amber-50/70 border-amber-200 hover:border-amber-300'
+                    : 'bg-white border-slate-100 hover:border-teal-200 hover:bg-[#f0f9f8]'
+                }`}
+                title={dayItem.holidayInfo.holidayName ? `Public Holiday: ${dayItem.holidayInfo.holidayName}` : dayItem.dateStr}
+              >
+                <div className="flex items-center justify-between">
+                  <span
+                    className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                      dayItem.isToday
+                        ? isSelectedStart || isSelectedEnd
+                          ? 'bg-white text-[#0e4a5c]'
+                          : 'bg-[#0e4a5c] text-white'
+                        : isSelectedStart || isSelectedEnd
+                        ? 'text-white'
+                        : dayItem.isWeekend
+                        ? 'text-slate-400'
+                        : 'text-slate-700'
+                    }`}
+                  >
+                    {dayItem.dayNumber}
+                  </span>
+
+                  {/* Badges for Holidays or Leaves */}
+                  {dayItem.holidayInfo.isHoliday && (
+                    <span
+                      className={`text-[9px] font-bold px-1 rounded truncate max-w-[70px] ${
+                        isSelectedStart || isSelectedEnd
+                          ? 'bg-white/20 text-white'
+                          : 'bg-rose-100 text-rose-800'
+                      }`}
+                    >
+                      Holiday
+                    </span>
+                  )}
+                </div>
+
+                {/* Day Content Badges */}
+                <div className="space-y-0.5">
+                  {dayItem.holidayInfo.isHoliday && (
+                    <p
+                      className={`text-[10px] font-bold leading-tight truncate ${
+                        isSelectedStart || isSelectedEnd ? 'text-white/90' : 'text-rose-700'
+                      }`}
+                      title={dayItem.holidayInfo.holidayName}
+                    >
+                      {dayItem.holidayInfo.holidayName}
+                    </p>
+                  )}
+
+                  {dayItem.hasApprovedLeave && (
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-700">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 shrink-0" />
+                      <span className="truncate">On Leave</span>
+                    </div>
+                  )}
+
+                  {dayItem.hasPendingLeave && (
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-amber-700">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-600 shrink-0" />
+                      <span className="truncate">Pending</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Calendar Legend */}
+        <div className="mt-4 pt-3 border-t border-teal-50 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-3">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <span className="h-3 w-3 rounded bg-rose-500" />
+              <span>Kenyan Public Holiday</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="h-3 w-3 rounded bg-emerald-500" />
+              <span>Approved Leave</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="h-3 w-3 rounded bg-amber-500" />
+              <span>Pending Approval</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="h-3 w-3 rounded bg-[#0e4a5c]" />
+              <span>Selected Dates</span>
+            </div>
+          </div>
+          <div className="text-[11px] text-teal-800 font-medium">
+            &bull; Weekends &amp; holidays automatically deducted from working leave count.
+          </div>
+        </div>
+      </div>
+
+      {/* =========================================================================
+          SECTION 4: BALANCED TASKS & LEAVE ACTIVITY QUEUE
+         ========================================================================= */}
+      <div className="bg-white rounded-2xl border border-teal-100 shadow-2xs overflow-hidden">
+        {/* Tab navigation for requests */}
+        <div className="p-4 border-b border-teal-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#fafcfb]">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab('MY_REQUESTS')}
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition ${
+                activeTab === 'MY_REQUESTS'
+                  ? 'bg-[#0e4a5c] text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-[#0d2836] hover:bg-slate-100'
+              }`}
+            >
+              My Leave Requests ({myRequests.length})
+            </button>
+
+            {hasAnyRole(['LINE_MANAGER', 'HR_ADMIN']) && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('APPROVALS')}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-xl transition ${
+                  activeTab === 'APPROVALS'
+                    ? 'bg-[#0e4a5c] text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-[#0d2836] hover:bg-slate-100'
+                }`}
+              >
+                <span>Pending Approvals</span>
+                {pendingApprovals.length > 0 && (
+                  <span className="rounded-full bg-amber-500 px-1.5 py-0.2 text-[10px] text-white font-bold">
+                    {pendingApprovals.length}
+                  </span>
+                )}
+              </button>
+            )}
+
+            {hasAnyRole(['LINE_MANAGER', 'HR_ADMIN']) && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('ALL_ACTIVITY')}
+                className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition ${
+                  activeTab === 'ALL_ACTIVITY'
+                    ? 'bg-[#0e4a5c] text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-[#0d2836] hover:bg-slate-100'
+                }`}
+              >
+                All Team Activity ({allRequests.length})
+              </button>
+            )}
+          </div>
+
+          {/* Search & Filter Controls */}
+          <div className="flex items-center gap-2.5">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search employee, ID, etc"
-                className="w-48 sm:w-60 rounded-full border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-800 placeholder-slate-400 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                placeholder="Search requests..."
+                className="w-44 sm:w-56 rounded-xl border border-teal-200/80 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-800 focus:border-[#0e4a5c] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c]"
               />
             </div>
 
-            {/* Filter Dropdown */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
-                className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 shadow-sm"
-              >
-                <Filter className="h-3.5 w-3.5 text-slate-400" />
-                <span>Filter</span>
-                <ChevronDown className="h-3 w-3 text-slate-400" />
-              </button>
-
-              {isFilterDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-40 rounded-xl border border-slate-100 bg-white p-1.5 shadow-xl z-20">
-                  {(['ALL', 'Pending', 'Approved', 'Rejected'] as const).map((status) => (
-                    <button
-                      key={status}
-                      type="button"
-                      onClick={() => {
-                        setStatusFilter(status);
-                        setIsFilterDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-2.5 py-1.5 text-xs rounded-lg transition-colors ${
-                        statusFilter === status
-                          ? 'bg-emerald-50 font-bold text-emerald-800'
-                          : 'text-slate-600 hover:bg-slate-50'
-                      }`}
-                    >
-                      {status === 'ALL' ? 'All Statuses' : status}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* + Apply Leave Action Button */}
-            <button
-              type="button"
-              onClick={() => setIsApplyModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-full bg-emerald-600 hover:bg-emerald-700 px-4 py-1.5 text-xs font-semibold text-white shadow-sm shadow-emerald-600/30 transition-all hover:shadow"
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="rounded-xl border border-teal-200/80 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 focus:border-[#0e4a5c] focus:outline-none"
             >
-              <Plus className="h-4 w-4" />
-              <span>Apply Leave</span>
-            </button>
+              <option value="ALL">All Statuses</option>
+              <option value="PENDING">Pending</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+            </select>
           </div>
         </div>
 
-        {/* Table Content */}
+        {/* Requests Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-100 bg-[#fafcfb] text-[11px] font-semibold text-slate-400">
-                <th className="py-3 px-4 w-10 text-center">
-                  <input
-                    type="checkbox"
-                    checked={
-                      filteredActivities.length > 0 &&
-                      selectedIds.length === filteredActivities.length
-                    }
-                    onChange={toggleSelectAll}
-                    className="h-3.5 w-3.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                  />
-                </th>
-                <th className="py-3 px-3">Name ↕</th>
-                <th className="py-3 px-3">Job Title ↕</th>
-                <th className="py-3 px-3">Type ↕</th>
-                <th className="py-3 px-3">Submit Date ↕</th>
-                <th className="py-3 px-3">Period ↕</th>
-                <th className="py-3 px-3">Duration ↕</th>
-                <th className="py-3 px-3">Reason ↕</th>
-                <th className="py-3 px-4 text-center">Status ↕</th>
+              <tr className="border-b border-teal-50 bg-[#f8faf9] text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <th className="py-3 px-4">Employee</th>
+                <th className="py-3 px-4">Leave Type</th>
+                <th className="py-3 px-4">Period</th>
+                <th className="py-3 px-4">Working Days</th>
+                <th className="py-3 px-4">Reason</th>
+                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-xs">
-              {filteredActivities.length === 0 ? (
+            <tbody className="divide-y divide-teal-50 text-xs">
+              {displayedRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-10 text-center text-slate-400">
-                    No leave activities matching the criteria.
+                  <td colSpan={7} className="py-10 text-center text-slate-400">
+                    No leave requests found for this filter.
                   </td>
                 </tr>
               ) : (
-                filteredActivities.map((row) => {
-                  const isSelected = selectedIds.includes(row.id);
+                displayedRequests.map((req) => {
+                  const isOwner = user?.id === req.userId;
                   return (
-                    <tr
-                      key={row.id}
-                      className={`transition-colors hover:bg-[#f6faf8] ${
-                        isSelected ? 'bg-[#f0f9f5]' : ''
-                      }`}
-                    >
-                      {/* Checkbox */}
-                      <td className="py-3.5 px-4 text-center">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleSelectRow(row.id)}
-                          className="h-3.5 w-3.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                        />
-                      </td>
-
-                      {/* Name + Avatar + EMP Code */}
-                      <td className="py-3.5 px-3">
-                        <div className="flex items-center gap-2.5">
-                          <img
-                            src={row.avatarUrl}
-                            alt={row.employeeName}
-                            className="h-8 w-8 rounded-full object-cover shrink-0 ring-1 ring-slate-100"
-                          />
-                          <div>
-                            <p className="font-bold text-slate-800 leading-tight">
-                              {row.employeeName}
-                            </p>
-                            <p className="text-[10px] font-mono text-slate-400 leading-tight">
-                              {row.employeeCode}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Job Title + Department */}
-                      <td className="py-3.5 px-3">
+                    <tr key={req.id} className="hover:bg-[#f6faf8] transition-colors">
+                      <td className="py-3.5 px-4">
                         <div>
-                          <p className="font-medium text-slate-800 leading-tight">{row.jobTitle}</p>
-                          <p className="text-[10px] text-slate-400 leading-tight">{row.department}</p>
+                          <p className="font-bold text-[#0d2836]">
+                            {req.employeeName || user?.fullName || 'Employee'}
+                          </p>
+                          <p className="text-[10px] text-slate-400">
+                            {req.employeeEmail || user?.email}
+                          </p>
                         </div>
                       </td>
 
-                      {/* Leave Type */}
-                      <td className="py-3.5 px-3 font-medium text-slate-700">
-                        {row.leaveType}
+                      <td className="py-3.5 px-4 font-semibold text-[#0e4a5c]">
+                        {req.leaveTypeName || req.leaveTypeCode || 'Leave'}
                       </td>
 
-                      {/* Submit Date */}
-                      <td className="py-3.5 px-3 text-slate-500 whitespace-nowrap">
-                        {row.submitDate}
+                      <td className="py-3.5 px-4 text-slate-700 whitespace-nowrap">
+                        {req.startDate} to {req.endDate}
                       </td>
 
-                      {/* Period */}
-                      <td className="py-3.5 px-3 text-slate-600 whitespace-nowrap">
-                        {row.period}
+                      <td className="py-3.5 px-4 font-bold text-[#0d2836]">
+                        {req.totalDays} day{req.totalDays > 1 ? 's' : ''}
                       </td>
 
-                      {/* Duration */}
-                      <td className="py-3.5 px-3 font-medium text-slate-700 whitespace-nowrap">
-                        {row.duration}
+                      <td className="py-3.5 px-4 text-slate-600 max-w-xs truncate" title={req.reason}>
+                        {req.reason}
                       </td>
 
-                      {/* Reason */}
-                      <td className="py-3.5 px-3 text-slate-500 max-w-xs truncate" title={row.reason}>
-                        {row.reason}
-                      </td>
-
-                      {/* Status / Quick Action */}
-                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                        {row.status === 'Approved' && (
-                          <span className="inline-flex items-center justify-center rounded-full bg-[#dcfce7] px-3 py-1 text-[11px] font-bold text-[#15803d]">
-                            Approved
+                      <td className="py-3.5 px-4">
+                        {req.status === 'APPROVED' && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
+                            <CheckCircle2 className="h-3 w-3" />
+                            <span>Approved</span>
                           </span>
                         )}
 
-                        {row.status === 'Rejected' && (
-                          <span className="inline-flex items-center justify-center rounded-full bg-rose-100 px-3 py-1 text-[11px] font-bold text-rose-700">
-                            Rejected
+                        {req.status === 'REJECTED' && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 border border-rose-200 px-2.5 py-0.5 text-[11px] font-bold text-rose-800">
+                            <XCircle className="h-3 w-3" />
+                            <span>Rejected</span>
                           </span>
                         )}
 
-                        {row.status === 'Pending' && (
+                        {req.status === 'PENDING' && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[11px] font-bold text-amber-800">
+                            <Clock className="h-3 w-3" />
+                            <span>Pending Approval</span>
+                          </span>
+                        )}
+
+                        {req.status === 'CANCELLED' && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-[11px] font-bold text-slate-600">
+                            Cancelled
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-right">
+                        {/* If user is manager/admin and on pending approvals tab or viewing a pending request */}
+                        {hasAnyRole(['LINE_MANAGER', 'HR_ADMIN']) && req.status === 'PENDING' && !isOwner && (
                           <div className="inline-flex items-center gap-1.5">
                             <button
                               type="button"
-                              onClick={() => handleAction(row, 'APPROVE')}
-                              className="inline-flex items-center gap-1 rounded-full bg-[#dcfce7] hover:bg-[#bbf7d0] px-2.5 py-1 text-[11px] font-bold text-[#15803d] transition-all shadow-xs"
-                              title="Approve this leave request"
+                              onClick={() => handleManagerDecision(req.id, 'APPROVE')}
+                              className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-2.5 py-1 text-xs font-bold transition shadow-xs"
                             >
                               <Check className="h-3 w-3" />
                               <span>Approve</span>
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleAction(row, 'REJECT')}
-                              className="inline-flex h-6 w-6 items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition-colors"
-                              title="Reject this leave request"
+                              onClick={() => handleManagerDecision(req.id, 'REJECT')}
+                              className="inline-flex items-center gap-1 rounded-lg border border-rose-200 text-rose-700 hover:bg-rose-50 px-2.5 py-1 text-xs font-semibold transition"
                             >
-                              <X className="h-3.5 w-3.5" />
+                              <X className="h-3 w-3" />
+                              <span>Reject</span>
                             </button>
                           </div>
+                        )}
+
+                        {/* If user is the owner and request is still PENDING, allow cancellation */}
+                        {isOwner && req.status === 'PENDING' && (
+                          <button
+                            type="button"
+                            onClick={() => handleCancelRequest(req.id)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 px-2.5 py-1 text-xs font-semibold transition"
+                          >
+                            <span>Cancel</span>
+                          </button>
                         )}
                       </td>
                     </tr>
@@ -1164,7 +1031,7 @@ export const LeavePortalPage: React.FC = () => {
       </div>
 
       {/* =========================================================================
-          APPLY LEAVE MODAL (Connected to real backend API)
+          MODAL: APPLY LEAVE WITH KENYAN STATUTORY CALCULATIONS
          ========================================================================= */}
       {isApplyModalOpen && (
         <Modal
@@ -1174,114 +1041,115 @@ export const LeavePortalPage: React.FC = () => {
         >
           <form onSubmit={handleApplySubmit} className="space-y-4">
             {applyError && (
-              <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-red-600" />
+              <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-rose-600" />
                 <span>{applyError}</span>
               </div>
             )}
 
             {/* Leave Type Selector */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Leave Type <span className="text-red-500">*</span>
+              <label className="block text-xs font-bold text-[#0d2836] mb-1">
+                Leave Type <span className="text-rose-500">*</span>
               </label>
               <select
                 value={applyForm.leaveTypeId}
                 onChange={(e) => setApplyForm({ ...applyForm, leaveTypeId: e.target.value })}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="w-full rounded-xl border border-teal-200/90 bg-white px-3 py-2 text-xs text-slate-800 focus:border-[#0e4a5c] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c]"
                 required
               >
-                {leaveTypes.length > 0 ? (
-                  leaveTypes.map((t) => (
+                {leaveTypes.map((t) => {
+                  const bal = balances.find((b) => b.leaveTypeId === t.id);
+                  const avail = bal ? Number(bal.availableDays) || 0 : 0;
+                  return (
                     <option key={t.id} value={t.id}>
-                      {t.name} ({t.code})
+                      {t.name} ({t.code}) &mdash; {avail} days available
                     </option>
-                  ))
-                ) : (
-                  <>
-                    <option value="ANNUAL">Annual Leave</option>
-                    <option value="SICK">Sick Leave</option>
-                    <option value="CASUAL">Casual Leave</option>
-                    <option value="OTHER">Other Leave</option>
-                  </>
-                )}
+                  );
+                })}
               </select>
             </div>
 
-            {/* Date Range: Start and End */}
+            {/* Date Pickers */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Start Date <span className="text-red-500">*</span>
+                <label className="block text-xs font-bold text-[#0d2836] mb-1">
+                  Start Date <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="date"
                   value={applyForm.startDate}
                   onChange={(e) => setApplyForm({ ...applyForm, startDate: e.target.value })}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full rounded-xl border border-teal-200/90 bg-white px-3 py-2 text-xs text-slate-800 focus:border-[#0e4a5c] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c]"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  End Date <span className="text-red-500">*</span>
+                <label className="block text-xs font-bold text-[#0d2836] mb-1">
+                  End Date <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="date"
                   value={applyForm.endDate}
                   onChange={(e) => setApplyForm({ ...applyForm, endDate: e.target.value })}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full rounded-xl border border-teal-200/90 bg-white px-3 py-2 text-xs text-slate-800 focus:border-[#0e4a5c] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c]"
                   required
                 />
               </div>
             </div>
 
-            {/* Duration calculation banner */}
+            {/* Working Days & Holiday notice banner */}
             {applyForm.startDate && applyForm.endDate && (
-              <div className="rounded-xl bg-[#ecf7f3] p-3 text-xs border border-emerald-100 flex items-center justify-between">
+              <div className="rounded-xl bg-[#e3f4f1] p-3 text-xs border border-teal-200 flex items-center justify-between">
                 <div>
-                  <span className="font-semibold text-slate-800">Working Days Requested: </span>
-                  <span className="font-bold text-emerald-800">{requestedWorkingDays} day(s)</span>
-                  <p className="text-[11px] text-slate-500">Excludes standard Saturdays and Sundays.</p>
+                  <span className="font-bold text-[#0d2836]">Working Days Requested: </span>
+                  <span className="font-extrabold text-[#0e4a5c] text-sm">
+                    {requestedWorkingDays} day{requestedWorkingDays !== 1 ? 's' : ''}
+                  </span>
+                  <p className="text-[11px] text-[#155b6e] mt-0.5">
+                    Excludes Kenyan statutory holidays &amp; weekends.
+                  </p>
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] text-slate-500 block">Available Balance</span>
-                  <span className="font-bold text-emerald-700 text-sm">{availableDays} days</span>
+                  <span className={`font-bold text-sm ${isInsufficient ? 'text-rose-600' : 'text-[#0e4a5c]'}`}>
+                    {availableDays} days
+                  </span>
                 </div>
               </div>
             )}
 
             {/* Reason */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Reason for Leave <span className="text-red-500">*</span>
+              <label className="block text-xs font-bold text-[#0d2836] mb-1">
+                Reason for Leave <span className="text-rose-500">*</span>
               </label>
               <textarea
                 value={applyForm.reason}
                 onChange={(e) => setApplyForm({ ...applyForm, reason: e.target.value })}
                 rows={3}
-                placeholder="Provide details or reference for your line manager..."
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                placeholder="Provide details or comments for line manager approval..."
+                className="w-full rounded-xl border border-teal-200/90 bg-white px-3 py-2 text-xs text-slate-800 focus:border-[#0e4a5c] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c]"
                 required
               />
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-100">
+            <div className="flex justify-end gap-2.5 pt-2 border-t border-teal-50">
               <button
                 type="button"
                 onClick={() => setIsApplyModalOpen(false)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                className="rounded-xl border border-teal-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting}
-                className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
+                disabled={isSubmitting || isInsufficient}
+                className="flex items-center gap-1.5 rounded-xl bg-[#0e4a5c] hover:bg-[#083543] px-5 py-2 text-xs font-bold text-white shadow-xs disabled:opacity-50"
               >
-                {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                {isSubmitting ? 'Submitting...' : 'Submit Leave Request'}
               </button>
             </div>
           </form>

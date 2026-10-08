@@ -33,7 +33,7 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: ${DDL_AUTO:validate}
+      ddl-auto: ${DDL_AUTO:update}
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     show-sql: false
     properties:

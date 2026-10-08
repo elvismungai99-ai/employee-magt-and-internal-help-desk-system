@@ -30,6 +30,10 @@ public class LeaveRequestResponse {
     private String reason;
     private LeaveRequestStatus status;
     private String attachmentUrl;
+    private Boolean isHalfDay;
+    private String halfDayPeriod;
+    private UUID delegateId;
+    private String delegateName;
     private List<LeaveApprovalResponse> approvals;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;

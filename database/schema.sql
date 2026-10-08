@@ -388,3 +388,13 @@ CREATE INDEX IF NOT EXISTS idx_outbox_pending ON platform.event_outbox(created_a
 CREATE INDEX IF NOT EXISTS idx_notifications_event ON platform.notifications(event_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_recipient ON platform.notifications(recipient_id);
 
+-- Migrations for Half-Day Leave, Coverage Delegate, Linked Ticket, and SLA Pausing
+ALTER TABLE public.leave_requests ADD COLUMN IF NOT EXISTS is_half_day BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.leave_requests ADD COLUMN IF NOT EXISTS half_day_period VARCHAR(20);
+ALTER TABLE public.leave_requests ADD COLUMN IF NOT EXISTS delegate_id UUID REFERENCES public.users(id) ON DELETE SET NULL;
+
+ALTER TABLE public.out_of_office_records ADD COLUMN IF NOT EXISTS delegate_id UUID REFERENCES public.users(id) ON DELETE SET NULL;
+
+ALTER TABLE public.tickets ADD COLUMN IF NOT EXISTS leave_request_id UUID REFERENCES public.leave_requests(id) ON DELETE SET NULL;
+ALTER TABLE public.tickets ADD COLUMN IF NOT EXISTS paused_at TIMESTAMPTZ;
+ALTER TABLE public.tickets ADD COLUMN IF NOT EXISTS total_paused_minutes INT DEFAULT 0;

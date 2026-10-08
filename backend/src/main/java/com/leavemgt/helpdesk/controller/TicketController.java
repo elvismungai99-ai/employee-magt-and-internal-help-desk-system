@@ -158,6 +158,25 @@ public class TicketController {
         return ResponseEntity.ok(ApiResponse.success(response, "Ticket REOPENED successfully"));
     }
 
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<ApiResponse<TicketResponse>> updateTicketStatus(
+            @PathVariable("id") UUID id,
+            @RequestBody Map<String, String> body,
+            Authentication authentication) {
+        UUID callerId = extractUserId(authentication);
+        if (callerId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Unauthorized"));
+        }
+        boolean isHrAdmin = isHrAdmin(authentication);
+        String statusStr = body != null ? body.get("status") : null;
+        if (statusStr == null || statusStr.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Status is required"));
+        }
+        com.leavemgt.helpdesk.entity.TicketStatus status = com.leavemgt.helpdesk.entity.TicketStatus.valueOf(statusStr.toUpperCase());
+        TicketResponse response = ticketService.updateTicketStatus(id, status, callerId, isHrAdmin);
+        return ResponseEntity.ok(ApiResponse.success(response, "Ticket status updated to " + status));
+    }
+
     // =========================================================================
     // 4. ATTACHMENTS & HISTORY
     // =========================================================================

@@ -47,6 +47,10 @@ public class Ticket {
     @JoinColumn(name = "sla_policy_id")
     private SlaPolicy slaPolicy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "leave_request_id")
+    private com.leavemgt.leave.entity.LeaveRequest leaveRequest;
+
     @Column(nullable = false, length = 255)
     private String title;
 
@@ -69,6 +73,13 @@ public class Ticket {
     @Column(name = "sla_breached", nullable = false)
     @Builder.Default
     private Boolean slaBreached = false;
+
+    @Column(name = "paused_at")
+    private OffsetDateTime pausedAt;
+
+    @Builder.Default
+    @Column(name = "total_paused_minutes")
+    private Long totalPausedMinutes = 0L;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

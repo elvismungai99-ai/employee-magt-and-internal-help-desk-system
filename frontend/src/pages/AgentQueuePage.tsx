@@ -139,6 +139,28 @@ export const AgentQueuePage: React.FC = () => {
     }
   };
 
+  const handleToggleWaitOnUser = async () => {
+    if (!activeTicket) return;
+    const newStatus = activeTicket.status === 'PENDING_USER' ? 'IN_PROGRESS' : 'PENDING_USER';
+    try {
+      await helpdeskApi.updateStatus(activeTicket.id, newStatus);
+      setPageAlert({
+        type: 'success',
+        message: newStatus === 'PENDING_USER'
+          ? `Ticket ${activeTicket.ticketNumber} marked as PENDING_USER (SLA resolution clock paused).`
+          : `Ticket ${activeTicket.ticketNumber} resumed to IN_PROGRESS (SLA clock running).`,
+      });
+      await loadQueuesAndTickets();
+      const updated = await helpdeskApi.getTicketById(activeTicket.id);
+      setActiveTicket(updated);
+    } catch (err: any) {
+      setPageAlert({
+        type: 'error',
+        message: err.response?.data?.message || 'Failed to update ticket status.',
+      });
+    }
+  };
+
   const filteredTickets = tickets.filter((t) => {
     if (statusFilter === 'ALL') return true;
     return t.status === statusFilter;
@@ -247,7 +269,17 @@ export const AgentQueuePage: React.FC = () => {
                       </h3>
                       <StatusBadge status={t.status} />
                       <StatusBadge priority={t.priority} />
-                      {isBreached && (
+                      {t.status === 'PENDING_USER' && (
+                        <span className="text-[11px] font-bold text-blue-900 bg-blue-100 border border-blue-200 px-2 py-0.5 rounded">
+                          SLA PAUSED (Awaiting Requester)
+                        </span>
+                      )}
+                      {t.leaveRequestSummary && (
+                        <span className="text-[11px] font-semibold text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded">
+                          Linked: {t.leaveRequestSummary}
+                        </span>
+                      )}
+                      {isBreached && t.status !== 'PENDING_USER' && (
                         <span className="text-[11px] font-bold text-rose-800 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded">
                           SLA BREACHED
                         </span>
@@ -267,9 +299,14 @@ export const AgentQueuePage: React.FC = () => {
                       ) : (
                         <span className="text-amber-800 font-semibold">Unassigned</span>
                       )}
+                      {(t.totalPausedMinutes ?? 0) > 0 && (
+                        <span className="text-slate-500">
+                          Paused Duration: {t.totalPausedMinutes}m
+                        </span>
+                      )}
                       {t.slaDueAt && (
                         <span className="text-slate-500">
-                          SLA Target: {new Date(t.slaDueAt).toLocaleString()}
+                          {t.status === 'PENDING_USER' ? 'SLA Paused' : `SLA Target: ${new Date(t.slaDueAt).toLocaleString()}`}
                         </span>
                       )}
                     </div>
@@ -381,6 +418,46 @@ export const AgentQueuePage: React.FC = () => {
                 {activeTicket.description}
               </div>
             </div>
+
+            {/* Linked Leave Request Card */}
+            {activeTicket.leaveRequestSummary && (
+              <div className="rounded-xl border border-teal-200 bg-[#e3f4f1]/60 p-3.5 flex items-start gap-2">
+                <div className="flex-1 text-xs">
+                  <span className="font-bold text-[#0d2836]">Linked Leave Request: </span>
+                  <span className="text-[#0e4a5c] font-semibold">{activeTicket.leaveRequestSummary}</span>
+                  <p className="text-[11px] text-[#155b6e] mt-0.5">
+                    This support ticket is tied to the requester's leave schedule and records.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* SLA & Status Management Controls */}
+            {activeTicket.status !== 'RESOLVED' && activeTicket.status !== 'CLOSED' && (
+              <div className="flex items-center justify-between p-3 rounded-xl bg-blue-50/50 border border-blue-200 text-xs">
+                <div>
+                  <span className="font-bold text-slate-900 block">SLA Clock State:</span>
+                  <span className={`text-[11px] font-semibold ${
+                    activeTicket.status === 'PENDING_USER' ? 'text-amber-800' : 'text-blue-900'
+                  }`}>
+                    {activeTicket.status === 'PENDING_USER'
+                      ? 'Paused waiting for requester input'
+                      : `Active (Target: ${activeTicket.slaDueAt ? new Date(activeTicket.slaDueAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'})`}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleToggleWaitOnUser}
+                  className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition border ${
+                    activeTicket.status === 'PENDING_USER'
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-700 shadow-xs'
+                      : 'bg-white hover:bg-blue-50 text-blue-950 border-blue-300 shadow-2xs'
+                  }`}
+                >
+                  {activeTicket.status === 'PENDING_USER' ? 'Resume SLA Clock' : 'Wait on Requester (Pause SLA)'}
+                </button>
+              </div>
+            )}
 
             {/* Attachments Section */}
             {activeTicket.attachments && activeTicket.attachments.length > 0 && (

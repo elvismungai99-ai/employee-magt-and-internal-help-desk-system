@@ -109,4 +109,9 @@ export const helpdeskApi = {
     link.parentNode?.removeChild(link);
     window.URL.revokeObjectURL(url);
   },
+
+  updateStatus: async (id: string, status: string): Promise<Ticket> => {
+    const res = await apiClient.patch<ApiResponse<Ticket>>(`/api/helpdesk/tickets/${id}/status`, { status });
+    return res.data.data;
+  },
 };

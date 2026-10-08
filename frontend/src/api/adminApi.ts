@@ -67,4 +67,16 @@ export const adminApi = {
     });
     return res.data.data;
   },
+
+  triggerYearEndCarryover: async (year?: number): Promise<any> => {
+    const payload = year ? { year } : {};
+    const res = await apiClient.post<ApiResponse<any>>('/api/admin/jobs/year-end-carryover/trigger', payload);
+    return res.data.data;
+  },
+
+  triggerCarryoverExpiry: async (year?: number): Promise<any> => {
+    const payload = year ? { year } : {};
+    const res = await apiClient.post<ApiResponse<any>>('/api/admin/jobs/carryover-expiry/trigger', payload);
+    return res.data.data;
+  },
 };

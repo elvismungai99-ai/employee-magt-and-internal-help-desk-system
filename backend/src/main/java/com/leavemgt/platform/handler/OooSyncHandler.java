@@ -86,22 +86,31 @@ public class OooSyncHandler implements DomainEventHandler {
         User employee = userRepository.findById(employeeId)
                 .orElseThrow(() -> new IllegalStateException("User not found: " + employeeId));
 
-        // 2. Insert OutOfOfficeRecord tagged with source_event_id
+        UUID delegateId = null;
+        if (payload.has("delegateId") && !payload.get("delegateId").asText().isBlank()) {
+            try {
+                delegateId = UUID.fromString(payload.get("delegateId").asText());
+            } catch (Exception ignored) {}
+        }
+        User delegate = delegateId != null ? userRepository.findById(delegateId).orElse(null) : null;
+
+        // 2. Insert OutOfOfficeRecord tagged with source_event_id and delegate
         OutOfOfficeRecord oooRecord = OutOfOfficeRecord.builder()
                 .leaveRequest(leaveRequest)
                 .user(employee)
+                .delegate(delegate)
                 .startDate(startDate)
                 .endDate(endDate)
                 .syncStatus(OooSyncStatus.SYNCED)
                 .sourceEventId(event.getId())
                 .build();
         oooRecordRepository.save(oooRecord);
-        log.info("Created OutOfOfficeRecord for employee {} ({} to {}) linked to event {}",
-                employee.getEmail(), startDate, endDate, event.getId());
+        log.info("Created OutOfOfficeRecord for employee {} ({} to {}, delegate={}) linked to event {}",
+                employee.getEmail(), startDate, endDate, delegate != null ? delegate.getEmail() : "NONE", event.getId());
 
-        // 3. Reroute open tickets assigned to employee
-        int reroutedCount = rerouteOpenTicketsForEmployee(employeeId, employee.getEmail(), "OOO_REROUTE");
-        log.info("OOO sync processed for employee {}: {} ticket(s) returned to queue", employee.getEmail(), reroutedCount);
+        // 3. Reroute open tickets assigned to employee (transfers to delegate if active and not OOO, else returns to queue)
+        int reroutedCount = rerouteOpenTicketsForEmployee(employeeId, employee.getEmail(), "OOO_REROUTE", delegate);
+        log.info("OOO sync processed for employee {}: {} ticket(s) re-routed", employee.getEmail(), reroutedCount);
     }
 
     /**
@@ -126,7 +135,8 @@ public class OooSyncHandler implements DomainEventHandler {
                 totalRerouted += rerouteOpenTicketsForEmployee(
                         record.getUser().getId(),
                         record.getUser().getEmail(),
-                        "OOO_DAILY_SWEEP"
+                        "OOO_DAILY_SWEEP",
+                        record.getDelegate()
                 );
             }
         }
@@ -139,43 +149,83 @@ public class OooSyncHandler implements DomainEventHandler {
     }
 
     /**
-     * Atomically unassigns open tickets for an OOO employee and returns them to queue triage.
+     * Atomically transfers open tickets for an OOO employee to their designated coverage delegate,
+     * or unassigns them back to queue triage if no delegate is available.
      */
-    public int rerouteOpenTicketsForEmployee(UUID employeeId, String employeeEmail, String reason) {
+    public int rerouteOpenTicketsForEmployee(UUID employeeId, String employeeEmail, String reason, User delegate) {
         List<Ticket> openTickets = ticketRepository.findOpenTicketsByAssignedAgentId(
                 employeeId,
                 List.of(TicketStatus.RESOLVED, TicketStatus.CLOSED)
         );
 
+        LocalDate today = LocalDate.now();
+        boolean canAssignToDelegate = delegate != null
+                && "ACTIVE".equalsIgnoreCase(delegate.getStatus())
+                && !oooRecordRepository.isUserCurrentlyOoo(delegate.getId(), OooSyncStatus.SYNCED, today);
+
         for (Ticket ticket : openTickets) {
             User previousAgent = ticket.getAssignedAgent();
-            ticket.setAssignedAgent(null);
-            ticket.setStatus(TicketStatus.TRIAGED); // Back in queue ready for reassignment
-            ticketRepository.save(ticket);
 
-            TicketRoutingHistory history = TicketRoutingHistory.builder()
-                    .ticket(ticket)
-                    .previousAgent(previousAgent)
-                    .newAgent(null)
-                    .reason(reason)
-                    .changedBy(previousAgent)
-                    .build();
-            routingHistoryRepository.save(history);
+            if (canAssignToDelegate) {
+                // Transfer ownership directly to nominated coverage delegate
+                ticket.setAssignedAgent(delegate);
+                ticket.setStatus(TicketStatus.ASSIGNED);
+                ticketRepository.save(ticket);
 
-            log.info("Unassigned ticket {} from OOO agent {} (reason={}): status set to TRIAGED",
-                    ticket.getTicketNumber(), employeeEmail, reason);
+                String delegateReason = "Reassigned to designated coverage delegate (" + delegate.getFullName() + ") while " + employeeEmail + " is on approved leave";
+                TicketRoutingHistory history = TicketRoutingHistory.builder()
+                        .ticket(ticket)
+                        .previousAgent(previousAgent)
+                        .newAgent(delegate)
+                        .reason(delegateReason)
+                        .changedBy(previousAgent)
+                        .build();
+                routingHistoryRepository.save(history);
 
-            eventPublisherService.publishEvent(
-                    "TicketUnassigned",
-                    "HELPDESK",
-                    Map.of(
-                            "ticketId", ticket.getId().toString(),
-                            "ticketNumber", ticket.getTicketNumber(),
-                            "queueId", ticket.getQueue() != null ? ticket.getQueue().getId().toString() : "",
-                            "previousAgentId", employeeId.toString(),
-                            "reason", reason
-                    )
-            );
+                log.info("Transferred ticket {} from OOO agent {} to delegate {}",
+                        ticket.getTicketNumber(), employeeEmail, delegate.getEmail());
+
+                eventPublisherService.publishEvent(
+                        "TicketAssigned",
+                        "HELPDESK",
+                        Map.of(
+                                "ticketId", ticket.getId().toString(),
+                                "ticketNumber", ticket.getTicketNumber(),
+                                "assignedAgentId", delegate.getId().toString(),
+                                "assignedAgentName", delegate.getFullName(),
+                                "reason", delegateReason
+                        )
+                );
+            } else {
+                // Return to queue triage
+                ticket.setAssignedAgent(null);
+                ticket.setStatus(TicketStatus.TRIAGED);
+                ticketRepository.save(ticket);
+
+                TicketRoutingHistory history = TicketRoutingHistory.builder()
+                        .ticket(ticket)
+                        .previousAgent(previousAgent)
+                        .newAgent(null)
+                        .reason(reason)
+                        .changedBy(previousAgent)
+                        .build();
+                routingHistoryRepository.save(history);
+
+                log.info("Unassigned ticket {} from OOO agent {} (reason={}): status set to TRIAGED",
+                        ticket.getTicketNumber(), employeeEmail, reason);
+
+                eventPublisherService.publishEvent(
+                        "TicketUnassigned",
+                        "HELPDESK",
+                        Map.of(
+                                "ticketId", ticket.getId().toString(),
+                                "ticketNumber", ticket.getTicketNumber(),
+                                "queueId", ticket.getQueue() != null ? ticket.getQueue().getId().toString() : "",
+                                "previousAgentId", employeeId.toString(),
+                                "reason", reason
+                        )
+                );
+            }
         }
         return openTickets.size();
     }

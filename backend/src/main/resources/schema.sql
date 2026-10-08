@@ -1340,6 +1340,17 @@ ALTER TABLE ONLY platform.notifications
 ALTER TABLE ONLY platform.notifications
     ADD CONSTRAINT notifications_recipient_id_fkey FOREIGN KEY (recipient_id) REFERENCES identity.users(id);
 
+-- Migrations for Half-Day Leave, Coverage Delegate, Linked Ticket, and SLA Pausing
+ALTER TABLE leave.leave_requests ADD COLUMN IF NOT EXISTS is_half_day BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE leave.leave_requests ADD COLUMN IF NOT EXISTS half_day_period VARCHAR(20);
+ALTER TABLE leave.leave_requests ADD COLUMN IF NOT EXISTS delegate_id UUID REFERENCES identity.users(id) ON DELETE SET NULL;
+
+ALTER TABLE leave.out_of_office_records ADD COLUMN IF NOT EXISTS delegate_id UUID REFERENCES identity.users(id) ON DELETE SET NULL;
+
+ALTER TABLE helpdesk.tickets ADD COLUMN IF NOT EXISTS leave_request_id UUID REFERENCES leave.leave_requests(id) ON DELETE SET NULL;
+ALTER TABLE helpdesk.tickets ADD COLUMN IF NOT EXISTS paused_at TIMESTAMPTZ;
+ALTER TABLE helpdesk.tickets ADD COLUMN IF NOT EXISTS total_paused_minutes INT DEFAULT 0;
+
 
 --
 -- PostgreSQL database dump complete

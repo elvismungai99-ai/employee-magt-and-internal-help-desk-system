@@ -144,6 +144,14 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
+    public List<UserProfileResponse> getAllActiveUsers() {
+        return userRepository.findAll().stream()
+                .filter(u -> "ACTIVE".equalsIgnoreCase(u.getStatus()))
+                .map(this::mapToUserProfileResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public List<UserProfileResponse> getPendingRegistrations() {
         return userRepository.findByStatusOrderByCreatedAtDesc("PENDING_APPROVAL").stream()
                 .map(this::mapToUserProfileResponse)

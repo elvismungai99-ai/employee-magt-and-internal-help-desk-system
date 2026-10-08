@@ -26,6 +26,7 @@ import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -44,6 +45,7 @@ public class LeaveRequestService {
     private final ReportingHierarchyRepository reportingHierarchyRepository;
     private final UserRepository userRepository;
     private final EventPublisherService eventPublisherService;
+    private final HolidayService holidayService;
 
     public LeaveRequestService(LeaveRequestRepository leaveRequestRepository,
                                LeaveApprovalRepository leaveApprovalRepository,
@@ -52,7 +54,8 @@ public class LeaveRequestService {
                                BalanceTransactionRepository transactionRepository,
                                ReportingHierarchyRepository reportingHierarchyRepository,
                                UserRepository userRepository,
-                               EventPublisherService eventPublisherService) {
+                               EventPublisherService eventPublisherService,
+                               HolidayService holidayService) {
         this.leaveRequestRepository = leaveRequestRepository;
         this.leaveApprovalRepository = leaveApprovalRepository;
         this.leaveBalanceRepository = leaveBalanceRepository;
@@ -61,6 +64,7 @@ public class LeaveRequestService {
         this.reportingHierarchyRepository = reportingHierarchyRepository;
         this.userRepository = userRepository;
         this.eventPublisherService = eventPublisherService;
+        this.holidayService = holidayService;
     }
 
     @Transactional
@@ -101,21 +105,34 @@ public class LeaveRequestService {
             }
         }
 
-        // 4. Calculate working days (Monday - Friday)
-        long workingDays = 0;
-        LocalDate curr = startDate;
-        while (!curr.isAfter(endDate)) {
-            DayOfWeek dow = curr.getDayOfWeek();
-            if (dow != DayOfWeek.SATURDAY && dow != DayOfWeek.SUNDAY) {
-                workingDays++;
+        // 4. Calculate working days (Monday - Friday, excluding gazetted public holidays)
+        boolean isHalfDay = Boolean.TRUE.equals(request.getIsHalfDay());
+        String halfDayPeriod = request.getHalfDayPeriod() != null ? request.getHalfDayPeriod().toUpperCase().trim() : "MORNING";
+        if (isHalfDay) {
+            if (!startDate.isEqual(endDate)) {
+                throw new IllegalArgumentException("Half-day leave requests must have the same start and end date");
             }
-            curr = curr.plusDays(1);
+            if (!"MORNING".equals(halfDayPeriod) && !"AFTERNOON".equals(halfDayPeriod)) {
+                halfDayPeriod = "MORNING";
+            }
         }
 
+        long workingDays = holidayService.calculateWorkingDays(startDate, endDate);
         if (workingDays == 0) {
-            throw new IllegalArgumentException("Leave request must include at least one working day (weekends are excluded)");
+            throw new IllegalArgumentException("Leave request must include at least one working day (weekends and gazetted public holidays are excluded)");
         }
-        BigDecimal requestedDays = BigDecimal.valueOf(workingDays);
+        BigDecimal requestedDays = isHalfDay ? new BigDecimal("0.50") : BigDecimal.valueOf(workingDays);
+
+        // Optional coverage delegate
+        User delegate = null;
+        if (request.getDelegateId() != null) {
+            if (request.getDelegateId().equals(employeeId)) {
+                throw new IllegalArgumentException("You cannot designate yourself as your coverage delegate");
+            }
+            delegate = userRepository.findById(request.getDelegateId())
+                    .filter(u -> "ACTIVE".equalsIgnoreCase(u.getStatus()))
+                    .orElseThrow(() -> new IllegalArgumentException("Coverage delegate not found or inactive"));
+        }
 
         // 5. Overlap check
         List<LeaveRequestStatus> activeStatuses = List.of(LeaveRequestStatus.PENDING, LeaveRequestStatus.APPROVED);
@@ -179,6 +196,9 @@ public class LeaveRequestService {
                 .reason(request.getReason())
                 .status(LeaveRequestStatus.PENDING)
                 .attachmentUrl(request.getAttachmentUrl())
+                .isHalfDay(isHalfDay)
+                .halfDayPeriod(isHalfDay ? halfDayPeriod : null)
+                .delegate(delegate)
                 .build();
 
         LeaveApproval approval = LeaveApproval.builder()
@@ -275,17 +295,16 @@ public class LeaveRequestService {
         log.info("Leave request {} APPROVED by user {} (isHrAdmin={})", requestId, caller.getEmail(), isHrAdmin);
 
         // Publish LeaveApproved event in the same transaction
-        eventPublisherService.publishEvent(
-                "LeaveApproved",
-                "LEAVE",
-                Map.of(
-                        "leaveRequestId", updated.getId().toString(),
-                        "employeeId", updated.getUser().getId().toString(),
-                        "employeeName", updated.getUser().getFullName(),
-                        "startDate", updated.getStartDate().toString(),
-                        "endDate", updated.getEndDate().toString()
-                )
-        );
+        Map<String, Object> eventPayload = new HashMap<>();
+        eventPayload.put("leaveRequestId", updated.getId().toString());
+        eventPayload.put("employeeId", updated.getUser().getId().toString());
+        eventPayload.put("employeeName", updated.getUser().getFullName());
+        eventPayload.put("startDate", updated.getStartDate().toString());
+        eventPayload.put("endDate", updated.getEndDate().toString());
+        eventPayload.put("delegateId", updated.getDelegate() != null ? updated.getDelegate().getId().toString() : "");
+        eventPayload.put("delegateName", updated.getDelegate() != null ? updated.getDelegate().getFullName() : "");
+
+        eventPublisherService.publishEvent("LeaveApproved", "LEAVE", eventPayload);
 
         return mapToResponse(updated);
     }
@@ -496,6 +515,10 @@ public class LeaveRequestService {
                 .reason(lr.getReason())
                 .status(lr.getStatus())
                 .attachmentUrl(lr.getAttachmentUrl())
+                .isHalfDay(lr.getIsHalfDay())
+                .halfDayPeriod(lr.getHalfDayPeriod())
+                .delegateId(lr.getDelegate() != null ? lr.getDelegate().getId() : null)
+                .delegateName(lr.getDelegate() != null ? lr.getDelegate().getFullName() : null)
                 .approvals(approvalResponses)
                 .createdAt(lr.getCreatedAt())
                 .updatedAt(lr.getUpdatedAt())

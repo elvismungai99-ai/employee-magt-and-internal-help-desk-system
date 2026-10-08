@@ -122,6 +122,10 @@ export interface LeaveRequest {
   reason: string;
   status: LeaveRequestStatus;
   attachmentUrl?: string;
+  isHalfDay?: boolean;
+  halfDayPeriod?: 'MORNING' | 'AFTERNOON';
+  delegateId?: string;
+  delegateName?: string;
   approvals?: LeaveApproval[];
   createdAt?: string;
   updatedAt?: string;
@@ -133,6 +137,9 @@ export interface SubmitLeaveRequestDto {
   endDate: string;
   reason: string;
   attachmentUrl?: string;
+  isHalfDay?: boolean;
+  halfDayPeriod?: 'MORNING' | 'AFTERNOON';
+  delegateId?: string;
 }
 
 // Help Desk Domain Types
@@ -198,6 +205,10 @@ export interface Ticket {
   queueName?: string;
   slaPolicyId?: string;
   slaDueAt?: string;
+  leaveRequestId?: string;
+  leaveRequestSummary?: string;
+  pausedAt?: string;
+  totalPausedMinutes?: number;
   createdAt?: string;
   updatedAt?: string;
   resolvedAt?: string;
@@ -221,6 +232,7 @@ export interface TicketAttachment {
 export interface CreateTicketDto {
   categoryId: string;
   queueId?: string;
+  leaveRequestId?: string;
   title: string;
   description: string;
   priority?: TicketPriority;

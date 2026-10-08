@@ -40,6 +40,11 @@ public class TicketResponse {
 
     private UUID slaPolicyId;
     private OffsetDateTime slaDueAt;
+    private OffsetDateTime pausedAt;
+    private Long totalPausedMinutes;
+
+    private UUID leaveRequestId;
+    private String leaveRequestSummary;
 
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;

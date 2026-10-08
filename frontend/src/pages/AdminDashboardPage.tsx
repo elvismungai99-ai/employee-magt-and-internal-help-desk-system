@@ -116,6 +116,48 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
+  const handleTriggerCarryover = async () => {
+    if (!window.confirm(`Execute annual year-end carryover for ${triggerYear}? This will calculate unused balances and rollover eligible days into ${triggerYear + 1}.`)) return;
+    setIsTriggering(true);
+    try {
+      const res = await adminApi.triggerYearEndCarryover(Number(triggerYear));
+      setPageAlert({
+        type: 'success',
+        message: `Year-end carryover executed: ${res.carriedOverCount ?? res.processedCount ?? 0} employee balance(s) processed.`,
+      });
+      setIsTriggerModalOpen(false);
+      await loadAdminData();
+    } catch (err: any) {
+      setPageAlert({
+        type: 'error',
+        message: err.response?.data?.message || 'Failed to trigger year-end carryover.',
+      });
+    } finally {
+      setIsTriggering(false);
+    }
+  };
+
+  const handleTriggerCarryoverExpiry = async () => {
+    if (!window.confirm(`Execute carryover expiry job for ${triggerYear}? Any expired unused carry-over days will be lapsed.`)) return;
+    setIsTriggering(true);
+    try {
+      const res = await adminApi.triggerCarryoverExpiry(Number(triggerYear));
+      setPageAlert({
+        type: 'success',
+        message: `Carryover expiry executed: ${res.expiredCount ?? res.processedCount ?? 0} record(s) evaluated and reset.`,
+      });
+      setIsTriggerModalOpen(false);
+      await loadAdminData();
+    } catch (err: any) {
+      setPageAlert({
+        type: 'error',
+        message: err.response?.data?.message || 'Failed to trigger carryover expiry.',
+      });
+    } finally {
+      setIsTriggering(false);
+    }
+  };
+
   const handleAssignManager = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!assignForm.employeeId || !assignForm.managerId) {
@@ -792,21 +834,42 @@ export const AdminDashboardPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="pt-4 border-t border-blue-100 flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setIsTriggerModalOpen(false)}
-              className="px-4 py-2 border border-blue-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-blue-50/50 transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isTriggering}
-              className="px-4 py-2 bg-slate-950 hover:bg-black text-white rounded-lg text-xs font-semibold disabled:opacity-50 transition shadow-xs"
-            >
-              {isTriggering ? 'Executing Engine...' : 'Run Accrual'}
-            </button>
+          <div className="pt-4 border-t border-blue-100 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={isTriggering}
+                onClick={handleTriggerCarryover}
+                className="px-3 py-1.5 border border-teal-200 bg-[#e3f4f1] text-[#0d2836] hover:bg-teal-100 rounded-lg text-xs font-semibold disabled:opacity-50 transition"
+              >
+                Year-End Carryover
+              </button>
+              <button
+                type="button"
+                disabled={isTriggering}
+                onClick={handleTriggerCarryoverExpiry}
+                className="px-3 py-1.5 border border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100 rounded-lg text-xs font-semibold disabled:opacity-50 transition"
+              >
+                Expire Carryover
+              </button>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setIsTriggerModalOpen(false)}
+                className="px-3 py-1.5 border border-blue-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-blue-50/50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isTriggering}
+                className="px-4 py-1.5 bg-slate-950 hover:bg-black text-white rounded-lg text-xs font-semibold disabled:opacity-50 transition shadow-xs"
+              >
+                {isTriggering ? 'Running...' : 'Run Accrual'}
+              </button>
+            </div>
           </div>
         </form>
       </Modal>

@@ -39,6 +39,11 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(userService.getAllUsers()));
     }
 
+    @GetMapping("/colleagues")
+    public ResponseEntity<ApiResponse<java.util.List<UserProfileResponse>>> getActiveColleagues() {
+        return ResponseEntity.ok(ApiResponse.success(userService.getAllActiveUsers()));
+    }
+
     @GetMapping("/pending-approvals")
     @PreAuthorize("hasAnyAuthority('ROLE_HR_ADMIN', 'HR_ADMIN')")
     public ResponseEntity<ApiResponse<java.util.List<UserProfileResponse>>> getPendingApprovals() {

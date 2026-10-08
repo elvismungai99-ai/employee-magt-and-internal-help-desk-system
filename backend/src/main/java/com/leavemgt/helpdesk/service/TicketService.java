@@ -39,6 +39,7 @@ public class TicketService {
     private final QueueMemberRepository queueMemberRepository;
     private final SlaPolicyRepository slaPolicyRepository;
     private final UserRepository userRepository;
+    private final com.leavemgt.leave.repository.LeaveRequestRepository leaveRequestRepository;
 
     @org.springframework.beans.factory.annotation.Value("${app.helpdesk.max-attachment-size-bytes:10485760}")
     private long maxAttachmentSizeBytes;
@@ -57,7 +58,8 @@ public class TicketService {
                          SupportQueueRepository queueRepository,
                          QueueMemberRepository queueMemberRepository,
                          SlaPolicyRepository slaPolicyRepository,
-                         UserRepository userRepository) {
+                         UserRepository userRepository,
+                         com.leavemgt.leave.repository.LeaveRequestRepository leaveRequestRepository) {
         this.ticketRepository = ticketRepository;
         this.ticketCommentRepository = ticketCommentRepository;
         this.ticketAttachmentRepository = ticketAttachmentRepository;
@@ -67,6 +69,48 @@ public class TicketService {
         this.queueMemberRepository = queueMemberRepository;
         this.slaPolicyRepository = slaPolicyRepository;
         this.userRepository = userRepository;
+        this.leaveRequestRepository = leaveRequestRepository;
+    }
+
+    /**
+     * Calculates the SLA target timestamp according to official business working hours:
+     * Monday - Friday, 08:00 to 17:00 (9 hours per day).
+     * Skips weekends and outside-business-hours periods so tickets do not falsely breach off-shift.
+     */
+    public OffsetDateTime calculateBusinessHoursSlaDue(OffsetDateTime fromTime, int targetMinutes) {
+        if (targetMinutes <= 0) return fromTime;
+        OffsetDateTime curr = fromTime;
+        int remainingMinutes = targetMinutes;
+
+        while (remainingMinutes > 0) {
+            java.time.DayOfWeek dow = curr.getDayOfWeek();
+            if (dow == java.time.DayOfWeek.SATURDAY) {
+                curr = curr.plusDays(2).withHour(8).withMinute(0).withSecond(0).withNano(0);
+                continue;
+            } else if (dow == java.time.DayOfWeek.SUNDAY) {
+                curr = curr.plusDays(1).withHour(8).withMinute(0).withSecond(0).withNano(0);
+                continue;
+            }
+
+            int hour = curr.getHour();
+            if (hour < 8) {
+                curr = curr.withHour(8).withMinute(0).withSecond(0).withNano(0);
+                continue;
+            } else if (hour >= 17) {
+                curr = curr.plusDays(1).withHour(8).withMinute(0).withSecond(0).withNano(0);
+                continue;
+            }
+
+            int minutesLeftToday = (17 - curr.getHour()) * 60 - curr.getMinute();
+            if (remainingMinutes <= minutesLeftToday) {
+                curr = curr.plusMinutes(remainingMinutes);
+                remainingMinutes = 0;
+            } else {
+                remainingMinutes -= minutesLeftToday;
+                curr = curr.plusDays(1).withHour(8).withMinute(0).withSecond(0).withNano(0);
+            }
+        }
+        return curr;
     }
 
     // =========================================================================
@@ -118,7 +162,13 @@ public class TicketService {
 
         OffsetDateTime slaDueAt = null;
         if (slaPolicy != null) {
-            slaDueAt = OffsetDateTime.now().plusMinutes(slaPolicy.getResolutionTargetMinutes());
+            slaDueAt = calculateBusinessHoursSlaDue(OffsetDateTime.now(), slaPolicy.getResolutionTargetMinutes());
+        }
+
+        // Optional link to Leave Request (for HR / Leave inquiries)
+        com.leavemgt.leave.entity.LeaveRequest linkedLeaveRequest = null;
+        if (request.getLeaveRequestId() != null) {
+            linkedLeaveRequest = leaveRequestRepository.findById(request.getLeaveRequestId()).orElse(null);
         }
 
         // Atomic ticket number generation via PostgreSQL sequence
@@ -130,6 +180,7 @@ public class TicketService {
                 .category(category)
                 .queue(queue)
                 .slaPolicy(slaPolicy)
+                .leaveRequest(linkedLeaveRequest)
                 .title(request.getTitle().trim())
                 .description(request.getDescription().trim())
                 .status(TicketStatus.NEW)
@@ -138,8 +189,9 @@ public class TicketService {
                 .build();
 
         Ticket saved = ticketRepository.save(ticket);
-        log.info("Created ticket: number={}, id={}, requester={}, priority={}, slaDueAt={}",
-                saved.getTicketNumber(), saved.getId(), requester.getEmail(), saved.getPriority(), saved.getSlaDueAt());
+        log.info("Created ticket: number={}, id={}, requester={}, priority={}, slaDueAt={}, linkedLeaveRequest={}",
+                saved.getTicketNumber(), saved.getId(), requester.getEmail(), saved.getPriority(), saved.getSlaDueAt(),
+                linkedLeaveRequest != null ? linkedLeaveRequest.getId() : "NONE");
 
         return mapTicket(saved, Collections.emptyList());
     }
@@ -357,9 +409,18 @@ public class TicketService {
         TicketComment saved = ticketCommentRepository.save(comment);
 
         // State machine side effects:
-        // 1. If ticket was PENDING_USER and requester commented, advance to IN_PROGRESS
+        // 1. If ticket was PENDING_USER and requester commented, advance to IN_PROGRESS & resume SLA timer
         if (ticket.getStatus() == TicketStatus.PENDING_USER && isRequester) {
             ticket.setStatus(TicketStatus.IN_PROGRESS);
+            if (ticket.getPausedAt() != null) {
+                long pausedMinutes = java.time.Duration.between(ticket.getPausedAt(), OffsetDateTime.now()).toMinutes();
+                long total = (ticket.getTotalPausedMinutes() != null ? ticket.getTotalPausedMinutes() : 0L) + pausedMinutes;
+                ticket.setTotalPausedMinutes(total);
+                if (ticket.getSlaDueAt() != null) {
+                    ticket.setSlaDueAt(ticket.getSlaDueAt().plusMinutes(pausedMinutes));
+                }
+                ticket.setPausedAt(null);
+            }
             ticketRepository.save(ticket);
         }
         // 2. If ticket was ASSIGNED and assigned agent commented publicly or started work, advance to IN_PROGRESS
@@ -489,6 +550,50 @@ public class TicketService {
 
         Ticket saved = ticketRepository.save(ticket);
         log.info("Ticket {} REOPENED by user {}", saved.getTicketNumber(), callerId);
+        return mapTicket(saved, Collections.emptyList());
+    }
+
+    @Transactional
+    public TicketResponse updateTicketStatus(UUID ticketId, TicketStatus newStatus, UUID callerId, boolean isHrAdmin) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found with ID: " + ticketId));
+
+        if (ticket.getStatus() == TicketStatus.CLOSED) {
+            throw new IllegalStateException("Ticket " + ticket.getTicketNumber() + " is CLOSED and cannot be modified");
+        }
+
+        boolean isAssigned = ticket.getAssignedAgent() != null && ticket.getAssignedAgent().getId().equals(callerId);
+        boolean isQueueMember = ticket.getQueue() != null && queueMemberRepository.isAgentActiveInQueue(ticket.getQueue().getId(), callerId);
+
+        if (!isAssigned && !isQueueMember && !isHrAdmin) {
+            throw new AccessDeniedException("Not authorized to change status for ticket " + ticket.getTicketNumber());
+        }
+
+        TicketStatus oldStatus = ticket.getStatus();
+        if (oldStatus == newStatus) {
+            return mapTicket(ticket, Collections.emptyList());
+        }
+
+        if (newStatus == TicketStatus.PENDING_USER) {
+            ticket.setStatus(TicketStatus.PENDING_USER);
+            if (ticket.getPausedAt() == null) {
+                ticket.setPausedAt(OffsetDateTime.now());
+            }
+        } else {
+            if (oldStatus == TicketStatus.PENDING_USER && ticket.getPausedAt() != null) {
+                long pausedMinutes = java.time.Duration.between(ticket.getPausedAt(), OffsetDateTime.now()).toMinutes();
+                long total = (ticket.getTotalPausedMinutes() != null ? ticket.getTotalPausedMinutes() : 0L) + pausedMinutes;
+                ticket.setTotalPausedMinutes(total);
+                if (ticket.getSlaDueAt() != null) {
+                    ticket.setSlaDueAt(ticket.getSlaDueAt().plusMinutes(pausedMinutes));
+                }
+                ticket.setPausedAt(null);
+            }
+            ticket.setStatus(newStatus);
+        }
+
+        Ticket saved = ticketRepository.save(ticket);
+        log.info("Ticket {} status changed from {} to {} by caller {}", saved.getTicketNumber(), oldStatus, newStatus, callerId);
         return mapTicket(saved, Collections.emptyList());
     }
 
@@ -751,6 +856,13 @@ public class TicketService {
                 .queueName(queue != null ? queue.getName() : null)
                 .slaPolicyId(sla != null ? sla.getId() : null)
                 .slaDueAt(t.getSlaDueAt())
+                .leaveRequestId(t.getLeaveRequest() != null ? t.getLeaveRequest().getId() : null)
+                .leaveRequestSummary(t.getLeaveRequest() != null ?
+                        (t.getLeaveRequest().getLeaveType() != null ? t.getLeaveRequest().getLeaveType().getName() : "Leave")
+                                + " (" + t.getLeaveRequest().getStartDate() + " to " + t.getLeaveRequest().getEndDate() + ") - "
+                                + t.getLeaveRequest().getStatus() : null)
+                .pausedAt(t.getPausedAt())
+                .totalPausedMinutes(t.getTotalPausedMinutes())
                 .createdAt(t.getCreatedAt())
                 .updatedAt(t.getUpdatedAt())
                 .resolvedAt(t.getResolvedAt())

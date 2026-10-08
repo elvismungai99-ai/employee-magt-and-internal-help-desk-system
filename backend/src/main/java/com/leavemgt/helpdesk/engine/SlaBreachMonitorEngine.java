@@ -52,7 +52,7 @@ public class SlaBreachMonitorEngine {
         OffsetDateTime startTime = OffsetDateTime.now();
         List<Ticket> breachedTickets = ticketRepository.findBreachedTickets(
                 startTime,
-                List.of(TicketStatus.RESOLVED, TicketStatus.CLOSED)
+                List.of(TicketStatus.RESOLVED, TicketStatus.CLOSED, TicketStatus.PENDING_USER)
         );
 
         int checkedCount = breachedTickets.size();

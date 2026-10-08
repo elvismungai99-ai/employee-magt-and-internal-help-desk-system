@@ -24,4 +24,9 @@ public interface OutOfOfficeRecordRepository extends JpaRepository<OutOfOfficeRe
             java.time.LocalDate startMax,
             java.time.LocalDate endMin
     );
+
+    @org.springframework.data.jpa.repository.Query("SELECT COUNT(o) > 0 FROM OutOfOfficeRecord o WHERE o.user.id = :userId AND o.syncStatus = :syncStatus AND o.startDate <= :date AND o.endDate >= :date")
+    boolean isUserCurrentlyOoo(@org.springframework.data.repository.query.Param("userId") UUID userId,
+                               @org.springframework.data.repository.query.Param("syncStatus") com.leavemgt.leave.entity.OooSyncStatus syncStatus,
+                               @org.springframework.data.repository.query.Param("date") java.time.LocalDate date);
 }

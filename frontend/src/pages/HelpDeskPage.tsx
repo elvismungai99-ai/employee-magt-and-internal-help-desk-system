@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { helpdeskApi } from '../api/helpdeskApi';
+import { leaveApi } from '../api/leaveApi';
 import { 
   CreateTicketDto, 
+  LeaveRequest,
   SupportQueue, 
   Ticket, 
   TicketCategory, 
@@ -20,6 +22,7 @@ export const HelpDeskPage: React.FC = () => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [categories, setCategories] = useState<TicketCategory[]>([]);
   const [queues, setQueues] = useState<SupportQueue[]>([]);
+  const [myLeaveRequests, setMyLeaveRequests] = useState<LeaveRequest[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -28,6 +31,7 @@ export const HelpDeskPage: React.FC = () => {
   const [createForm, setCreateForm] = useState<CreateTicketDto>({
     categoryId: '',
     queueId: '',
+    leaveRequestId: '',
     title: '',
     description: '',
     priority: 'MEDIUM',
@@ -54,14 +58,16 @@ export const HelpDeskPage: React.FC = () => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [tData, cData, qData] = await Promise.all([
+      const [tData, cData, qData, lData] = await Promise.all([
         helpdeskApi.getMyTickets(),
         helpdeskApi.getCategories(),
         helpdeskApi.getQueues(),
+        leaveApi.getMyRequests().catch(() => []),
       ]);
       setTickets(tData);
       setCategories(cData);
       setQueues(qData);
+      setMyLeaveRequests(lData);
       if (cData.length > 0 && !createForm.categoryId) {
         setCreateForm((prev) => ({ ...prev, categoryId: cData[0].id }));
       }
@@ -101,6 +107,7 @@ export const HelpDeskPage: React.FC = () => {
         title: createForm.title,
         description: createForm.description,
         priority: createForm.priority,
+        leaveRequestId: createForm.leaveRequestId || undefined,
       };
       if (createForm.queueId) {
         payload.queueId = createForm.queueId;
@@ -111,6 +118,7 @@ export const HelpDeskPage: React.FC = () => {
       setCreateForm({
         categoryId: categories[0]?.id || '',
         queueId: '',
+        leaveRequestId: '',
         title: '',
         description: '',
         priority: 'MEDIUM',
@@ -282,6 +290,16 @@ export const HelpDeskPage: React.FC = () => {
                     <h3 className="font-semibold text-slate-950 text-base">{t.title}</h3>
                     <StatusBadge status={t.status} />
                     <StatusBadge priority={t.priority} />
+                    {t.status === 'PENDING_USER' && (
+                      <span className="text-[11px] font-semibold text-blue-900 bg-blue-100 border border-blue-200 px-2 py-0.5 rounded">
+                        SLA Paused (Awaiting Your Reply)
+                      </span>
+                    )}
+                    {t.leaveRequestSummary && (
+                      <span className="text-[11px] font-semibold text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded">
+                        Linked: {t.leaveRequestSummary}
+                      </span>
+                    )}
                   </div>
 
                   <p className="text-xs text-slate-600 line-clamp-1">{t.description}</p>
@@ -294,14 +312,23 @@ export const HelpDeskPage: React.FC = () => {
                     ) : (
                       <span className="text-slate-400 italic">Unassigned</span>
                     )}
+                    {(t.totalPausedMinutes ?? 0) > 0 && (
+                      <span className="text-slate-500 text-[11px]">
+                        Paused time: {t.totalPausedMinutes}m
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 <div className="text-right text-xs text-slate-400 flex flex-col items-end gap-1 flex-shrink-0">
                   <span className="font-medium text-slate-500">{t.createdAt ? new Date(t.createdAt).toLocaleDateString() : ''}</span>
                   {t.slaDueAt && (
-                    <span className="text-[11px] font-semibold text-amber-900 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
-                      Due {new Date(t.slaDueAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded border ${
+                      t.status === 'PENDING_USER' 
+                        ? 'text-blue-800 bg-blue-50 border-blue-200' 
+                        : 'text-amber-900 bg-amber-50 border-amber-200'
+                    }`}>
+                      {t.status === 'PENDING_USER' ? 'Clock Paused' : `Due ${new Date(t.slaDueAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
                     </span>
                   )}
                 </div>
@@ -381,6 +408,27 @@ export const HelpDeskPage: React.FC = () => {
               </select>
             </div>
           </div>
+
+          {/* Optional Link to Leave Request */}
+          {myLeaveRequests.length > 0 && (
+            <div>
+              <label className="block text-sm font-semibold text-slate-900 mb-1">
+                Link to Leave Request <span className="text-slate-400 font-normal text-xs">(Optional &mdash; for leave or balance inquiries)</span>
+              </label>
+              <select
+                value={createForm.leaveRequestId || ''}
+                onChange={(e) => setCreateForm({ ...createForm, leaveRequestId: e.target.value })}
+                className="block w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white text-slate-950"
+              >
+                <option value="">-- No linked leave request --</option>
+                {myLeaveRequests.map((lr) => (
+                  <option key={lr.id} value={lr.id}>
+                    {lr.leaveTypeName || lr.leaveTypeCode || 'Leave'} ({lr.startDate} to {lr.endDate}) &mdash; {lr.status}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-semibold text-slate-900 mb-1">
@@ -473,6 +521,31 @@ export const HelpDeskPage: React.FC = () => {
                 </span>
               </div>
             </div>
+
+            {/* Linked Leave Request Card */}
+            {selectedTicket.leaveRequestSummary && (
+              <div className="rounded-xl border border-teal-200 bg-[#e3f4f1]/60 p-3.5 flex items-start gap-2">
+                <div className="flex-1 text-xs">
+                  <span className="font-bold text-[#0d2836]">Linked Leave Request: </span>
+                  <span className="text-[#0e4a5c] font-semibold">{selectedTicket.leaveRequestSummary}</span>
+                  <p className="text-[11px] text-[#155b6e] mt-0.5">
+                    This support ticket is tied to your leave records for seamless HR coordination.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Waiting on Requester Banner */}
+            {selectedTicket.status === 'PENDING_USER' && (
+              <div className="rounded-xl border border-blue-200 bg-blue-50 p-3.5 space-y-1">
+                <span className="text-xs font-bold text-blue-950 block">
+                  Action Required: Support is waiting on your response
+                </span>
+                <p className="text-xs text-blue-800">
+                  The SLA clock is currently paused. Replying below with the requested info will automatically resume work.
+                </p>
+              </div>
+            )}
 
             {/* State Actions for Requester */}
             {selectedTicket.status === 'RESOLVED' && (

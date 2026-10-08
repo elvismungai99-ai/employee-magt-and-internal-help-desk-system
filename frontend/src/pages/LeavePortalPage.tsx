@@ -25,7 +25,8 @@ import {
   Trash2
 } from 'lucide-react';
 import { leaveApi } from '../api/leaveApi';
-import { LeaveBalance, LeaveRequest, LeaveType } from '../types';
+import { authApi } from '../api/authApi';
+import { LeaveBalance, LeaveRequest, LeaveType, UserProfile } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import {
@@ -121,11 +122,15 @@ export const LeavePortalPage: React.FC = () => {
 
   // Apply Leave Modal state
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+  const [colleagues, setColleagues] = useState<UserProfile[]>([]);
   const [applyForm, setApplyForm] = useState({
     leaveTypeId: '',
     startDate: '',
     endDate: '',
     reason: '',
+    isHalfDay: false,
+    halfDayPeriod: 'MORNING' as 'MORNING' | 'AFTERNOON',
+    delegateId: '',
   });
   const [applyError, setApplyError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -142,15 +147,17 @@ export const LeavePortalPage: React.FC = () => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [balData, typesData, myReqData] = await Promise.all([
+      const [balData, typesData, myReqData, colleaguesData] = await Promise.all([
         leaveApi.getMyBalances(currentYear).catch(() => []),
         leaveApi.getLeaveTypes().catch(() => []),
         leaveApi.getMyRequests().catch(() => []),
+        authApi.getColleagues().catch(() => []),
       ]);
 
       setBalances(balData);
       setLeaveTypes(typesData);
       setMyRequests(myReqData);
+      setColleagues(colleaguesData.filter((c) => c.id !== user?.id));
 
       if (typesData.length > 0 && !applyForm.leaveTypeId) {
         setApplyForm((prev) => ({ ...prev, leaveTypeId: typesData[0].id }));
@@ -354,20 +361,27 @@ export const LeavePortalPage: React.FC = () => {
 
   // Calculate working days for current apply form
   const requestedWorkingDays = useMemo(() => {
+    if (applyForm.isHalfDay) {
+      if (!applyForm.startDate) return 0;
+      const days = calculateKenyanWorkingDays(applyForm.startDate, applyForm.startDate);
+      return days > 0 ? 0.5 : 0;
+    }
     return calculateKenyanWorkingDays(applyForm.startDate, applyForm.endDate);
-  }, [applyForm.startDate, applyForm.endDate]);
+  }, [applyForm.startDate, applyForm.endDate, applyForm.isHalfDay]);
 
   // Selected balance in apply form
   const selectedBalance = balances.find((b) => b.leaveTypeId === applyForm.leaveTypeId);
   const availableDays = selectedBalance ? Number(selectedBalance.availableDays) || 0 : 0;
-  const isInsufficient = requestedWorkingDays > availableDays && Boolean(applyForm.startDate && applyForm.endDate);
+  const isInsufficient = requestedWorkingDays > availableDays && Boolean(applyForm.startDate && (applyForm.isHalfDay || applyForm.endDate));
 
   // Submit leave request to backend API
   const handleApplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setApplyError(null);
 
-    if (new Date(applyForm.endDate) < new Date(applyForm.startDate)) {
+    const effectiveEndDate = applyForm.isHalfDay ? applyForm.startDate : applyForm.endDate;
+
+    if (!applyForm.isHalfDay && new Date(effectiveEndDate) < new Date(applyForm.startDate)) {
       setApplyError('End date cannot precede the start date.');
       return;
     }
@@ -385,13 +399,16 @@ export const LeavePortalPage: React.FC = () => {
       await leaveApi.submitRequest({
         leaveTypeId: applyForm.leaveTypeId,
         startDate: applyForm.startDate,
-        endDate: applyForm.endDate,
+        endDate: effectiveEndDate,
         reason: applyForm.reason.trim(),
+        isHalfDay: applyForm.isHalfDay,
+        halfDayPeriod: applyForm.isHalfDay ? applyForm.halfDayPeriod : undefined,
+        delegateId: applyForm.delegateId || undefined,
       });
 
       setFeedback({
         type: 'success',
-        message: `Leave application for ${requestedWorkingDays} working day(s) submitted successfully. Routed to line manager for approval.`,
+        message: `Leave application for ${requestedWorkingDays} day(s) submitted successfully. Routed to line manager for approval.`,
       });
 
       setIsApplyModalOpen(false);
@@ -401,6 +418,9 @@ export const LeavePortalPage: React.FC = () => {
         startDate: '',
         endDate: '',
         reason: '',
+        isHalfDay: false,
+        halfDayPeriod: 'MORNING',
+        delegateId: '',
       });
 
       // Reload balances and request queue
@@ -1150,11 +1170,23 @@ export const LeavePortalPage: React.FC = () => {
                       </td>
 
                       <td className="py-3.5 px-4 text-slate-700 whitespace-nowrap">
-                        {req.startDate} to {req.endDate}
+                        <div>
+                          <span>{req.startDate}{req.startDate !== req.endDate ? ` to ${req.endDate}` : ''}</span>
+                          {req.isHalfDay && (
+                            <span className="block text-[10px] font-semibold text-[#0e4a5c]">
+                              Half Day ({req.halfDayPeriod === 'AFTERNOON' ? 'Afternoon' : 'Morning'})
+                            </span>
+                          )}
+                          {req.delegateName && (
+                            <span className="block text-[10px] text-slate-500">
+                              Backup: {req.delegateName}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       <td className="py-3.5 px-4 font-bold text-[#0d2836]">
-                        {req.totalDays} day{req.totalDays > 1 ? 's' : ''}
+                        {req.totalDays} day{req.totalDays !== 1 ? 's' : ''}
                       </td>
 
                       <td className="py-3.5 px-4 text-slate-600 max-w-xs truncate" title={req.reason}>
@@ -1273,33 +1305,112 @@ export const LeavePortalPage: React.FC = () => {
               </select>
             </div>
 
+            {/* Half-Day Option Toggle */}
+            <div className="rounded-xl border border-teal-100 bg-[#e3f4f1]/40 p-3">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={applyForm.isHalfDay}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setApplyForm({
+                      ...applyForm,
+                      isHalfDay: checked,
+                      endDate: checked ? applyForm.startDate : applyForm.endDate,
+                    });
+                  }}
+                  className="rounded border-teal-300 text-[#0e4a5c] focus:ring-[#0e4a5c] h-4 w-4"
+                />
+                <span className="text-xs font-bold text-[#0d2836]">Half-Day Leave (0.5 working day)</span>
+              </label>
+
+              {applyForm.isHalfDay && (
+                <div className="mt-2.5 pt-2 border-t border-teal-100 flex items-center gap-2">
+                  <span className="text-[11px] text-slate-600 font-medium">Session:</span>
+                  <button
+                    type="button"
+                    onClick={() => setApplyForm({ ...applyForm, halfDayPeriod: 'MORNING' })}
+                    className={`rounded-lg px-3 py-1 text-xs font-semibold transition ${
+                      applyForm.halfDayPeriod === 'MORNING'
+                        ? 'bg-[#0e4a5c] text-white shadow-xs'
+                        : 'bg-white text-slate-700 border border-teal-200 hover:bg-teal-50'
+                    }`}
+                  >
+                    Morning (First Half)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setApplyForm({ ...applyForm, halfDayPeriod: 'AFTERNOON' })}
+                    className={`rounded-lg px-3 py-1 text-xs font-semibold transition ${
+                      applyForm.halfDayPeriod === 'AFTERNOON'
+                        ? 'bg-[#0e4a5c] text-white shadow-xs'
+                        : 'bg-white text-slate-700 border border-teal-200 hover:bg-teal-50'
+                    }`}
+                  >
+                    Afternoon (Second Half)
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Date Pickers */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className={`grid gap-3 ${applyForm.isHalfDay ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
               <div>
                 <label className="block text-xs font-bold text-[#0d2836] mb-1">
-                  Start Date <span className="text-rose-500">*</span>
+                  {applyForm.isHalfDay ? 'Leave Date' : 'Start Date'} <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="date"
                   value={applyForm.startDate}
-                  onChange={(e) => setApplyForm({ ...applyForm, startDate: e.target.value })}
+                  onChange={(e) => {
+                    const newStart = e.target.value;
+                    setApplyForm({
+                      ...applyForm,
+                      startDate: newStart,
+                      endDate: applyForm.isHalfDay ? newStart : applyForm.endDate,
+                    });
+                  }}
                   className="w-full rounded-xl border border-teal-200/90 bg-white px-3 py-2 text-xs text-slate-800 focus:border-[#0e4a5c] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c]"
                   required
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-[#0d2836] mb-1">
-                  End Date <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  value={applyForm.endDate}
-                  onChange={(e) => setApplyForm({ ...applyForm, endDate: e.target.value })}
-                  className="w-full rounded-xl border border-teal-200/90 bg-white px-3 py-2 text-xs text-slate-800 focus:border-[#0e4a5c] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c]"
-                  required
-                />
-              </div>
+              {!applyForm.isHalfDay && (
+                <div>
+                  <label className="block text-xs font-bold text-[#0d2836] mb-1">
+                    End Date <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={applyForm.endDate}
+                    onChange={(e) => setApplyForm({ ...applyForm, endDate: e.target.value })}
+                    className="w-full rounded-xl border border-teal-200/90 bg-white px-3 py-2 text-xs text-slate-800 focus:border-[#0e4a5c] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c]"
+                    required
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Coverage Delegate / Backup Colleague */}
+            <div>
+              <label className="block text-xs font-bold text-[#0d2836] mb-1">
+                Coverage Delegate / Backup Colleague <span className="text-slate-400 font-normal">(Optional)</span>
+              </label>
+              <select
+                value={applyForm.delegateId}
+                onChange={(e) => setApplyForm({ ...applyForm, delegateId: e.target.value })}
+                className="w-full rounded-xl border border-teal-200/90 bg-white px-3 py-2 text-xs text-slate-800 focus:border-[#0e4a5c] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c]"
+              >
+                <option value="">-- No delegate assigned --</option>
+                {colleagues.map((colleague) => (
+                  <option key={colleague.id} value={colleague.id}>
+                    {colleague.fullName} ({colleague.jobTitle || colleague.roles?.join(', ') || colleague.email})
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-slate-500 mt-1">
+                While you are on approved leave, tickets assigned to you will automatically re-route to this colleague.
+              </p>
             </div>
 
             {/* Working Days & Holiday notice banner */}

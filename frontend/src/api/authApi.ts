@@ -51,4 +51,9 @@ export const authApi = {
     const res = await apiClient.get<ApiResponse<Department[]>>('/api/identity/departments');
     return res.data.data;
   },
+
+  getColleagues: async (): Promise<UserProfile[]> => {
+    const res = await apiClient.get<ApiResponse<UserProfile[]>>('/api/identity/users/colleagues');
+    return res.data.data;
+  },
 };

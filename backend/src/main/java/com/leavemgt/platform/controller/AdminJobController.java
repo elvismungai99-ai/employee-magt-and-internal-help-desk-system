@@ -94,6 +94,44 @@ public class AdminJobController {
         return ResponseEntity.ok(ApiResponse.success(result, "Accrual executed successfully"));
     }
 
+    @PostMapping("/jobs/year-end-carryover/trigger")
+    public ResponseEntity<ApiResponse<AccrualRunResult>> triggerYearEndCarryover(
+            @RequestParam(name = "fromYear", required = false) Integer fromYearParam,
+            @RequestParam(name = "toYear", required = false) Integer toYearParam,
+            Authentication authentication) {
+        UUID callerId = extractUserId(authentication);
+        String callerIdentifier = "HR_ADMIN";
+        if (callerId != null) {
+            User caller = userRepository.findById(callerId).orElse(null);
+            if (caller != null) callerIdentifier = caller.getEmail();
+        }
+
+        int currentYear = LocalDate.now().getYear();
+        int fromYear = fromYearParam != null ? fromYearParam : currentYear - 1;
+        int toYear = toYearParam != null ? toYearParam : currentYear;
+
+        log.info("Manual year-end carryover triggered by {}: fromYear={}, toYear={}", callerIdentifier, fromYear, toYear);
+        AccrualRunResult result = balanceAccrualEngine.runYearEndCarryover(fromYear, toYear, callerIdentifier);
+        return ResponseEntity.ok(ApiResponse.success(result, "Year-end carryover executed successfully"));
+    }
+
+    @PostMapping("/jobs/carryover-expiry/trigger")
+    public ResponseEntity<ApiResponse<AccrualRunResult>> triggerCarryoverExpiry(
+            @RequestParam(name = "year", required = false) Integer yearParam,
+            Authentication authentication) {
+        UUID callerId = extractUserId(authentication);
+        String callerIdentifier = "HR_ADMIN";
+        if (callerId != null) {
+            User caller = userRepository.findById(callerId).orElse(null);
+            if (caller != null) callerIdentifier = caller.getEmail();
+        }
+
+        int year = yearParam != null ? yearParam : LocalDate.now().getYear();
+        log.info("Manual carryover expiry triggered by {}: year={}", callerIdentifier, year);
+        AccrualRunResult result = balanceAccrualEngine.runCarryoverExpiry(year, callerIdentifier);
+        return ResponseEntity.ok(ApiResponse.success(result, "Carryover expiry executed successfully"));
+    }
+
     private UUID extractUserId(Authentication authentication) {
         if (authentication != null && authentication.getPrincipal() instanceof UUID uuid) {
             return uuid;

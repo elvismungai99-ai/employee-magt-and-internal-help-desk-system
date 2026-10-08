@@ -26,4 +26,6 @@ public class CreateTicketRequest {
     private String description;
 
     private TicketPriority priority;
+
+    private UUID leaveRequestId;
 }

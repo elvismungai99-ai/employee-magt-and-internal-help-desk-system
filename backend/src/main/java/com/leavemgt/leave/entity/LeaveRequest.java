@@ -55,6 +55,17 @@ public class LeaveRequest {
     private String attachmentUrl;
 
     @Builder.Default
+    @Column(name = "is_half_day", nullable = false)
+    private Boolean isHalfDay = false;
+
+    @Column(name = "half_day_period", length = 20)
+    private String halfDayPeriod; // "MORNING" or "AFTERNOON"
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "delegate_id")
+    private User delegate;
+
+    @Builder.Default
     @OneToMany(mappedBy = "leaveRequest", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<LeaveApproval> approvals = new ArrayList<>();
 

@@ -29,4 +29,10 @@ public class SubmitLeaveRequest {
     private String reason;
 
     private String attachmentUrl;
+
+    private Boolean isHalfDay;
+
+    private String halfDayPeriod; // "MORNING" or "AFTERNOON"
+
+    private UUID delegateId;
 }

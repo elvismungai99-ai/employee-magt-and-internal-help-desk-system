@@ -114,6 +114,12 @@ public class SecurityConfig {
         if (!patterns.contains("https://*.vercel.app")) {
             patterns.add("https://*.vercel.app");
         }
+        if (!patterns.contains("https://employee-magt-and-internal-help-des.vercel.app")) {
+            patterns.add("https://employee-magt-and-internal-help-des.vercel.app");
+        }
+        if (!patterns.contains("https://*.onrender.com")) {
+            patterns.add("https://*.onrender.com");
+        }
         config.setAllowedOriginPatterns(patterns);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
         config.setAllowedHeaders(List.of("*"));

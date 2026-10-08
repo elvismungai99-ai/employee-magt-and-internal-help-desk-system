@@ -1,12 +1,13 @@
 server:
+  address: 0.0.0.0
   port: ${PORT:8080}
   servlet:
     context-path: /
   tomcat:
     threads:
-      max: ${TOMCAT_MAX_THREADS:100}
-      min-spare: ${TOMCAT_MIN_SPARE:10}
-    max-connections: ${TOMCAT_MAX_CONNECTIONS:1000}
+      max: ${TOMCAT_MAX_THREADS:20}
+      min-spare: ${TOMCAT_MIN_SPARE:2}
+    max-connections: ${TOMCAT_MAX_CONNECTIONS:100}
 
 spring:
   application:
@@ -20,8 +21,8 @@ spring:
     password: ${DB_PASSWORD:}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:20}
-      minimum-idle: ${HIKARI_MIN_IDLE:5}
+      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:5}
+      minimum-idle: ${HIKARI_MIN_IDLE:1}
       idle-timeout: 300000
       max-lifetime: 900000
       connection-timeout: 20000
@@ -51,7 +52,7 @@ app:
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
   seed-admin-user: ${SEED_ADMIN_USER:false}
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,https://employee-magt-and-internal-help-des.vercel.app}
     max-age-seconds: ${CORS_MAX_AGE_SECONDS:3600}
   security:
     bcrypt-strength: ${BCRYPT_STRENGTH:12}

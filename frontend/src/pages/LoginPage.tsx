@@ -41,8 +41,8 @@ export const LoginPage: React.FC = () => {
       await login({ email, password }, rememberMe);
       navigate('/', { replace: true });
     } catch (err: any) {
-      if (!err.response || err.code === 'ERR_NETWORK') {
-        setError('Unable to reach the server. Please check your connection and try again.');
+      if (!err.response || err.code === 'ERR_NETWORK' || err.response?.status === 502 || err.response?.status === 503) {
+        setError('Unable to reach the server. The backend cloud instance may be spinning up from sleep (Render free tier takes 30-50s to wake up). Please wait a moment and try again.');
       } else {
         const msg = err.response?.data?.message || err.message || 'Authentication failed. Please verify your email and password.';
         setError(msg);

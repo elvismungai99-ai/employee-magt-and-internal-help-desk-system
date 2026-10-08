@@ -104,6 +104,9 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) {
         log.info("Starting seed data initialization...");
 
+        // 0. Dynamic schema patches (ensures missing entity columns exist in DB across environments)
+        applySchemaPatches();
+
         // 1. Seed Permissions
         Map<String, Permission> permissions = initPermissions();
 
@@ -128,6 +131,41 @@ public class DataInitializer implements CommandLineRunner {
         initHelpdeskTaxonomy();
 
         log.info("Seed data initialization completed successfully.");
+    }
+
+    private void applySchemaPatches() {
+        String[] patches = {
+                "CREATE SCHEMA IF NOT EXISTS leave",
+                "CREATE SCHEMA IF NOT EXISTS identity",
+                "CREATE SCHEMA IF NOT EXISTS helpdesk",
+                "CREATE SCHEMA IF NOT EXISTS platform",
+                "ALTER TABLE leave.leave_requests ADD COLUMN IF NOT EXISTS is_half_day BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE leave.leave_requests ADD COLUMN IF NOT EXISTS half_day_period VARCHAR(20)",
+                "ALTER TABLE leave.leave_requests ADD COLUMN IF NOT EXISTS delegate_id UUID",
+                "ALTER TABLE public.leave_requests ADD COLUMN IF NOT EXISTS is_half_day BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE public.leave_requests ADD COLUMN IF NOT EXISTS half_day_period VARCHAR(20)",
+                "ALTER TABLE public.leave_requests ADD COLUMN IF NOT EXISTS delegate_id UUID",
+                "CREATE TABLE IF NOT EXISTS leave.out_of_office_records (" +
+                        "id UUID PRIMARY KEY DEFAULT gen_random_uuid(), " +
+                        "leave_request_id UUID NOT NULL, " +
+                        "user_id UUID NOT NULL, " +
+                        "delegate_id UUID, " +
+                        "start_date DATE NOT NULL, " +
+                        "end_date DATE NOT NULL, " +
+                        "sync_status VARCHAR(30) NOT NULL DEFAULT 'SYNCED', " +
+                        "synced_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, " +
+                        "source_event_id UUID UNIQUE)",
+                "ALTER TABLE leave.out_of_office_records ADD COLUMN IF NOT EXISTS delegate_id UUID",
+                "ALTER TABLE public.out_of_office_records ADD COLUMN IF NOT EXISTS delegate_id UUID"
+        };
+
+        for (String sql : patches) {
+            try {
+                jdbcTemplate.execute(sql);
+            } catch (Exception e) {
+                log.debug("Schema patch skipped or already applied: {}", e.getMessage());
+            }
+        }
     }
 
     private Map<String, Permission> initPermissions() {

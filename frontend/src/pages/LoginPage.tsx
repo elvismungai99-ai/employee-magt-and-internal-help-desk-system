@@ -43,8 +43,20 @@ export const LoginPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      await login({ email, password }, rememberMe);
-      navigate(from, { replace: true });
+      const authData = await login({ email, password }, rememberMe);
+      const userRoles = (authData.roles || []).map((r) => r.replace(/^ROLE_/, '').toUpperCase());
+
+      // Role-aware destination resolution prevents redirecting users to unauthorized pages (e.g. from previous admin session)
+      let destination = from;
+      if (destination === '/admin' && !userRoles.includes('HR_ADMIN')) {
+        destination = userRoles.includes('SUPPORT_AGENT') ? '/agent-queue' : '/';
+      } else if (destination === '/approvals' && !userRoles.includes('LINE_MANAGER') && !userRoles.includes('HR_ADMIN')) {
+        destination = '/';
+      } else if (destination === '/agent-queue' && !userRoles.includes('SUPPORT_AGENT') && !userRoles.includes('HR_ADMIN')) {
+        destination = '/';
+      }
+
+      navigate(destination, { replace: true });
     } catch (err: any) {
       if (!err.response || err.code === 'ERR_NETWORK') {
         setError('Unable to reach the server. Please check your connection and try again.');

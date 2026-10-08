@@ -126,6 +126,24 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
               Continue to your accessible workspaces:
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {hasRole('SUPPORT_AGENT') && (
+                <Link
+                  to="/agent-queue"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0e4a5c] text-white hover:bg-[#083543] rounded-xl text-xs font-semibold transition shadow-2xs"
+                >
+                  <LifeBuoy className="w-4 h-4" />
+                  Agent Queue
+                </Link>
+              )}
+              {hasRole('LINE_MANAGER') && (
+                <Link
+                  to="/approvals"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0e4a5c] text-white hover:bg-[#083543] rounded-xl text-xs font-semibold transition shadow-2xs"
+                >
+                  <Users className="w-4 h-4" />
+                  Manager Approvals
+                </Link>
+              )}
               <Link
                 to="/leave"
                 className="inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-teal-200 rounded-xl text-xs font-semibold text-[#0e4a5c] bg-white hover:bg-[#eef7f6] transition shadow-2xs"

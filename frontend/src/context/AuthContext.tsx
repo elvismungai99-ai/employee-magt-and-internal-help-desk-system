@@ -13,7 +13,7 @@ interface AuthContextType {
   roles: string[];
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (payload: LoginPayload, rememberMe?: boolean) => Promise<void>;
+  login: (payload: LoginPayload, rememberMe?: boolean) => Promise<AuthResponseData>;
   register: (payload: RegisterPayload, rememberMe?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   hasRole: (role: UserRole | string) => boolean;
@@ -71,7 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initAuth();
   }, [clearAuthState, fetchProfile]);
 
-  const login = async (payload: LoginPayload, rememberMe: boolean = false) => {
+  const login = async (payload: LoginPayload, rememberMe: boolean = false): Promise<AuthResponseData> => {
     setIsLoading(true);
     try {
       const authData = await authApi.login(payload);
@@ -81,6 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Fetch full profile details (department, manager, employeeCode)
       await fetchProfile();
+      return authData;
     } finally {
       setIsLoading(false);
     }

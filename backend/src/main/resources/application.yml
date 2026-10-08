@@ -50,7 +50,7 @@ jwt:
 app:
   timezone: ${APP_TIMEZONE:Africa/Nairobi}
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
-  seed-admin-user: ${SEED_ADMIN_USER:false}
+  seed-admin-user: ${SEED_ADMIN_USER:true}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,https://employee-magt-and-internal-help-des.vercel.app}
     max-age-seconds: ${CORS_MAX_AGE_SECONDS:3600}

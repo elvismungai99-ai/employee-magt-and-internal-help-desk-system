@@ -423,6 +423,19 @@ public class LeaveRequestService {
     }
 
     @Transactional(readOnly = true)
+    public List<LeaveRequestResponse> getAllRequests(UUID callerId, boolean isHrAdmin) {
+        List<LeaveRequest> requests;
+        if (isHrAdmin) {
+            requests = leaveRequestRepository.findAllByOrderByCreatedAtDesc();
+        } else {
+            requests = leaveRequestRepository.findAllByUserIdOrderByCreatedAtDesc(callerId);
+        }
+        return requests.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public List<LeaveRequestResponse> getPendingApprovalsForCaller(UUID callerId, boolean isHrAdmin) {
         List<LeaveApproval> pendingApprovals;
         if (isHrAdmin) {

@@ -2,7 +2,6 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { Navbar } from './components/Navbar';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -11,15 +10,10 @@ import { ManagerApprovalsPage } from './pages/ManagerApprovalsPage';
 import { HelpDeskPage } from './pages/HelpDeskPage';
 import { AgentQueuePage } from './pages/AgentQueuePage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
+import { TeamHubLayout } from './components/TeamHubLayout';
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="min-h-screen bg-[#f2f8f8] flex flex-col font-sans">
-    <Navbar />
-    <main className="flex-1 pb-12">{children}</main>
-    <footer className="border-t border-teal-100 bg-white/95 py-4 text-center text-xs text-slate-500">
-      Employee Management &amp; Internal Help Desk System &bull; &copy; 2026 All rights reserved.
-    </footer>
-  </div>
+  <TeamHubLayout>{children}</TeamHubLayout>
 );
 
 export default function App() {

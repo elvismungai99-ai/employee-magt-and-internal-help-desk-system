@@ -49,6 +49,18 @@ public class LeaveRequestController {
         return ResponseEntity.ok(ApiResponse.success(responses, "Leave requests retrieved successfully"));
     }
 
+    @GetMapping("/all")
+    public ResponseEntity<ApiResponse<List<LeaveRequestResponse>>> getAllRequests(Authentication authentication) {
+        UUID callerId = extractUserId(authentication);
+        if (callerId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Unauthorized"));
+        }
+
+        boolean isHrAdmin = isHrAdmin(authentication);
+        List<LeaveRequestResponse> responses = leaveRequestService.getAllRequests(callerId, isHrAdmin);
+        return ResponseEntity.ok(ApiResponse.success(responses, "All leave requests retrieved successfully"));
+    }
+
     @GetMapping("/pending-approvals")
     public ResponseEntity<ApiResponse<List<LeaveRequestResponse>>> getPendingApprovals(Authentication authentication) {
         UUID callerId = extractUserId(authentication);

@@ -24,6 +24,11 @@ export const leaveApi = {
     return res.data.data;
   },
 
+  getAllRequests: async (): Promise<LeaveRequest[]> => {
+    const res = await apiClient.get<ApiResponse<LeaveRequest[]>>('/api/leave/requests/all');
+    return res.data.data;
+  },
+
   getRequestById: async (id: string): Promise<LeaveRequest> => {
     const res = await apiClient.get<ApiResponse<LeaveRequest>>(`/api/leave/requests/${id}`);
     return res.data.data;

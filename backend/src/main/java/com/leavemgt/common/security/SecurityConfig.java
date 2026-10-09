@@ -120,6 +120,12 @@ public class SecurityConfig {
         if (!patterns.contains("https://*.onrender.com")) {
             patterns.add("https://*.onrender.com");
         }
+        if (!patterns.contains("https://*.railway.app")) {
+            patterns.add("https://*.railway.app");
+        }
+        if (!patterns.contains("https://*.up.railway.app")) {
+            patterns.add("https://*.up.railway.app");
+        }
         config.setAllowedOriginPatterns(patterns);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
         config.setAllowedHeaders(List.of("*"));

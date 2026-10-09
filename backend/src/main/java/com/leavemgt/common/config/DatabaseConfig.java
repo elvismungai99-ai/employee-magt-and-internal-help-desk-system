@@ -7,13 +7,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.env.Environment;
 
 import javax.sql.DataSource;
-import java.net.URI;
 
 @Slf4j
 @Configuration
 public class DatabaseConfig {
+
+    private final Environment environment;
 
     @Value("${spring.datasource.url:}")
     private String configuredUrl;
@@ -38,6 +40,10 @@ public class DatabaseConfig {
 
     @Value("${spring.datasource.hikari.connection-timeout:20000}")
     private long connectionTimeout;
+
+    public DatabaseConfig(Environment environment) {
+        this.environment = environment;
+    }
 
     public static class ResolvedDbParams {
         public final String jdbcUrl;
@@ -72,31 +78,44 @@ public class DatabaseConfig {
     }
 
     public ResolvedDbParams resolveDbParams() {
-        // 1. Check direct environment variables in priority order
-        String dbUrl = getEnvFirst("DB_URL", "DATABASE_URL", "DATABASE_PUBLIC_URL", "SPRING_DATASOURCE_URL");
+        boolean hasDbUrl = hasProp("DB_URL");
+        boolean hasDatabaseUrl = hasProp("DATABASE_URL");
+        boolean hasDatabasePublicUrl = hasProp("DATABASE_PUBLIC_URL");
+        boolean hasPgHost = hasProp("PGHOST");
 
-        if (dbUrl != null && !dbUrl.isBlank()) {
+        log.info("Inspecting database environment variables: DB_URL={}, DATABASE_URL={}, DATABASE_PUBLIC_URL={}, PGHOST={}",
+                hasDbUrl, hasDatabaseUrl, hasDatabasePublicUrl, hasPgHost);
+
+        // 1. Check direct environment variables in priority order
+        String dbUrl = getPropFirst("DB_URL", "DATABASE_URL", "DATABASE_PUBLIC_URL", "SPRING_DATASOURCE_URL");
+
+        if (dbUrl != null && !dbUrl.isBlank() && !dbUrl.contains("localhost")) {
             return parseUrl(dbUrl.trim());
         }
 
         // 2. Check if discrete Postgres env vars exist (e.g. PGHOST provided by Railway)
-        String pgHost = getEnvFirst("PGHOST");
+        String pgHost = getPropFirst("PGHOST");
         if (pgHost != null && !pgHost.isBlank() && !"localhost".equalsIgnoreCase(pgHost)) {
-            String pgPort = getEnvOrDefault("PGPORT", "5432");
-            String pgDb = getEnvOrDefault("PGDATABASE", "railway");
-            String pgUser = getEnvOrDefault("PGUSER", configuredUsername);
-            String pgPass = getEnvOrDefault("PGPASSWORD", configuredPassword);
+            String pgPort = getPropOrDefault("PGPORT", "5432");
+            String pgDb = getPropOrDefault("PGDATABASE", "railway");
+            String pgUser = getPropOrDefault("PGUSER", configuredUsername);
+            String pgPass = getPropOrDefault("PGPASSWORD", configuredPassword);
 
             String constructedUrl = "jdbc:postgresql://" + pgHost + ":" + pgPort + "/" + pgDb + "?currentSchema=identity,leave,public";
             return new ResolvedDbParams(constructedUrl, pgUser, pgPass);
         }
 
-        // 3. Check application.yml configuredUrl
-        if (configuredUrl != null && !configuredUrl.isBlank()) {
+        // 3. If DB_URL was set but contains localhost in local dev mode
+        if (dbUrl != null && !dbUrl.isBlank()) {
+            return parseUrl(dbUrl.trim());
+        }
+
+        // 4. Check application.yml configuredUrl if non-localhost
+        if (configuredUrl != null && !configuredUrl.isBlank() && !configuredUrl.contains("localhost")) {
             return parseUrl(configuredUrl.trim());
         }
 
-        // 4. Fallback check for cloud deployment vs local development
+        // 5. Check if running in cloud (Railway, Render, container)
         boolean isCloud = isCloudEnvironment();
         if (isCloud) {
             String errorMsg = "\n" +
@@ -107,11 +126,9 @@ public class DatabaseConfig {
                     "\n" +
                     "  ACTION REQUIRED IN RAILWAY DASHBOARD:\n" +
                     "  1. Go to your Railway Project.\n" +
-                    "  2. Click on this backend service tile -> Select 'Variables' tab.\n" +
-                    "  3. Add variable:\n" +
-                    "     Name:  DATABASE_URL\n" +
-                    "     Value: ${{Postgres.DATABASE_URL}}  (or copy the Postgres connection string)\n" +
-                    "  4. Redeploy.\n" +
+                    "  2. Click on your backend service -> Select 'Variables' tab.\n" +
+                    "  3. Make sure you click the purple 'Deploy' button at the top-left to apply staged variables!\n" +
+                    "  4. Ensure DATABASE_URL is added: ${{Postgres.DATABASE_URL}} (or the Postgres connection string).\n" +
                     "****************************************************************************************\n";
             log.error(errorMsg);
             throw new IllegalStateException("Missing database connection URL. Please set DATABASE_URL or DB_URL in Railway environment variables.");
@@ -128,44 +145,26 @@ public class DatabaseConfig {
 
         // If it starts with standard postgres:// or postgresql:// (Railway/Heroku/Render standard)
         if (rawUrl.startsWith("postgres://") || rawUrl.startsWith("postgresql://")) {
-            try {
-                String uriString = rawUrl.startsWith("postgres://")
-                        ? "http://" + rawUrl.substring("postgres://".length())
-                        : "http://" + rawUrl.substring("postgresql://".length());
+            int schemeEnd = rawUrl.indexOf("://");
+            String afterScheme = rawUrl.substring(schemeEnd + 3);
+            int atIndex = afterScheme.lastIndexOf('@');
 
-                URI uri = URI.create(uriString);
-                String userInfo = uri.getUserInfo();
-                if (userInfo != null && !userInfo.isBlank()) {
-                    String[] parts = userInfo.split(":", 2);
-                    username = parts[0];
-                    if (parts.length > 1) {
-                        password = parts[1];
-                    }
-                }
-
-                String host = uri.getHost();
-                int port = uri.getPort() > 0 ? uri.getPort() : 5432;
-                String path = uri.getPath() != null && !uri.getPath().isBlank() ? uri.getPath() : "/railway";
-                String query = uri.getQuery();
-
-                StringBuilder jdbcUrl = new StringBuilder("jdbc:postgresql://")
-                        .append(host)
-                        .append(":")
-                        .append(port)
-                        .append(path);
-
-                if (query != null && !query.isBlank()) {
-                    jdbcUrl.append("?").append(query);
-                    if (!query.contains("currentSchema")) {
-                        jdbcUrl.append("&currentSchema=identity,leave,public");
-                    }
+            if (atIndex != -1) {
+                String userPass = afterScheme.substring(0, atIndex);
+                int colonIndex = userPass.indexOf(':');
+                if (colonIndex != -1) {
+                    username = userPass.substring(0, colonIndex);
+                    password = userPass.substring(colonIndex + 1);
                 } else {
-                    jdbcUrl.append("?currentSchema=identity,leave,public");
+                    username = userPass;
                 }
 
-                return new ResolvedDbParams(jdbcUrl.toString(), username, password);
-            } catch (Exception e) {
-                log.warn("Could not parse URI from {}: {}", rawUrl, e.getMessage());
+                String hostAndPath = afterScheme.substring(atIndex + 1);
+                String jdbcUrl = "jdbc:postgresql://" + hostAndPath;
+                if (!jdbcUrl.contains("currentSchema")) {
+                    jdbcUrl += (jdbcUrl.contains("?") ? "&" : "?") + "currentSchema=identity,leave,public";
+                }
+                return new ResolvedDbParams(jdbcUrl, username, password);
             }
         }
 
@@ -179,13 +178,13 @@ public class DatabaseConfig {
             finalUrl += (finalUrl.contains("?") ? "&" : "?") + "currentSchema=identity,leave,public";
         }
 
-        // Override username and password if PGUSER/PGPASSWORD are set in environment
-        String envUser = getEnvFirst("PGUSER", "DB_USERNAME");
+        // Override username and password if PGUSER/PGPASSWORD or DB_USERNAME/DB_PASSWORD are set
+        String envUser = getPropFirst("PGUSER", "DB_USERNAME");
         if (envUser != null && !envUser.isBlank()) {
             username = envUser;
         }
 
-        String envPass = getEnvFirst("PGPASSWORD", "DB_PASSWORD");
+        String envPass = getPropFirst("PGPASSWORD", "DB_PASSWORD");
         if (envPass != null && !envPass.isBlank()) {
             password = envPass;
         }
@@ -194,15 +193,20 @@ public class DatabaseConfig {
     }
 
     private boolean isCloudEnvironment() {
-        return System.getenv("RAILWAY_ENVIRONMENT") != null
-                || System.getenv("RAILWAY_PROJECT_ID") != null
-                || System.getenv("RENDER") != null
-                || (System.getenv("PORT") != null && !"8080".equals(System.getenv("PORT")));
+        return environment.getProperty("RAILWAY_ENVIRONMENT") != null
+                || environment.getProperty("RAILWAY_PROJECT_ID") != null
+                || environment.getProperty("RENDER") != null
+                || (environment.getProperty("PORT") != null && !"8080".equals(environment.getProperty("PORT")));
     }
 
-    private String getEnvFirst(String... keys) {
+    private boolean hasProp(String key) {
+        String val = environment.getProperty(key);
+        return val != null && !val.isBlank();
+    }
+
+    private String getPropFirst(String... keys) {
         for (String k : keys) {
-            String val = System.getenv(k);
+            String val = environment.getProperty(k);
             if (val != null && !val.isBlank()) {
                 return val.trim();
             }
@@ -210,8 +214,8 @@ public class DatabaseConfig {
         return null;
     }
 
-    private String getEnvOrDefault(String key, String defaultVal) {
-        String val = System.getenv(key);
+    private String getPropOrDefault(String key, String defaultVal) {
+        String val = environment.getProperty(key);
         return (val != null && !val.isBlank()) ? val.trim() : defaultVal;
     }
 

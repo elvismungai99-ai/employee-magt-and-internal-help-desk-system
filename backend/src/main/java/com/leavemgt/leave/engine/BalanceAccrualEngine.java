@@ -68,9 +68,8 @@ public class BalanceAccrualEngine {
         String periodPattern = String.format("%%%02d/%d%%", month, year);
         String description = String.format("Scheduled monthly accrual for %02d/%d", month, year);
 
-        List<LeavePolicy> activePolicies = policyRepository.findAll().stream()
+        List<LeavePolicy> allActivePolicies = policyRepository.findAll().stream()
                 .filter(p -> Boolean.TRUE.equals(p.getIsActive()))
-                .filter(p -> p.getMonthlyAccrualRate() != null && p.getMonthlyAccrualRate().compareTo(BigDecimal.ZERO) > 0)
                 .toList();
 
         int usersProcessed = 0;
@@ -98,7 +97,39 @@ public class BalanceAccrualEngine {
                         int userAccrued = 0;
                         int userSkipped = 0;
 
-                        for (LeavePolicy policy : activePolicies) {
+                        for (LeavePolicy policy : allActivePolicies) {
+                            BigDecimal rate = policy.getMonthlyAccrualRate();
+                            boolean isMonthlyAccruing = rate != null && rate.compareTo(BigDecimal.ZERO) > 0;
+
+                            if (!isMonthlyAccruing) {
+                                // Ensure lump-sum statutory balances (Sick, Maternity, Paternity, Casual) are initialized
+                                var existingOpt = balanceRepository.findByUserIdAndLeaveTypeIdAndYear(
+                                        user.getId(), policy.getLeaveType().getId(), year);
+                                if (existingOpt.isEmpty()) {
+                                    LeaveBalance lumpBal = LeaveBalance.builder()
+                                            .user(user)
+                                            .leaveType(policy.getLeaveType())
+                                            .year(year)
+                                            .entitledDays(policy.getAnnualAllowance())
+                                            .accruedDays(policy.getAnnualAllowance())
+                                            .usedDays(BigDecimal.ZERO)
+                                            .pendingDays(BigDecimal.ZERO)
+                                            .carriedOverDays(BigDecimal.ZERO)
+                                            .build();
+                                    balanceRepository.save(lumpBal);
+                                } else {
+                                    LeaveBalance existing = existingOpt.get();
+                                    if (existing.getAccruedDays().compareTo(BigDecimal.ZERO) == 0
+                                            && existing.getUsedDays().compareTo(BigDecimal.ZERO) == 0
+                                            && existing.getPendingDays().compareTo(BigDecimal.ZERO) == 0
+                                            && policy.getAnnualAllowance().compareTo(BigDecimal.ZERO) > 0) {
+                                        existing.setAccruedDays(policy.getAnnualAllowance());
+                                        balanceRepository.save(existing);
+                                    }
+                                }
+                                continue;
+                            }
+
                             LeaveBalance balance = balanceRepository
                                     .findByUserIdAndLeaveTypeIdAndYear(user.getId(), policy.getLeaveType().getId(), year)
                                     .orElseGet(() -> {
@@ -128,7 +159,13 @@ public class BalanceAccrualEngine {
                             }
 
                             BigDecimal accrualAmount = policy.getMonthlyAccrualRate();
-                            balance.setAccruedDays(balance.getAccruedDays().add(accrualAmount));
+                            BigDecimal newAccrued = balance.getAccruedDays().add(accrualAmount);
+                            if (policy.getAnnualAllowance() != null
+                                    && policy.getAnnualAllowance().compareTo(BigDecimal.ZERO) > 0
+                                    && newAccrued.compareTo(policy.getAnnualAllowance()) > 0) {
+                                newAccrued = policy.getAnnualAllowance();
+                            }
+                            balance.setAccruedDays(newAccrued);
                             balanceRepository.save(balance);
 
                             BalanceTransaction tx = BalanceTransaction.builder()
@@ -159,8 +196,10 @@ public class BalanceAccrualEngine {
         } while (userPage.hasNext());
 
         String status = failureCount == 0 ? "SUCCESS" : (balancesAccrued > 0 ? "PARTIAL" : "FAILED");
-        String message = String.format("Processed %d users: %d balances accrued, %d skipped (already processed), %d failures",
-                usersProcessed, balancesAccrued, skippedCount, failureCount);
+        String message = String.format(
+                "Accrual for %02d/%d complete (%d active employees checked): %d balance(s) accrued, %d skipped (already accrued for %02d/%d), %d failed.",
+                month, year, usersProcessed, balancesAccrued, skippedCount, month, year, failureCount
+        );
 
         AccrualRunResult result = AccrualRunResult.builder()
                 .executedAt(startTime)
@@ -283,11 +322,11 @@ public class BalanceAccrualEngine {
             pageIndex++;
         } while (userPage.hasNext());
 
-        String message = String.format("Year-end carryover completed: %d users processed, %d balances rolled over, %d skipped, %d failures",
-                usersProcessed, balancesRolledOver, skippedCount, failureCount);
+        String message = String.format("Year-end carryover (%d -> %d) completed: %d active employees checked, %d balance(s) rolled over, %d skipped, %d failed.",
+                fromYear, toYear, usersProcessed, balancesRolledOver, skippedCount, failureCount);
         log.info(message);
 
-        return AccrualRunResult.builder()
+        AccrualRunResult result = AccrualRunResult.builder()
                 .executedAt(startTime)
                 .year(toYear)
                 .month(1)
@@ -299,6 +338,9 @@ public class BalanceAccrualEngine {
                 .failureCount(failureCount)
                 .message(message)
                 .build();
+
+        lastRun.set(result);
+        return result;
     }
 
     @Scheduled(cron = "${app.scheduling.carryover-expiry-cron:0 0 2 1 4 *}")
@@ -378,11 +420,11 @@ public class BalanceAccrualEngine {
             pageIndex++;
         } while (userPage.hasNext());
 
-        String message = String.format("Carryover expiry completed: %d users processed, %d balances expired, %d skipped, %d failures",
-                usersProcessed, balancesExpired, skippedCount, failureCount);
+        String message = String.format("Carryover expiry (%d) completed: %d active employees checked, %d balance(s) expired, %d skipped (no active carryover), %d failed.",
+                year, usersProcessed, balancesExpired, skippedCount, failureCount);
         log.info(message);
 
-        return AccrualRunResult.builder()
+        AccrualRunResult result = AccrualRunResult.builder()
                 .executedAt(startTime)
                 .year(year)
                 .month(LocalDate.now().getMonthValue())
@@ -394,5 +436,8 @@ public class BalanceAccrualEngine {
                 .failureCount(failureCount)
                 .message(message)
                 .build();
+
+        lastRun.set(result);
+        return result;
     }
 }

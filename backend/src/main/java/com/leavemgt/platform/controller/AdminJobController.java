@@ -57,10 +57,24 @@ public class AdminJobController {
 
     @GetMapping("/events")
     public ResponseEntity<ApiResponse<Page<EventOutbox>>> getOutboxEvents(
-            @RequestParam(name = "status", required = false) OutboxStatus status,
+            @RequestParam(name = "status", required = false) String statusParam,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
         PageRequest pageRequest = PageRequest.of(page, size);
+        OutboxStatus status = null;
+        if (statusParam != null && !statusParam.isBlank()) {
+            String normalized = statusParam.trim().toUpperCase();
+            if ("PROCESSED".equals(normalized)) {
+                status = OutboxStatus.PUBLISHED;
+            } else {
+                try {
+                    status = OutboxStatus.valueOf(normalized);
+                } catch (IllegalArgumentException ignored) {
+                    status = null;
+                }
+            }
+        }
+
         Page<EventOutbox> events;
         if (status != null) {
             events = outboxRepository.findByStatusOrderByCreatedAtDesc(status, pageRequest);
@@ -91,13 +105,14 @@ public class AdminJobController {
         log.info("Manual accrual triggered by HR Admin: {} for period {}/{}", callerIdentifier, month, year);
         AccrualRunResult result = balanceAccrualEngine.runAccrual(year, month, callerIdentifier);
 
-        return ResponseEntity.ok(ApiResponse.success(result, "Accrual executed successfully"));
+        return ResponseEntity.ok(ApiResponse.success(result, result.getMessage()));
     }
 
     @PostMapping("/jobs/year-end-carryover/trigger")
     public ResponseEntity<ApiResponse<AccrualRunResult>> triggerYearEndCarryover(
             @RequestParam(name = "fromYear", required = false) Integer fromYearParam,
             @RequestParam(name = "toYear", required = false) Integer toYearParam,
+            @RequestBody(required = false) ManualAccrualTriggerRequest request,
             Authentication authentication) {
         UUID callerId = extractUserId(authentication);
         String callerIdentifier = "HR_ADMIN";
@@ -107,17 +122,29 @@ public class AdminJobController {
         }
 
         int currentYear = LocalDate.now().getYear();
-        int fromYear = fromYearParam != null ? fromYearParam : currentYear - 1;
-        int toYear = toYearParam != null ? toYearParam : currentYear;
+        int fromYear;
+        int toYear;
+
+        if (fromYearParam != null) {
+            fromYear = fromYearParam;
+            toYear = toYearParam != null ? toYearParam : fromYear + 1;
+        } else if (request != null && request.getYear() != null) {
+            fromYear = request.getYear();
+            toYear = fromYear + 1;
+        } else {
+            fromYear = currentYear;
+            toYear = currentYear + 1;
+        }
 
         log.info("Manual year-end carryover triggered by {}: fromYear={}, toYear={}", callerIdentifier, fromYear, toYear);
         AccrualRunResult result = balanceAccrualEngine.runYearEndCarryover(fromYear, toYear, callerIdentifier);
-        return ResponseEntity.ok(ApiResponse.success(result, "Year-end carryover executed successfully"));
+        return ResponseEntity.ok(ApiResponse.success(result, result.getMessage()));
     }
 
     @PostMapping("/jobs/carryover-expiry/trigger")
     public ResponseEntity<ApiResponse<AccrualRunResult>> triggerCarryoverExpiry(
             @RequestParam(name = "year", required = false) Integer yearParam,
+            @RequestBody(required = false) ManualAccrualTriggerRequest request,
             Authentication authentication) {
         UUID callerId = extractUserId(authentication);
         String callerIdentifier = "HR_ADMIN";
@@ -126,10 +153,12 @@ public class AdminJobController {
             if (caller != null) callerIdentifier = caller.getEmail();
         }
 
-        int year = yearParam != null ? yearParam : LocalDate.now().getYear();
+        int year = yearParam != null
+                ? yearParam
+                : (request != null && request.getYear() != null ? request.getYear() : LocalDate.now().getYear());
         log.info("Manual carryover expiry triggered by {}: year={}", callerIdentifier, year);
         AccrualRunResult result = balanceAccrualEngine.runCarryoverExpiry(year, callerIdentifier);
-        return ResponseEntity.ok(ApiResponse.success(result, "Carryover expiry executed successfully"));
+        return ResponseEntity.ok(ApiResponse.success(result, result.getMessage()));
     }
 
     private UUID extractUserId(Authentication authentication) {

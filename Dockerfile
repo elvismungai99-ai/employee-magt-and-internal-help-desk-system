@@ -21,7 +21,7 @@ USER appuser
 COPY --from=builder /workspace/backend/target/*.jar app.jar
 
 ENV PORT=8080
-ENV JAVA_OPTS="-Xms128m -Xmx256m -XX:MaxMetaspaceSize=96m -XX:+UseSerialGC -Xss256k -XX:+ExitOnOutOfMemoryError"
+ENV JAVA_OPTS="-Xms64m -Xmx220m -XX:MaxMetaspaceSize=180m -XX:+UseSerialGC -Xss256k"
 EXPOSE 8080 10000
 
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -Dserver.port=${PORT:-8080} -Djava.security.egd=file:/dev/./urandom -jar app.jar"]

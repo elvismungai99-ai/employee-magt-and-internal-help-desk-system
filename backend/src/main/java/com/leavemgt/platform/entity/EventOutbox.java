@@ -43,4 +43,21 @@ public class EventOutbox {
 
     @Column(name = "published_at")
     private OffsetDateTime publishedAt;
+
+    // Frontend compatibility aliases for AdminDashboardPage
+    public String getAggregateType() {
+        return sourceDomain;
+    }
+
+    public String getAggregateId() {
+        return id != null ? id.toString() : "";
+    }
+
+    public OffsetDateTime getProcessedAt() {
+        return publishedAt;
+    }
+
+    public int getRetryCount() {
+        return 0;
+    }
 }

@@ -114,9 +114,12 @@ export const AdminDashboardPage: React.FC = () => {
       const res = await adminApi.triggerAccrual(Number(triggerYear), Number(triggerMonth));
       setLastAccrual(res);
       setIsTriggerModalOpen(false);
+      const accrued = res.balancesAccrued ?? res.successCount ?? 0;
+      const skipped = res.skippedCount ?? 0;
+      const failed = res.failureCount ?? 0;
       setPageAlert({
         type: 'success',
-        message: `Accrual calculation completed: ${res.successCount} employee balances updated (${res.failureCount} failed).`,
+        message: res.message || `Accrual calculation completed: ${accrued} employee balance(s) accrued, ${skipped} skipped (already accrued for ${triggerMonth}/${triggerYear}), ${failed} failed.`,
       });
       await loadAdminData();
     } catch (err: any) {
@@ -140,9 +143,11 @@ export const AdminDashboardPage: React.FC = () => {
         setIsConfirmLoading(true);
         try {
           const res = await adminApi.triggerYearEndCarryover(Number(triggerYear));
+          setLastAccrual(res);
+          const carried = res.carriedOverCount ?? res.balancesAccrued ?? res.successCount ?? 0;
           setPageAlert({
             type: 'success',
-            message: `Year-end carryover executed: ${res.carriedOverCount ?? res.processedCount ?? 0} employee balance(s) processed.`,
+            message: res.message || `Year-end carryover executed: ${carried} employee balance(s) rolled over into ${triggerYear + 1}.`,
           });
           setIsTriggerModalOpen(false);
           setConfirmAction(null);
@@ -170,9 +175,11 @@ export const AdminDashboardPage: React.FC = () => {
         setIsConfirmLoading(true);
         try {
           const res = await adminApi.triggerCarryoverExpiry(Number(triggerYear));
+          setLastAccrual(res);
+          const expired = res.expiredCount ?? res.balancesAccrued ?? res.successCount ?? 0;
           setPageAlert({
             type: 'success',
-            message: `Carryover expiry executed: ${res.expiredCount ?? res.processedCount ?? 0} record(s) evaluated and reset.`,
+            message: res.message || `Carryover expiry executed: ${expired} record(s) evaluated and reset.`,
           });
           setIsTriggerModalOpen(false);
           setConfirmAction(null);
@@ -452,23 +459,30 @@ export const AdminDashboardPage: React.FC = () => {
                 <div className="flex justify-between items-center">
                   <span>Run Timestamp:</span>
                   <span className="font-medium text-slate-800">
-                    {new Date(lastAccrual.runAt).toLocaleString()}
+                    {new Date(lastAccrual.runAt || lastAccrual.executedAt || Date.now()).toLocaleString()}
                   </span>
                 </div>
-                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-teal-50 text-center">
+                <div className="grid grid-cols-4 gap-2 pt-2 border-t border-teal-50 text-center">
                   <div className="bg-[#fafcfb] border border-teal-100 p-2 rounded-lg">
-                    <span className="block text-[10px] text-slate-500 font-medium">Processed</span>
-                    <strong className="text-sm text-slate-950">{lastAccrual.processedCount}</strong>
+                    <span className="block text-[10px] text-slate-500 font-medium">Checked</span>
+                    <strong className="text-sm text-slate-950">{lastAccrual.processedCount ?? lastAccrual.usersProcessed ?? 0}</strong>
                   </div>
                   <div className="bg-emerald-50 border border-emerald-200 p-2 rounded-lg">
-                    <span className="block text-[10px] text-emerald-700 font-medium">Success</span>
-                    <strong className="text-sm text-emerald-800">{lastAccrual.successCount}</strong>
+                    <span className="block text-[10px] text-emerald-700 font-medium">Accrued</span>
+                    <strong className="text-sm text-emerald-800">{lastAccrual.successCount ?? lastAccrual.balancesAccrued ?? 0}</strong>
+                  </div>
+                  <div className="bg-slate-50 border border-slate-200 p-2 rounded-lg">
+                    <span className="block text-[10px] text-slate-600 font-medium">Skipped</span>
+                    <strong className="text-sm text-slate-800">{lastAccrual.skippedCount ?? 0}</strong>
                   </div>
                   <div className="bg-rose-50 border border-rose-200 p-2 rounded-lg">
                     <span className="block text-[10px] text-rose-700 font-medium">Failed</span>
-                    <strong className="text-sm text-rose-800">{lastAccrual.failureCount}</strong>
+                    <strong className="text-sm text-rose-800">{lastAccrual.failureCount ?? 0}</strong>
                   </div>
                 </div>
+                {lastAccrual.message && (
+                  <p className="text-[11px] text-slate-600 pt-1 italic">{lastAccrual.message}</p>
+                )}
               </>
             ) : (
               <div className="py-6 text-center text-slate-400 italic">
@@ -493,21 +507,21 @@ export const AdminDashboardPage: React.FC = () => {
                 <div className="flex justify-between items-center">
                   <span>Last Inspection Timestamp:</span>
                   <span className="font-semibold text-slate-900">
-                    {new Date(lastSla.runAt).toLocaleString()}
+                    {new Date(lastSla.runAt || lastSla.executedAt || Date.now()).toLocaleString()}
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-2 pt-4 border-t border-teal-50 text-center">
                   <div className="bg-[#fafcfb] border border-teal-100 p-2 rounded-lg">
                     <span className="block text-[10px] text-slate-500 font-medium">Tickets Checked</span>
-                    <strong className="text-sm text-slate-950">{lastSla.ticketsChecked}</strong>
+                    <strong className="text-sm text-slate-950">{lastSla.ticketsChecked ?? 0}</strong>
                   </div>
                   <div className="bg-amber-50 border border-amber-200 p-2 rounded-lg">
                     <span className="block text-[10px] text-amber-700 font-medium">Breaches Detected</span>
-                    <strong className="text-sm text-amber-800">{lastSla.breachesDetected}</strong>
+                    <strong className="text-sm text-amber-800">{lastSla.breachesDetected ?? 0}</strong>
                   </div>
                   <div className="bg-rose-50 border border-rose-200 p-2 rounded-lg">
                     <span className="block text-[10px] text-rose-700 font-medium">Events Flagged</span>
-                    <strong className="text-sm text-rose-800">{lastSla.breachesFlagged}</strong>
+                    <strong className="text-sm text-rose-800">{lastSla.breachesFlagged ?? lastSla.breachesDetected ?? 0}</strong>
                   </div>
                 </div>
               </>
@@ -776,12 +790,12 @@ export const AdminDashboardPage: React.FC = () => {
                       {ev.eventType}
                     </td>
                     <td className="px-6 py-3 text-slate-600 font-mono">
-                      {ev.aggregateType} &bull; {ev.aggregateId?.slice(0, 8)}...
+                      {ev.aggregateType || ev.sourceDomain} &bull; {(ev.aggregateId || ev.id)?.slice(0, 8)}...
                     </td>
                     <td className="px-6 py-3 text-center">
                       <span
                         className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          ev.status === 'PROCESSED'
+                          ev.status === 'PROCESSED' || ev.status === 'PUBLISHED'
                             ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                             : ev.status === 'FAILED'
                             ? 'bg-rose-50 text-rose-800 border border-rose-200'
@@ -792,7 +806,7 @@ export const AdminDashboardPage: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-3 text-center font-medium text-slate-800">
-                      {ev.retryCount}
+                      {ev.retryCount ?? ev.retryAttempts ?? 0}
                     </td>
                     <td className="px-6 py-3 text-slate-500">
                       {new Date(ev.createdAt).toLocaleString()}

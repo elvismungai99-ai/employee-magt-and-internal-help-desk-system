@@ -17,4 +17,13 @@ public class SlaMonitorRunResult {
     private int ticketsChecked;
     private int breachesDetected;
     private String message;
+
+    // Frontend compatibility aliases for AdminDashboardPage
+    public OffsetDateTime getRunAt() {
+        return executedAt;
+    }
+
+    public int getBreachesFlagged() {
+        return breachesDetected;
+    }
 }

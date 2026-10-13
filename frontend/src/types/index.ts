@@ -256,32 +256,43 @@ export interface AccrualRunResult {
   year: number;
   month: number;
   processedCount: number;
+  usersProcessed?: number;
   successCount: number;
+  balancesAccrued?: number;
+  skippedCount?: number;
+  carriedOverCount?: number;
+  expiredCount?: number;
   failureCount: number;
   runAt: string;
+  executedAt?: string;
   triggeredBy: string;
   completedAt?: string;
   status?: string;
+  message?: string;
 }
 
 export interface SlaMonitorRunResult {
   runAt: string;
+  executedAt?: string;
   ticketsChecked: number;
   breachesDetected: number;
   breachesFlagged: number;
   completedAt?: string;
   status?: string;
+  message?: string;
 }
 
 export interface EventOutboxItem {
   id: string;
   eventType: string;
+  sourceDomain?: string;
   aggregateType: string;
   aggregateId: string;
   payload: string;
-  status: 'PENDING' | 'PROCESSED' | 'FAILED';
+  status: 'PENDING' | 'PROCESSING' | 'PUBLISHED' | 'PROCESSED' | 'FAILED';
   retryCount: number;
   createdAt: string;
+  publishedAt?: string;
   processedAt?: string;
   lastError?: string;
 }

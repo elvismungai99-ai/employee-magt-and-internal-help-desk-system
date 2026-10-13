@@ -81,23 +81,25 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean; _retryCount?: number };
 
-    // Handle Render free-tier cold-boot / network timeouts on login and auth requests
-    const isNetworkOrTimeout =
+    // Handle backend cold-boot / transient 502/503 gateway errors from Vercel frontend
+    const isNetworkOrGatewayError =
       !error.response ||
       error.code === 'ERR_NETWORK' ||
       error.code === 'ECONNABORTED' ||
       error.response?.status === 502 ||
-      error.response?.status === 503;
+      error.response?.status === 503 ||
+      error.response?.status === 504;
 
-    if (
-      originalRequest &&
-      isNetworkOrTimeout &&
-      (originalRequest.url?.includes('/api/auth/login') || originalRequest.url?.includes('/api/auth/register'))
-    ) {
+    const method = originalRequest?.method?.toLowerCase();
+    const isRetryableEndpoint =
+      method === 'get' ||
+      originalRequest?.url?.includes('/api/auth/') ||
+      originalRequest?.url?.includes('/api/admin/jobs/');
+
+    if (originalRequest && isNetworkOrGatewayError && isRetryableEndpoint) {
       originalRequest._retryCount = (originalRequest._retryCount || 0) + 1;
       if (originalRequest._retryCount <= 3) {
-        // Render free-tier containers sleep after inactivity and need 15-40s to boot
-        const backoffMs = originalRequest._retryCount * 3500;
+        const backoffMs = originalRequest._retryCount * 3000;
         await new Promise((resolve) => setTimeout(resolve, backoffMs));
         return apiClient(originalRequest);
       }

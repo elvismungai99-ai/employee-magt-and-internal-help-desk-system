@@ -28,4 +28,11 @@ public interface LeaveBalanceRepository extends JpaRepository<LeaveBalance, UUID
     boolean existsByUserIdAndLeaveTypeIdAndYear(UUID userId, UUID leaveTypeId, Integer year);
     List<LeaveBalance> findAllByUserId(UUID userId);
     List<LeaveBalance> findAllByYear(Integer year);
+
+    @Query("SELECT DISTINCT lb FROM LeaveBalance lb " +
+           "JOIN FETCH lb.user u " +
+           "LEFT JOIN FETCH u.department " +
+           "JOIN FETCH lb.leaveType " +
+           "WHERE lb.year = :year")
+    List<LeaveBalance> findAllByYearWithUserAndDepartment(@Param("year") Integer year);
 }

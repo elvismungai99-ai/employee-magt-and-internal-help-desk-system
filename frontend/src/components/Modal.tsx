@@ -46,18 +46,18 @@ export const Modal: React.FC<ModalProps> = ({
           onClick={onClose} 
         />
 
-        <div className={`relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl border border-blue-100 transition-all w-full my-8 ${maxWidthClasses}`}>
-          <div className="flex items-center justify-between border-b border-blue-100 bg-blue-50/40 px-6 py-4">
-            <h3 className="text-base font-bold text-slate-950">{title}</h3>
+        <div className={`relative transform overflow-hidden rounded-2xl bg-white dark:bg-[#11222b] text-left shadow-2xl border border-blue-100 dark:border-[#1e3845] transition-all w-full my-8 ${maxWidthClasses}`}>
+          <div className="flex items-center justify-between border-b border-blue-100 dark:border-[#1e3845] bg-blue-50/40 dark:bg-[#0c181f] px-6 py-4">
+            <h3 className="text-base font-bold text-slate-950 dark:text-slate-100">{title}</h3>
             <button
               onClick={onClose}
-              className="rounded-lg p-1.5 text-slate-400 hover:bg-blue-50 hover:text-slate-800 transition cursor-pointer"
+              className="rounded-lg p-1.5 text-slate-400 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200 transition cursor-pointer"
               aria-label="Close"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
-          <div className="px-6 py-4 max-h-[80vh] overflow-y-auto">{children}</div>
+          <div className="px-6 py-4 max-h-[80vh] overflow-y-auto text-slate-900 dark:text-slate-100">{children}</div>
         </div>
       </div>
     </div>

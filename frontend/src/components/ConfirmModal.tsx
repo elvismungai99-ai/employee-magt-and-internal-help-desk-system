@@ -64,32 +64,32 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           }}
         />
 
-        <div className="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl border border-teal-100 transition-all w-full max-w-md my-8 p-6">
+        <div className="relative transform overflow-hidden rounded-2xl bg-white dark:bg-[#11222b] text-left shadow-2xl border border-teal-100 dark:border-[#1e3845] transition-all w-full max-w-md my-8 p-6">
           <div className="flex items-start gap-4">
             <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${variantConfig.iconBg}`}>
               {variantConfig.icon}
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-base font-bold text-[#0d2836] leading-snug">{title}</h3>
-              <p className="mt-2 text-xs text-slate-600 leading-relaxed">{message}</p>
+              <h3 className="text-base font-bold text-[#0d2836] dark:text-slate-100 leading-snug">{title}</h3>
+              <p className="mt-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{message}</p>
             </div>
             <button
               type="button"
               onClick={onClose}
               disabled={isLoading}
-              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
+              className="rounded-lg p-1 text-slate-400 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition"
               aria-label="Close"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="mt-6 flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+          <div className="mt-6 flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-[#1e3845]">
             <button
               type="button"
               onClick={onClose}
               disabled={isLoading}
-              className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+              className="px-4 py-2 border border-slate-200 dark:border-[#224353] rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-[#162b36] transition disabled:opacity-50"
             >
               {cancelLabel}
             </button>

@@ -12,9 +12,9 @@ body {
 }
 
 /* ==========================================================================
-   Dark Theme System Architecture
-   Ensures 100% of panels, cards, inputs, tables, badges, modals, and text
-   remain clearly visible, high-contrast, and elegant.
+   Comprehensive Dark Theme Architecture
+   Ensures 100% of panels, cards, inputs, tables, badges, modals, tickets,
+   and text remain crystal clear, high-contrast, and completely visible.
    ========================================================================== */
 
 html.dark {
@@ -26,7 +26,7 @@ html.dark body {
   color: #e2e8f0;
 }
 
-/* 1. Global Layout and Page Containers */
+/* 1. Global Layout & Workspace Containers */
 html.dark .bg-\[\#f2f8f8\],
 html.dark .bg-slate-100 {
   background-color: #0b151b !important;
@@ -35,29 +35,40 @@ html.dark .bg-slate-100 {
 /* 2. Primary Cards, Drawers, Modals, Popovers, and Surfaces */
 html.dark .bg-white {
   background-color: #11222b !important;
+  color: #f8fafc;
 }
 
+/* 3. Secondary Containers, Ticket Details, Meta Cards, Attachment Boxes */
 html.dark .bg-\[\#fafcfb\],
 html.dark .bg-\[\#f8faf9\],
 html.dark .bg-\[\#f6faf8\],
+html.dark .bg-\[\#f8fbfb\],
+html.dark .bg-\[\#f7fbfa\],
+html.dark .bg-\[\#f0f6fc\],
 html.dark .bg-slate-50,
 html.dark .bg-gray-50 {
   background-color: #0e1c24 !important;
 }
 
-/* 3. Soft Teal Highlights & Pill Accents */
+/* 4. Soft Highlights, Pill Accents & Linked References */
 html.dark .bg-\[\#eef7f6\],
+html.dark .bg-\[\#eef7f5\],
 html.dark .bg-\[\#e3f4f1\],
-html.dark .bg-\[\#f7fbfa\],
+html.dark .bg-\[\#e3f4f1\]\/60,
+html.dark .bg-\[\#e4f3f0\],
+html.dark .bg-\[\#e6f4f2\],
 html.dark .bg-\[\#f0f9f8\],
+html.dark .bg-\[\#cbebe5\],
 html.dark .bg-teal-50,
 html.dark .bg-blue-50\/40,
 html.dark .bg-blue-50 {
-  background-color: rgba(14, 74, 92, 0.35) !important;
+  background-color: rgba(14, 74, 92, 0.4) !important;
 }
 
-/* 4. Global Typography & Text Contrast */
+/* 5. Global Typography & High-Contrast Text */
 html.dark .text-\[\#0d2836\],
+html.dark .text-\[\#0a2734\],
+html.dark .text-\[\#083543\],
 html.dark .text-slate-950,
 html.dark .text-slate-900,
 html.dark .text-slate-800 {
@@ -85,15 +96,90 @@ html.dark .text-teal-700 {
   color: #38bdf8 !important;
 }
 
-/* 5. Borders & Dividers */
+/* 6. Semantic Alert Text & Badges (Luminous Pastel Contrast in Dark Mode) */
+/* Amber / Due Soon / Pending / Internal Notes */
+html.dark .text-amber-950,
+html.dark .text-amber-900,
+html.dark .text-amber-800,
+html.dark .text-amber-700,
+html.dark .text-yellow-800 {
+  color: #fcd34d !important;
+}
+html.dark .bg-amber-50,
+html.dark .bg-amber-50\/80,
+html.dark .bg-amber-100 {
+  background-color: rgba(245, 158, 11, 0.18) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+/* Sky / SLA Paused / Waiting on Requester */
+html.dark .text-sky-950,
+html.dark .text-sky-900,
+html.dark .text-sky-800,
+html.dark .text-sky-700 {
+  color: #7dd3fc !important;
+}
+html.dark .bg-sky-50 {
+  background-color: rgba(14, 165, 233, 0.18) !important;
+  border-color: rgba(14, 165, 233, 0.35) !important;
+}
+
+/* Emerald / Green / Resolved / Approved */
+html.dark .text-emerald-950,
+html.dark .text-emerald-900,
+html.dark .text-emerald-800,
+html.dark .text-emerald-700,
+html.dark .text-green-800 {
+  color: #6ee7b7 !important;
+}
+html.dark .bg-emerald-50,
+html.dark .bg-emerald-100 {
+  background-color: rgba(16, 185, 129, 0.18) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+/* Rose / SLA Breached / Rejected / Urgency */
+html.dark .text-rose-950,
+html.dark .text-rose-900,
+html.dark .text-rose-800,
+html.dark .text-rose-700,
+html.dark .text-red-800 {
+  color: #fda4af !important;
+}
+html.dark .bg-rose-50,
+html.dark .bg-rose-100 {
+  background-color: rgba(244, 63, 94, 0.18) !important;
+  border-color: rgba(244, 63, 94, 0.35) !important;
+}
+
+/* Orange / Reopened */
+html.dark .text-orange-900,
+html.dark .text-orange-800 {
+  color: #fdba74 !important;
+}
+html.dark .bg-orange-50 {
+  background-color: rgba(249, 115, 22, 0.18) !important;
+  border-color: rgba(249, 115, 22, 0.35) !important;
+}
+
+/* 7. Borders, Dividers & Outlines */
 html.dark .border-teal-100,
 html.dark .border-teal-200,
+html.dark .border-teal-200\/90,
 html.dark .border-teal-200\/80,
+html.dark .border-teal-200\/70,
+html.dark .border-teal-200\/60,
 html.dark .border-teal-100\/90,
 html.dark .border-teal-100\/80,
 html.dark .border-teal-100\/60,
 html.dark .border-teal-50,
 html.dark .border-blue-100,
+html.dark .border-emerald-200,
+html.dark .border-emerald-300,
+html.dark .border-amber-200,
+html.dark .border-amber-300,
+html.dark .border-sky-200,
+html.dark .border-rose-200,
 html.dark .border-slate-100,
 html.dark .border-slate-200,
 html.dark .border-slate-300,
@@ -102,13 +188,14 @@ html.dark .border-gray-100 {
   border-color: #1e3845 !important;
 }
 
+html.dark .divide-teal-50 > :not([hidden]) ~ :not([hidden]),
 html.dark .divide-teal-100 > :not([hidden]) ~ :not([hidden]),
 html.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
 html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
   border-color: #1e3845 !important;
 }
 
-/* 6. Form Inputs, Selects, and Textareas */
+/* 8. Form Inputs, Selects, and Textareas */
 html.dark input[type="text"],
 html.dark input[type="email"],
 html.dark input[type="password"],
@@ -140,7 +227,17 @@ html.dark select option {
   color: #f8fafc !important;
 }
 
-/* 7. Tables & Data Grids */
+html.dark input[type="file"] {
+  color: #94a3b8 !important;
+}
+
+html.dark input[type="file"]::file-selector-button {
+  background-color: #192f3b !important;
+  color: #f1f5f9 !important;
+  border-color: #244655 !important;
+}
+
+/* 9. Tables & Data Grids */
 html.dark table {
   color: #e2e8f0;
 }
@@ -163,11 +260,13 @@ html.dark table tbody td {
   color: #e2e8f0;
 }
 
-/* 8. Interactive Elements & Hover States */
-html.dark .hover\:bg-\[\#f0f9f8\]:hover {
-  background-color: #162b36 !important;
-}
-
+/* 10. Interactive Elements & Hover States */
+html.dark .hover\:bg-\[\#f0f9f8\]:hover,
+html.dark .hover\:bg-\[\#f6faf8\]:hover,
+html.dark .hover\:bg-\[\#f8fbfb\]:hover,
+html.dark .hover\:bg-\[\#e6f4f2\]:hover,
+html.dark .hover\:bg-teal-100:hover,
+html.dark .hover\:bg-emerald-100:hover,
 html.dark .hover\:bg-slate-50:hover,
 html.dark .hover\:bg-slate-100:hover {
   background-color: #162b36 !important;
@@ -181,58 +280,26 @@ html.dark .hover\:text-\[\#0e4a5c\]:hover {
   color: #38bdf8 !important;
 }
 
-/* 9. Status Badges & Alert Pills */
-html.dark .bg-emerald-50 {
-  background-color: rgba(16, 185, 129, 0.18) !important;
-  color: #6ee7b7 !important;
-  border-color: rgba(16, 185, 129, 0.35) !important;
-}
-
-html.dark .bg-amber-50,
-html.dark .bg-amber-100 {
-  background-color: rgba(245, 158, 11, 0.18) !important;
-  color: #fcd34d !important;
-  border-color: rgba(245, 158, 11, 0.35) !important;
-}
-
-html.dark .bg-rose-50 {
-  background-color: rgba(244, 63, 94, 0.18) !important;
-  color: #fda4af !important;
-  border-color: rgba(244, 63, 94, 0.35) !important;
-}
-
-html.dark .bg-sky-50 {
-  background-color: rgba(14, 165, 233, 0.18) !important;
-  color: #7dd3fc !important;
-  border-color: rgba(14, 165, 233, 0.35) !important;
-}
-
-html.dark .bg-orange-50 {
-  background-color: rgba(249, 115, 22, 0.18) !important;
-  color: #fdba74 !important;
-  border-color: rgba(249, 115, 22, 0.35) !important;
-}
-
-/* 10. Modals, Dialogs, and Overlays */
+/* 11. Modals, Dialogs, and Overlays */
 html.dark .bg-slate-900\/50,
 html.dark .bg-slate-900\/40 {
-  background-color: rgba(0, 0, 0, 0.7) !important;
+  background-color: rgba(0, 0, 0, 0.75) !important;
 }
 
-/* 11. Header Backdrop */
+/* 12. Header Backdrop */
 html.dark header.bg-white\/95,
 html.dark nav.bg-white\/95 {
   background-color: rgba(17, 34, 43, 0.95) !important;
   border-color: #1e3845 !important;
 }
 
-/* 12. Skeleton Loaders in Dark Mode */
+/* 13. Skeleton Loaders in Dark Mode */
 html.dark .bg-slate-200,
 html.dark .bg-slate-100 {
   background-color: #192f3b !important;
 }
 
-/* 13. High-Contrast Primary & Action Buttons */
+/* 14. High-Contrast Primary & Action Buttons */
 html.dark .bg-\[\#0e4a5c\] {
   background-color: #0e5e73 !important;
   color: #ffffff !important;
@@ -242,7 +309,7 @@ html.dark .hover\:bg-\[\#083543\]:hover {
   background-color: #0b4959 !important;
 }
 
-/* 14. Custom Dark Scrollbars */
+/* 15. Custom Dark Scrollbars */
 html.dark ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

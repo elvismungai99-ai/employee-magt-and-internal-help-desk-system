@@ -196,23 +196,23 @@ export const AgentQueuePage: React.FC = () => {
 
     if (diffMinutes < 0) {
       return (
-        <span className="text-[11px] font-bold text-rose-800 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded flex items-center gap-1">
-          <AlertTriangle className="h-3 w-3 text-rose-600" />
+        <span className="text-[11px] font-bold text-rose-800 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 px-2 py-0.5 rounded flex items-center gap-1">
+          <AlertTriangle className="h-3 w-3 text-rose-600 dark:text-rose-400" />
           <span>SLA BREACHED ({Math.abs(diffMinutes)}m ago)</span>
         </span>
       );
     }
     if (diffMinutes <= 120) {
       return (
-        <span className="text-[11px] font-bold text-amber-900 bg-amber-50 border border-amber-300 px-2 py-0.5 rounded flex items-center gap-1">
-          <Clock className="h-3 w-3 text-amber-600" />
+        <span className="text-[11px] font-bold text-amber-900 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/60 px-2 py-0.5 rounded flex items-center gap-1">
+          <Clock className="h-3 w-3 text-amber-600 dark:text-amber-400" />
           <span>Due soon ({diffMinutes}m)</span>
         </span>
       );
     }
     return (
-      <span className="text-[11px] font-semibold text-[#0e4a5c] bg-[#e3f4f1] border border-teal-200 px-2 py-0.5 rounded flex items-center gap-1">
-        <Clock className="h-3 w-3 text-teal-700" />
+      <span className="text-[11px] font-semibold text-[#0e4a5c] dark:text-[#38bdf8] bg-[#e3f4f1] dark:bg-[rgba(14,74,92,0.4)] border border-teal-200 dark:border-[#1e3845] px-2 py-0.5 rounded flex items-center gap-1">
+        <Clock className="h-3 w-3 text-teal-700 dark:text-[#38bdf8]" />
         <span>Target: {dueDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
       </span>
     );
@@ -223,23 +223,23 @@ export const AgentQueuePage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-[#0d2836] tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#0d2836] dark:text-slate-100 tracking-tight">
             Support Agent Queue
           </h1>
-          <p className="text-sm text-slate-600 mt-1">
+          <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
             Triage incoming support requests, manage SLA timelines, post internal notes, and resolve incidents.
           </p>
         </div>
 
         {/* Queue Selector */}
         <div className="flex items-center gap-2">
-          <label className="text-xs font-bold text-[#0d2836] uppercase tracking-wider">
+          <label className="text-xs font-bold text-[#0d2836] dark:text-slate-200 uppercase tracking-wider">
             Queue:
           </label>
           <select
             value={selectedQueueId}
             onChange={(e) => setSelectedQueueId(e.target.value)}
-            className="px-3 py-2 border border-teal-200 rounded-xl text-xs bg-white font-semibold focus:ring-1 focus:ring-[#0e4a5c] focus:border-[#0e4a5c] text-[#0d2836]"
+            className="px-3 py-2 border border-teal-200 dark:border-[#1e3845] rounded-xl text-xs bg-white dark:bg-[#0d1b22] font-semibold focus:ring-1 focus:ring-[#0e4a5c] dark:focus:ring-[#38bdf8] focus:border-[#0e4a5c] dark:focus:border-[#38bdf8] text-[#0d2836] dark:text-slate-100"
           >
             <option value="">All Assigned Queues</option>
             {queues.map((q) => (
@@ -269,7 +269,7 @@ export const AgentQueuePage: React.FC = () => {
               className={`px-3 py-1.5 rounded-xl transition text-xs ${
                 statusFilter === st
                   ? 'bg-[#0e4a5c] text-white font-bold shadow-2xs'
-                  : 'bg-white border border-teal-200/90 text-slate-700 hover:text-[#0d2836] hover:bg-[#f0f9f8] font-medium'
+                  : 'bg-white dark:bg-[#11222b] border border-teal-200/90 dark:border-[#1e3845] text-slate-700 dark:text-slate-300 hover:text-[#0d2836] dark:hover:text-white hover:bg-[#f0f9f8] dark:hover:bg-[#162b36] font-medium'
               }`}
             >
               {st.replace('_', ' ')}
@@ -279,28 +279,28 @@ export const AgentQueuePage: React.FC = () => {
 
         {/* Search Input Bar */}
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+          <Search className="pointer-events-none absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search tickets by subject, requester, or ID..."
-            className="w-full sm:w-64 rounded-xl border border-teal-200/90 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-800 focus:border-[#0e4a5c] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c]"
+            className="w-full sm:w-64 rounded-xl border border-teal-200/90 dark:border-[#1e3845] bg-white dark:bg-[#0d1b22] py-1.5 pl-8 pr-3 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#0e4a5c] dark:focus:border-[#38bdf8] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c] dark:focus:ring-[#38bdf8]"
           />
         </div>
       </div>
 
       {/* Tickets Board */}
-      <div className="bg-white rounded-2xl border border-teal-100 overflow-hidden shadow-2xs">
-        <div className="px-6 py-4 border-b border-teal-50 flex items-center justify-between bg-[#fafcfb]">
-          <span className="font-bold text-[#0d2836] text-sm">
+      <div className="bg-white dark:bg-[#11222b] rounded-2xl border border-teal-100 dark:border-[#1e3845] overflow-hidden shadow-2xs">
+        <div className="px-6 py-4 border-b border-teal-50 dark:border-[#1e3845] flex items-center justify-between bg-[#fafcfb] dark:bg-[#0c1820]">
+          <span className="font-bold text-[#0d2836] dark:text-slate-100 text-sm">
             Tickets in Queue ({filteredTickets.length})
           </span>
           <button
             type="button"
             onClick={loadQueuesAndTickets}
             disabled={isLoading}
-            className="inline-flex items-center gap-1.5 text-xs text-[#0e4a5c] hover:text-[#083543] font-bold transition disabled:opacity-50 cursor-pointer"
+            className="inline-flex items-center gap-1.5 text-xs text-[#0e4a5c] dark:text-[#38bdf8] hover:text-[#083543] dark:hover:text-white font-bold transition disabled:opacity-50 cursor-pointer"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
             <span>{isLoading ? 'Refreshing...' : 'Refresh Queue'}</span>
@@ -312,28 +312,28 @@ export const AgentQueuePage: React.FC = () => {
             <TableSkeleton rows={4} cols={5} />
           </div>
         ) : filteredTickets.length === 0 ? (
-          <div className="p-12 text-center text-slate-500">
-            <p className="font-bold text-[#0d2836] text-sm">No tickets in queue</p>
-            <p className="text-xs text-slate-500 mt-1">No pending tickets match the selected queue or status filter.</p>
+          <div className="p-12 text-center text-slate-500 dark:text-slate-400">
+            <p className="font-bold text-[#0d2836] dark:text-slate-100 text-sm">No tickets in queue</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">No pending tickets match the selected queue or status filter.</p>
           </div>
         ) : (
-          <div className="divide-y divide-teal-50">
+          <div className="divide-y divide-teal-50 dark:divide-[#1e3845]">
             {filteredTickets.map((t) => {
               const isAssignedToMe = t.assignedAgentId === user?.id || t.assigneeId === user?.id;
 
               return (
                 <div
                   key={t.id}
-                  className="p-5 hover:bg-[#f6faf8] transition flex flex-col md:flex-row md:items-center justify-between gap-4"
+                  className="p-5 hover:bg-[#f6faf8] dark:hover:bg-[#162b36] transition flex flex-col md:flex-row md:items-center justify-between gap-4"
                 >
                   <div className="space-y-1.5 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-xs font-bold text-[#0e4a5c] bg-[#e3f4f1] px-2 py-0.5 rounded border border-teal-200/70">
+                      <span className="font-mono text-xs font-bold text-[#0e4a5c] dark:text-[#38bdf8] bg-[#e3f4f1] dark:bg-[rgba(14,74,92,0.4)] px-2 py-0.5 rounded border border-teal-200/70 dark:border-[#1e3845]">
                         {t.ticketNumber}
                       </span>
                       <h3
                         onClick={() => handleOpenDetail(t)}
-                        className="font-bold text-[#0d2836] text-base hover:text-[#0e4a5c] cursor-pointer"
+                        className="font-bold text-[#0d2836] dark:text-slate-100 text-base hover:text-[#0e4a5c] dark:hover:text-[#38bdf8] cursor-pointer"
                       >
                         {t.title}
                       </h3>
@@ -341,27 +341,27 @@ export const AgentQueuePage: React.FC = () => {
                       <StatusBadge priority={t.priority} />
                       {renderSlaBadge(t)}
                       {t.leaveRequestSummary && (
-                        <span className="text-[11px] font-semibold text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded">
+                        <span className="text-[11px] font-semibold text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/60 px-2 py-0.5 rounded">
                           Linked: {t.leaveRequestSummary}
                         </span>
                       )}
                     </div>
 
-                    <p className="text-xs text-slate-600 line-clamp-2">{t.description}</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2">{t.description}</p>
 
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-                      <span>Requester: <strong className="text-slate-800">{t.requesterName || 'Employee'}</strong></span>
-                      <span>Category: <strong className="text-slate-800">{t.categoryName}</strong></span>
-                      {t.queueName && <span>Queue: <strong className="text-slate-800">{t.queueName}</strong></span>}
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                      <span>Requester: <strong className="text-slate-800 dark:text-slate-200">{t.requesterName || 'Employee'}</strong></span>
+                      <span>Category: <strong className="text-slate-800 dark:text-slate-200">{t.categoryName}</strong></span>
+                      {t.queueName && <span>Queue: <strong className="text-slate-800 dark:text-slate-200">{t.queueName}</strong></span>}
                       {t.assignedAgentName ? (
-                        <span className={isAssignedToMe ? 'text-[#0e4a5c] font-bold' : 'text-slate-700'}>
+                        <span className={isAssignedToMe ? 'text-[#0e4a5c] dark:text-[#38bdf8] font-bold' : 'text-slate-700 dark:text-slate-300'}>
                           Assigned: {t.assignedAgentName} {isAssignedToMe && '(You)'}
                         </span>
                       ) : (
-                        <span className="text-amber-800 font-semibold">Unassigned</span>
+                        <span className="text-amber-800 dark:text-amber-300 font-semibold">Unassigned</span>
                       )}
                       {(t.totalPausedMinutes ?? 0) > 0 && (
-                        <span className="text-slate-500">
+                        <span className="text-slate-500 dark:text-slate-400">
                           Paused Duration: {t.totalPausedMinutes}m
                         </span>
                       )}
@@ -373,7 +373,7 @@ export const AgentQueuePage: React.FC = () => {
                     {!isAssignedToMe && t.status !== 'RESOLVED' && t.status !== 'CLOSED' && (
                       <button
                         onClick={() => handleAssignToMe(t)}
-                        className="px-3 py-1.5 border border-teal-200 bg-[#e3f4f1] text-[#0e4a5c] hover:bg-teal-100 rounded-xl text-xs font-bold transition shadow-2xs"
+                        className="px-3 py-1.5 border border-teal-200 dark:border-[#1e3845] bg-[#e3f4f1] dark:bg-[rgba(14,74,92,0.4)] text-[#0e4a5c] dark:text-[#38bdf8] hover:bg-teal-100 dark:hover:bg-[rgba(14,74,92,0.6)] rounded-xl text-xs font-bold transition shadow-2xs"
                       >
                         Assign to Me
                       </button>
@@ -390,7 +390,7 @@ export const AgentQueuePage: React.FC = () => {
 
                     <button
                       onClick={() => handleOpenDetail(t)}
-                      className="px-3 py-1.5 border border-teal-200 bg-white text-slate-700 hover:bg-[#f0f9f8] rounded-xl text-xs font-semibold transition shadow-2xs"
+                      className="px-3 py-1.5 border border-teal-200 dark:border-[#1e3845] bg-white dark:bg-[#0e1c24] text-slate-700 dark:text-slate-200 hover:bg-[#f0f9f8] dark:hover:bg-[#162b36] rounded-xl text-xs font-semibold transition shadow-2xs"
                     >
                       Details ({t.comments?.length || 0})
                     </button>
@@ -410,12 +410,12 @@ export const AgentQueuePage: React.FC = () => {
         maxWidth="md"
       >
         <form onSubmit={handleConfirmResolve} className="space-y-4">
-          <p className="text-xs text-slate-600">
+          <p className="text-xs text-slate-600 dark:text-slate-300">
             Please provide resolution notes explaining how the issue was fixed for the employee.
           </p>
 
           <div>
-            <label className="block text-xs font-bold text-[#0d2836] mb-1">
+            <label className="block text-xs font-bold text-[#0d2836] dark:text-slate-100 mb-1">
               Resolution Notes <span className="text-rose-500">*</span>
             </label>
             <textarea
@@ -424,15 +424,15 @@ export const AgentQueuePage: React.FC = () => {
               value={resolutionNotes}
               onChange={(e) => setResolutionNotes(e.target.value)}
               placeholder="e.g., VPN credentials refreshed and tested successfully."
-              className="block w-full px-3 py-2 border border-teal-200 rounded-xl text-xs focus:ring-1 focus:ring-[#0e4a5c] focus:border-[#0e4a5c] bg-white text-[#0d2836]"
+              className="block w-full px-3 py-2 border border-teal-200 dark:border-[#1e3845] rounded-xl text-xs focus:ring-1 focus:ring-[#0e4a5c] dark:focus:ring-[#38bdf8] focus:border-[#0e4a5c] dark:focus:border-[#38bdf8] bg-white dark:bg-[#0d1b22] text-[#0d2836] dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500"
             />
           </div>
 
-          <div className="pt-4 border-t border-teal-100 flex items-center justify-end gap-3">
+          <div className="pt-4 border-t border-teal-100 dark:border-[#1e3845] flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={() => setIsResolveModalOpen(false)}
-              className="px-4 py-2 border border-teal-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-[#f0f9f8] transition"
+              className="px-4 py-2 border border-teal-200 dark:border-[#1e3845] rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-[#f0f9f8] dark:hover:bg-[#162b36] transition"
             >
               Cancel
             </button>
@@ -460,28 +460,28 @@ export const AgentQueuePage: React.FC = () => {
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <StatusBadge status={activeTicket.status} />
                 <StatusBadge priority={activeTicket.priority} />
-                <span className="text-xs text-slate-500">
-                  Category: <strong className="text-slate-800">{activeTicket.categoryName}</strong>
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  Category: <strong className="text-slate-800 dark:text-slate-200">{activeTicket.categoryName}</strong>
                 </span>
                 {activeTicket.queueName && (
-                  <span className="text-xs text-slate-500">
-                    Queue: <strong className="text-slate-800">{activeTicket.queueName}</strong>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    Queue: <strong className="text-slate-800 dark:text-slate-200">{activeTicket.queueName}</strong>
                   </span>
                 )}
               </div>
-              <h2 className="text-base font-bold text-[#0d2836]">{activeTicket.title}</h2>
-              <div className="mt-2 text-xs text-slate-700 bg-[#f8fbfb] p-3.5 rounded-xl border border-teal-100 whitespace-pre-wrap leading-relaxed">
+              <h2 className="text-base font-bold text-[#0d2836] dark:text-slate-100">{activeTicket.title}</h2>
+              <div className="mt-2 text-xs text-slate-700 dark:text-slate-200 bg-[#f8fbfb] dark:bg-[#0e1c24] p-3.5 rounded-xl border border-teal-100 dark:border-[#1e3845] whitespace-pre-wrap leading-relaxed">
                 {activeTicket.description}
               </div>
             </div>
 
             {/* Linked Leave Request Card */}
             {activeTicket.leaveRequestSummary && (
-              <div className="rounded-xl border border-teal-200 bg-[#e3f4f1]/60 p-3.5 flex items-start gap-2">
+              <div className="rounded-xl border border-teal-200 dark:border-[#1e3845] bg-[#e3f4f1]/60 dark:bg-[rgba(14,74,92,0.4)] p-3.5 flex items-start gap-2">
                 <div className="flex-1 text-xs">
-                  <span className="font-bold text-[#0d2836]">Linked Leave Request: </span>
-                  <span className="text-[#0e4a5c] font-semibold">{activeTicket.leaveRequestSummary}</span>
-                  <p className="text-[11px] text-[#155b6e] mt-0.5">
+                  <span className="font-bold text-[#0d2836] dark:text-slate-100">Linked Leave Request: </span>
+                  <span className="text-[#0e4a5c] dark:text-[#38bdf8] font-semibold">{activeTicket.leaveRequestSummary}</span>
+                  <p className="text-[11px] text-[#155b6e] dark:text-teal-300 mt-0.5">
                     This support ticket is tied to the requester's leave schedule and records.
                   </p>
                 </div>
@@ -490,11 +490,11 @@ export const AgentQueuePage: React.FC = () => {
 
             {/* SLA & Status Management Controls */}
             {activeTicket.status !== 'RESOLVED' && activeTicket.status !== 'CLOSED' && (
-              <div className="flex items-center justify-between p-3 rounded-xl bg-[#e3f4f1]/70 border border-teal-200 text-xs">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-[#e3f4f1]/70 dark:bg-[rgba(14,74,92,0.4)] border border-teal-200 dark:border-[#1e3845] text-xs">
                 <div>
-                  <span className="font-bold text-[#0d2836] block">SLA Clock State:</span>
+                  <span className="font-bold text-[#0d2836] dark:text-slate-100 block">SLA Clock State:</span>
                   <span className={`text-[11px] font-semibold ${
-                    activeTicket.status === 'PENDING_USER' ? 'text-amber-800' : 'text-[#0e4a5c]'
+                    activeTicket.status === 'PENDING_USER' ? 'text-amber-800 dark:text-amber-300' : 'text-[#0e4a5c] dark:text-[#38bdf8]'
                   }`}>
                     {activeTicket.status === 'PENDING_USER'
                       ? 'Paused waiting for requester input'
@@ -507,7 +507,7 @@ export const AgentQueuePage: React.FC = () => {
                   className={`px-3 py-1.5 rounded-xl font-bold text-xs transition border ${
                     activeTicket.status === 'PENDING_USER'
                       ? 'bg-[#0e4a5c] hover:bg-[#083543] text-white border-[#0e4a5c] shadow-xs'
-                      : 'bg-white hover:bg-[#eef7f6] text-[#0e4a5c] border-teal-300 shadow-2xs'
+                      : 'bg-white dark:bg-[#11222b] hover:bg-[#eef7f6] dark:hover:bg-[#162b36] text-[#0e4a5c] dark:text-[#38bdf8] border-teal-300 dark:border-[#1e3845] shadow-2xs'
                   }`}
                 >
                   {activeTicket.status === 'PENDING_USER' ? 'Resume SLA Clock' : 'Wait on Requester (Pause SLA)'}
@@ -517,26 +517,26 @@ export const AgentQueuePage: React.FC = () => {
 
             {/* Attachments Section */}
             {activeTicket.attachments && activeTicket.attachments.length > 0 && (
-              <div className="space-y-2 bg-[#f8fbfb] p-3 rounded-xl border border-teal-100">
-                <h3 className="text-xs font-bold text-[#0d2836] uppercase tracking-wider">
+              <div className="space-y-2 bg-[#f8fbfb] dark:bg-[#0e1c24] p-3 rounded-xl border border-teal-100 dark:border-[#1e3845]">
+                <h3 className="text-xs font-bold text-[#0d2836] dark:text-slate-200 uppercase tracking-wider">
                   Attachments ({activeTicket.attachments.length})
                 </h3>
                 <div className="space-y-1.5">
                   {activeTicket.attachments.map((att) => (
                     <div
                       key={att.id}
-                      className="flex items-center justify-between p-2 rounded-xl bg-white border border-teal-100 text-xs"
+                      className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-[#11222b] border border-teal-100 dark:border-[#1e3845] text-xs"
                     >
                       <div className="flex items-center gap-2 truncate">
-                        <span className="font-semibold text-slate-800 truncate">{att.fileName}</span>
-                        <span className="text-[10px] text-slate-400">
+                        <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{att.fileName}</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500">
                           ({Math.round(att.fileSizeBytes / 1024)} KB)
                         </span>
                       </div>
                       <button
                         type="button"
                         onClick={() => helpdeskApi.downloadAttachment(activeTicket.id, att.id, att.fileName)}
-                        className="text-xs text-[#0e4a5c] hover:text-[#083543] font-bold px-2 py-1 rounded-lg bg-[#e3f4f1] hover:bg-teal-100 transition"
+                        className="text-xs text-[#0e4a5c] dark:text-[#38bdf8] hover:text-[#083543] dark:hover:text-[#7dd3fc] font-bold px-2 py-1 rounded-lg bg-[#e3f4f1] dark:bg-[rgba(14,74,92,0.4)] hover:bg-teal-100 dark:hover:bg-[rgba(14,74,92,0.6)] transition"
                       >
                         Download
                       </button>
@@ -548,13 +548,13 @@ export const AgentQueuePage: React.FC = () => {
 
             {/* Comments Thread */}
             <div className="space-y-3">
-              <h3 className="text-xs font-bold text-[#0d2836] uppercase tracking-wider">
+              <h3 className="text-xs font-bold text-[#0d2836] dark:text-slate-200 uppercase tracking-wider">
                 Conversation &amp; Internal Notes
               </h3>
 
               <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                 {(!activeTicket.comments || activeTicket.comments.length === 0) ? (
-                  <div className="text-xs text-slate-400 italic">No notes or comments yet.</div>
+                  <div className="text-xs text-slate-400 dark:text-slate-500 italic">No notes or comments yet.</div>
                 ) : (
                   activeTicket.comments.map((c) => {
                     const isInternal = c.isInternalNote || c.isInternal;
@@ -563,20 +563,20 @@ export const AgentQueuePage: React.FC = () => {
                         key={c.id}
                         className={`p-3 rounded-xl text-xs ${
                           isInternal
-                            ? 'bg-amber-50/80 border border-amber-200 text-amber-950'
-                            : 'bg-white border border-teal-100 text-slate-900 shadow-2xs'
+                            ? 'bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-950 dark:text-amber-200'
+                            : 'bg-white dark:bg-[#11222b] border border-teal-100 dark:border-[#1e3845] text-slate-900 dark:text-slate-100 shadow-2xs'
                         }`}
                       >
                         <div className="flex items-center justify-between font-semibold mb-1">
                           <span className="flex items-center gap-1.5">
                             {c.authorName}
                             {isInternal && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-amber-200 text-amber-900 font-bold uppercase">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-amber-200 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 font-bold uppercase">
                                 Internal Note
                               </span>
                             )}
                           </span>
-                          <span className="text-[10px] text-slate-400">
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500">
                             {new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
@@ -588,18 +588,18 @@ export const AgentQueuePage: React.FC = () => {
               </div>
 
               {/* Add Comment Form */}
-              <form onSubmit={handleAddComment} className="pt-2 space-y-2 border-t border-teal-100">
+              <form onSubmit={handleAddComment} className="pt-2 space-y-2 border-t border-teal-100 dark:border-[#1e3845]">
                 <textarea
                   rows={2}
                   required
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   placeholder="Type an update or internal memo..."
-                  className="block w-full px-3 py-2 border border-teal-200 rounded-xl text-xs focus:ring-1 focus:ring-[#0e4a5c] focus:border-[#0e4a5c] bg-white text-[#0d2836]"
+                  className="block w-full px-3 py-2 border border-teal-200 dark:border-[#1e3845] rounded-xl text-xs focus:ring-1 focus:ring-[#0e4a5c] dark:focus:ring-[#38bdf8] focus:border-[#0e4a5c] dark:focus:border-[#38bdf8] bg-white dark:bg-[#0d1b22] text-[#0d2836] dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500"
                 />
 
                 <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-1.5 text-xs text-amber-900 font-semibold cursor-pointer">
+                  <label className="flex items-center gap-1.5 text-xs text-amber-900 dark:text-amber-300 font-semibold cursor-pointer">
                     <input
                       type="checkbox"
                       checked={isInternalNote}

@@ -248,8 +248,8 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
           </button>
 
           {quickActionOpen && (
-            <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-teal-100 bg-white p-2 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100">
-              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-teal-100 dark:border-[#1e3845] bg-white dark:bg-[#11222b] p-2 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100">
+              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Quick Shortcuts
               </div>
               <button
@@ -258,14 +258,14 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
                   setQuickActionOpen(false);
                   navigate('/leave');
                 }}
-                className="flex items-center gap-2.5 w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-[#f0f9f8] hover:text-[#0e4a5c] rounded-xl transition"
+                className="flex items-center gap-2.5 w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-[#f0f9f8] dark:hover:bg-[#162b36] hover:text-[#0e4a5c] dark:hover:text-[#38bdf8] rounded-xl transition"
               >
-                <div className="w-6 h-6 rounded-lg bg-[#e3f4f1] text-[#0e4a5c] flex items-center justify-center">
+                <div className="w-6 h-6 rounded-lg bg-[#e3f4f1] dark:bg-[rgba(14,74,92,0.5)] text-[#0e4a5c] dark:text-[#38bdf8] flex items-center justify-center">
                   <CalendarDays className="h-3.5 w-3.5" />
                 </div>
                 <div>
-                  <div className="text-slate-900 font-bold">Request Leave</div>
-                  <div className="text-[10px] text-slate-500 font-normal">Full or half-day application</div>
+                  <div className="text-slate-900 dark:text-slate-100 font-bold">Request Leave</div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">Full or half-day application</div>
                 </div>
               </button>
 
@@ -275,14 +275,14 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
                   setQuickActionOpen(false);
                   navigate('/helpdesk');
                 }}
-                className="flex items-center gap-2.5 w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-[#f0f9f8] hover:text-[#0e4a5c] rounded-xl transition"
+                className="flex items-center gap-2.5 w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-[#f0f9f8] dark:hover:bg-[#162b36] hover:text-[#0e4a5c] dark:hover:text-[#38bdf8] rounded-xl transition"
               >
-                <div className="w-6 h-6 rounded-lg bg-[#e3f4f1] text-[#0e4a5c] flex items-center justify-center">
+                <div className="w-6 h-6 rounded-lg bg-[#e3f4f1] dark:bg-[rgba(14,74,92,0.5)] text-[#0e4a5c] dark:text-[#38bdf8] flex items-center justify-center">
                   <LifeBuoy className="h-3.5 w-3.5" />
                 </div>
                 <div>
-                  <div className="text-slate-900 font-bold">Open Support Ticket</div>
-                  <div className="text-[10px] text-slate-500 font-normal">IT, HR & facilities support</div>
+                  <div className="text-slate-900 dark:text-slate-100 font-bold">Open Support Ticket</div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">IT, HR & facilities support</div>
                 </div>
               </button>
             </div>
@@ -294,7 +294,7 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
           <button
             type="button"
             onClick={() => setNotificationsOpen(!notificationsOpen)}
-            className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-teal-200/80 bg-white text-slate-600 hover:bg-[#f0f9f8] hover:text-[#0e4a5c] shadow-2xs transition"
+            className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-teal-200/80 dark:border-[#1e3845] bg-white dark:bg-[#11222b] text-slate-600 dark:text-slate-300 hover:bg-[#f0f9f8] dark:hover:bg-[#162b36] hover:text-[#0e4a5c] dark:hover:text-[#38bdf8] shadow-2xs transition"
             aria-label="View notifications"
           >
             <Bell className="h-4 w-4" />
@@ -306,12 +306,12 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
           </button>
 
           {notificationsOpen && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-88 rounded-2xl border border-teal-100 bg-white p-3 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100">
-              <div className="flex items-center justify-between pb-2 mb-2 border-b border-teal-50">
+            <div className="absolute right-0 mt-2 w-80 sm:w-88 rounded-2xl border border-teal-100 dark:border-[#1e3845] bg-white dark:bg-[#11222b] p-3 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100">
+              <div className="flex items-center justify-between pb-2 mb-2 border-b border-teal-50 dark:border-[#1e3845]">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-[#0d2836]">System Activity &amp; Alerts</span>
+                  <span className="text-xs font-bold text-[#0d2836] dark:text-slate-100">System Activity &amp; Alerts</span>
                   {unreadCount > 0 && (
-                    <span className="text-[10px] bg-teal-50 text-[#0e4a5c] px-2 py-0.5 rounded-full font-bold border border-teal-200/60">
+                    <span className="text-[10px] bg-teal-50 dark:bg-[rgba(14,74,92,0.4)] text-[#0e4a5c] dark:text-[#38bdf8] px-2 py-0.5 rounded-full font-bold border border-teal-200/60 dark:border-teal-700/60">
                       {unreadCount}
                     </span>
                   )}
@@ -320,7 +320,7 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
                   <button
                     type="button"
                     onClick={markAllRead}
-                    className="text-[10px] font-semibold text-[#0e4a5c] hover:underline cursor-pointer"
+                    className="text-[10px] font-semibold text-[#0e4a5c] dark:text-[#38bdf8] hover:underline cursor-pointer"
                   >
                     Mark all read
                   </button>
@@ -333,16 +333,16 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
                     <div
                       key={n.id}
                       onClick={() => handleNotificationClick(n)}
-                      className="group relative p-2.5 rounded-xl border border-teal-200/90 bg-[#f0f9f8] text-[#0d2836] text-xs transition cursor-pointer hover:bg-[#e6f4f2] hover:shadow-2xs"
+                      className="group relative p-2.5 rounded-xl border border-teal-200/90 dark:border-[#1e3845] bg-[#f0f9f8] dark:bg-[#0e1c24] text-[#0d2836] dark:text-slate-100 text-xs transition cursor-pointer hover:bg-[#e6f4f2] dark:hover:bg-[#162b36] hover:shadow-2xs"
                     >
                       <div className="flex items-center justify-between font-bold mb-0.5">
                         <span className="flex items-center gap-1.5 min-w-0 pr-6">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#0e4a5c] shrink-0" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#0e4a5c] dark:bg-[#38bdf8] shrink-0" />
                           <span className="truncate">{n.title}</span>
                         </span>
-                        <span className="text-[10px] text-slate-400 font-normal shrink-0">{n.time}</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal shrink-0">{n.time}</span>
                       </div>
-                      <p className="text-[11px] text-slate-600 pl-3 leading-relaxed">{n.message}</p>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 pl-3 leading-relaxed">{n.message}</p>
                       
                       {/* Mark single notification as read button */}
                       <button
@@ -353,7 +353,7 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
                         }}
                         title="Mark as read"
                         aria-label="Mark as read"
-                        className="absolute top-2 right-2 p-1 rounded-lg text-slate-400 hover:text-teal-700 hover:bg-teal-100/70 transition opacity-80 sm:opacity-0 group-hover:opacity-100 cursor-pointer"
+                        className="absolute top-2 right-2 p-1 rounded-lg text-slate-400 dark:text-slate-400 hover:text-teal-700 dark:hover:text-[#38bdf8] hover:bg-teal-100/70 dark:hover:bg-[#192f3b] transition opacity-80 sm:opacity-0 group-hover:opacity-100 cursor-pointer"
                       >
                         <Check className="h-3.5 w-3.5" />
                       </button>
@@ -392,30 +392,30 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
           <button
             type="button"
             onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-            className="flex items-center gap-2 rounded-full border border-teal-200/80 bg-white py-1 pl-1.5 pr-2.5 sm:pr-3 shadow-2xs transition-all hover:border-teal-300 hover:bg-[#f0f9f8]"
+            className="flex items-center gap-2 rounded-full border border-teal-200/80 dark:border-[#1e3845] bg-white dark:bg-[#11222b] py-1 pl-1.5 pr-2.5 sm:pr-3 shadow-2xs transition-all hover:border-teal-300 dark:hover:border-teal-700 hover:bg-[#f0f9f8] dark:hover:bg-[#162b36]"
           >
             <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-[#0e4a5c] font-bold text-xs text-white shadow-inner">
               {initials}
             </div>
             <div className="text-left hidden sm:block">
-              <p className="text-xs font-bold text-[#0d2836] leading-tight">
+              <p className="text-xs font-bold text-[#0d2836] dark:text-slate-100 leading-tight">
                 {displayName}
               </p>
-              <p className="text-[10px] font-medium text-[#155b6e] leading-tight">
+              <p className="text-[10px] font-medium text-[#155b6e] dark:text-[#38bdf8] leading-tight">
                 {roleDisplay}
               </p>
             </div>
-            <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+            <ChevronDown className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
           </button>
 
           {/* Profile Dropdown */}
           {userDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-64 rounded-2xl border border-teal-100 bg-white p-2 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100">
-              <div className="px-3 py-2.5 border-b border-teal-50">
-                <p className="text-xs font-bold text-[#0d2836]">{displayName}</p>
-                <p className="text-[11px] text-slate-500 truncate">{user?.email}</p>
+            <div className="absolute right-0 mt-2 w-64 rounded-2xl border border-teal-100 dark:border-[#1e3845] bg-white dark:bg-[#11222b] p-2 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100">
+              <div className="px-3 py-2.5 border-b border-teal-50 dark:border-[#1e3845]">
+                <p className="text-xs font-bold text-[#0d2836] dark:text-slate-100">{displayName}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{user?.email}</p>
                 {user?.employeeCode && (
-                  <span className="inline-block mt-1 text-[10px] font-semibold text-[#0e4a5c] bg-[#e3f4f1] px-2 py-0.5 rounded">
+                  <span className="inline-block mt-1 text-[10px] font-semibold text-[#0e4a5c] dark:text-[#38bdf8] bg-[#e3f4f1] dark:bg-[rgba(14,74,92,0.4)] px-2 py-0.5 rounded">
                     {user.employeeCode} &bull; {user.department?.name || 'Department'}
                   </span>
                 )}
@@ -425,27 +425,27 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
                 <Link
                   to="/"
                   onClick={() => setUserDropdownOpen(false)}
-                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-[#f0f9f8] hover:text-[#0d2836] rounded-xl"
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-[#f0f9f8] dark:hover:bg-[#162b36] hover:text-[#0d2836] dark:hover:text-white rounded-xl"
                 >
-                  <User className="h-3.5 w-3.5 text-[#0e4a5c]" />
+                  <User className="h-3.5 w-3.5 text-[#0e4a5c] dark:text-[#38bdf8]" />
                   <span>My Dashboard</span>
                 </Link>
 
                 <Link
                   to="/leave"
                   onClick={() => setUserDropdownOpen(false)}
-                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-[#f0f9f8] hover:text-[#0d2836] rounded-xl"
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-[#f0f9f8] dark:hover:bg-[#162b36] hover:text-[#0d2836] dark:hover:text-white rounded-xl"
                 >
-                  <CalendarDays className="h-3.5 w-3.5 text-[#0e4a5c]" />
+                  <CalendarDays className="h-3.5 w-3.5 text-[#0e4a5c] dark:text-[#38bdf8]" />
                   <span>Leave Portal</span>
                 </Link>
 
                 <Link
                   to="/helpdesk"
                   onClick={() => setUserDropdownOpen(false)}
-                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-[#f0f9f8] hover:text-[#0d2836] rounded-xl"
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-[#f0f9f8] dark:hover:bg-[#162b36] hover:text-[#0d2836] dark:hover:text-white rounded-xl"
                 >
-                  <LifeBuoy className="h-3.5 w-3.5 text-[#0e4a5c]" />
+                  <LifeBuoy className="h-3.5 w-3.5 text-[#0e4a5c] dark:text-[#38bdf8]" />
                   <span>Internal Help Desk</span>
                 </Link>
 
@@ -453,22 +453,22 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
                   <Link
                     to="/admin"
                     onClick={() => setUserDropdownOpen(false)}
-                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-[#f0f9f8] hover:text-[#0d2836] rounded-xl"
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-[#f0f9f8] dark:hover:bg-[#162b36] hover:text-[#0d2836] dark:hover:text-white rounded-xl"
                   >
-                    <Shield className="h-3.5 w-3.5 text-[#0e4a5c]" />
+                    <Shield className="h-3.5 w-3.5 text-[#0e4a5c] dark:text-[#38bdf8]" />
                     <span>Admin Monitoring</span>
                   </Link>
                 )}
               </div>
 
-              <div className="border-t border-teal-50 pt-1">
+              <div className="border-t border-teal-50 dark:border-[#1e3845] pt-1">
                 <button
                   type="button"
                   onClick={() => {
                     setUserDropdownOpen(false);
                     logout();
                   }}
-                  className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                  className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors cursor-pointer"
                 >
                   <LogOut className="h-3.5 w-3.5" />
                   <span>Sign Out</span>

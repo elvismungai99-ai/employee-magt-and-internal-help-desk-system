@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LogOut } from 'lucide-react';
+import { ThemeToggle } from './ThemeToggle';
 
 export const Navbar: React.FC = () => {
   const { user, roles, logout, hasRole } = useAuth();
@@ -83,6 +84,8 @@ export const Navbar: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <ThemeToggle size="sm" />
+
             {user ? (
               <div className="flex items-center gap-3">
                 <div className="hidden sm:flex flex-col text-right">

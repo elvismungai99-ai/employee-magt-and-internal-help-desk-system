@@ -58,7 +58,7 @@ export const TeamHubLayout: React.FC<TeamHubLayoutProps> = ({
   const pageInfo = getPageInfo();
 
   return (
-    <div className="min-h-screen bg-[#f2f8f8] flex text-[#0d2836] font-sans antialiased selection:bg-teal-200 selection:text-teal-900">
+    <div className="min-h-screen bg-[#f2f8f8] dark:bg-[#0b151b] flex text-[#0d2836] dark:text-slate-100 font-sans antialiased selection:bg-teal-200 selection:text-teal-900 transition-colors duration-200">
       {/* Fixed Left Sidebar */}
       <TeamHubSidebar
         mobileOpen={mobileOpen}

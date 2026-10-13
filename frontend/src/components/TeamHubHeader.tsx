@@ -16,6 +16,7 @@ import {
   Ticket
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { ThemeToggle } from './ThemeToggle';
 
 interface TeamHubHeaderProps {
   onToggleMobileMenu?: () => void;
@@ -292,6 +293,9 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
             </div>
           )}
         </div>
+
+        {/* Theme Toggle Button */}
+        <ThemeToggle />
 
         {/* 3. User Profile Pill */}
         <div className="relative" ref={dropdownRef}>

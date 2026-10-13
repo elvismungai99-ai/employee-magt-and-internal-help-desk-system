@@ -8,4 +8,255 @@ body {
   background-color: #f2f8f8;
   color: #0d2836;
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* ==========================================================================
+   Dark Theme System Architecture
+   Ensures 100% of panels, cards, inputs, tables, badges, modals, and text
+   remain clearly visible, high-contrast, and elegant.
+   ========================================================================== */
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #0b151b;
+  color: #e2e8f0;
+}
+
+/* 1. Global Layout and Page Containers */
+html.dark .bg-\[\#f2f8f8\],
+html.dark .bg-slate-100 {
+  background-color: #0b151b !important;
+}
+
+/* 2. Primary Cards, Drawers, Modals, Popovers, and Surfaces */
+html.dark .bg-white {
+  background-color: #11222b !important;
+}
+
+html.dark .bg-\[\#fafcfb\],
+html.dark .bg-\[\#f8faf9\],
+html.dark .bg-\[\#f6faf8\],
+html.dark .bg-slate-50,
+html.dark .bg-gray-50 {
+  background-color: #0e1c24 !important;
+}
+
+/* 3. Soft Teal Highlights & Pill Accents */
+html.dark .bg-\[\#eef7f6\],
+html.dark .bg-\[\#e3f4f1\],
+html.dark .bg-\[\#f7fbfa\],
+html.dark .bg-\[\#f0f9f8\],
+html.dark .bg-teal-50,
+html.dark .bg-blue-50\/40,
+html.dark .bg-blue-50 {
+  background-color: rgba(14, 74, 92, 0.35) !important;
+}
+
+/* 4. Global Typography & Text Contrast */
+html.dark .text-\[\#0d2836\],
+html.dark .text-slate-950,
+html.dark .text-slate-900,
+html.dark .text-slate-800 {
+  color: #f8fafc !important;
+}
+
+html.dark .text-slate-700,
+html.dark .text-slate-600 {
+  color: #cbd5e1 !important;
+}
+
+html.dark .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+html.dark .text-slate-400 {
+  color: #64748b !important;
+}
+
+html.dark .text-\[\#0e4a5c\],
+html.dark .text-\[\#155b6e\],
+html.dark .text-teal-900,
+html.dark .text-teal-800,
+html.dark .text-teal-700 {
+  color: #38bdf8 !important;
+}
+
+/* 5. Borders & Dividers */
+html.dark .border-teal-100,
+html.dark .border-teal-200,
+html.dark .border-teal-200\/80,
+html.dark .border-teal-100\/90,
+html.dark .border-teal-100\/80,
+html.dark .border-teal-100\/60,
+html.dark .border-teal-50,
+html.dark .border-blue-100,
+html.dark .border-slate-100,
+html.dark .border-slate-200,
+html.dark .border-slate-300,
+html.dark .border-gray-200,
+html.dark .border-gray-100 {
+  border-color: #1e3845 !important;
+}
+
+html.dark .divide-teal-100 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1e3845 !important;
+}
+
+/* 6. Form Inputs, Selects, and Textareas */
+html.dark input[type="text"],
+html.dark input[type="email"],
+html.dark input[type="password"],
+html.dark input[type="number"],
+html.dark input[type="date"],
+html.dark input[type="datetime-local"],
+html.dark select,
+html.dark textarea {
+  background-color: #0d1b22 !important;
+  color: #f8fafc !important;
+  border-color: #224353 !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+html.dark input:focus,
+html.dark select:focus,
+html.dark textarea:focus {
+  border-color: #38bdf8 !important;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25) !important;
+}
+
+html.dark select option {
+  background-color: #11222b !important;
+  color: #f8fafc !important;
+}
+
+/* 7. Tables & Data Grids */
+html.dark table {
+  color: #e2e8f0;
+}
+
+html.dark table thead th {
+  background-color: #0b1820 !important;
+  color: #94a3b8 !important;
+  border-bottom: 1px solid #1e3845 !important;
+}
+
+html.dark table tbody tr {
+  border-bottom: 1px solid #1a323e;
+}
+
+html.dark table tbody tr:hover {
+  background-color: rgba(56, 189, 248, 0.05) !important;
+}
+
+html.dark table tbody td {
+  color: #e2e8f0;
+}
+
+/* 8. Interactive Elements & Hover States */
+html.dark .hover\:bg-\[\#f0f9f8\]:hover {
+  background-color: #162b36 !important;
+}
+
+html.dark .hover\:bg-slate-50:hover,
+html.dark .hover\:bg-slate-100:hover {
+  background-color: #162b36 !important;
+}
+
+html.dark .hover\:text-\[\#0d2836\]:hover {
+  color: #ffffff !important;
+}
+
+html.dark .hover\:text-\[\#0e4a5c\]:hover {
+  color: #38bdf8 !important;
+}
+
+/* 9. Status Badges & Alert Pills */
+html.dark .bg-emerald-50 {
+  background-color: rgba(16, 185, 129, 0.18) !important;
+  color: #6ee7b7 !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+html.dark .bg-amber-50,
+html.dark .bg-amber-100 {
+  background-color: rgba(245, 158, 11, 0.18) !important;
+  color: #fcd34d !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+html.dark .bg-rose-50 {
+  background-color: rgba(244, 63, 94, 0.18) !important;
+  color: #fda4af !important;
+  border-color: rgba(244, 63, 94, 0.35) !important;
+}
+
+html.dark .bg-sky-50 {
+  background-color: rgba(14, 165, 233, 0.18) !important;
+  color: #7dd3fc !important;
+  border-color: rgba(14, 165, 233, 0.35) !important;
+}
+
+html.dark .bg-orange-50 {
+  background-color: rgba(249, 115, 22, 0.18) !important;
+  color: #fdba74 !important;
+  border-color: rgba(249, 115, 22, 0.35) !important;
+}
+
+/* 10. Modals, Dialogs, and Overlays */
+html.dark .bg-slate-900\/50,
+html.dark .bg-slate-900\/40 {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* 11. Header Backdrop */
+html.dark header.bg-white\/95,
+html.dark nav.bg-white\/95 {
+  background-color: rgba(17, 34, 43, 0.95) !important;
+  border-color: #1e3845 !important;
+}
+
+/* 12. Skeleton Loaders in Dark Mode */
+html.dark .bg-slate-200,
+html.dark .bg-slate-100 {
+  background-color: #192f3b !important;
+}
+
+/* 13. High-Contrast Primary & Action Buttons */
+html.dark .bg-\[\#0e4a5c\] {
+  background-color: #0e5e73 !important;
+  color: #ffffff !important;
+}
+
+html.dark .hover\:bg-\[\#083543\]:hover {
+  background-color: #0b4959 !important;
+}
+
+/* 14. Custom Dark Scrollbars */
+html.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html.dark ::-webkit-scrollbar-track {
+  background: #0b151b;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: #1e3845;
+  border-radius: 4px;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #2b4f61;
 }

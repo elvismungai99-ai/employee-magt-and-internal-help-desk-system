@@ -1351,6 +1351,35 @@ ALTER TABLE helpdesk.tickets ADD COLUMN IF NOT EXISTS leave_request_id UUID REFE
 ALTER TABLE helpdesk.tickets ADD COLUMN IF NOT EXISTS paused_at TIMESTAMPTZ;
 ALTER TABLE helpdesk.tickets ADD COLUMN IF NOT EXISTS total_paused_minutes INT DEFAULT 0;
 
+-- Migrations for Compensatory Off and Leave Encashment
+CREATE TABLE IF NOT EXISTS leave.comp_off_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES identity.users(id) ON DELETE CASCADE,
+    worked_date DATE NOT NULL,
+    days_earned NUMERIC(5, 2) NOT NULL DEFAULT 1.00,
+    reason TEXT NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    approver_id UUID REFERENCES identity.users(id) ON DELETE SET NULL,
+    actioned_at TIMESTAMPTZ,
+    comments TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS leave.leave_encashment_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES identity.users(id) ON DELETE CASCADE,
+    leave_type_id UUID NOT NULL REFERENCES leave.leave_types(id) ON DELETE CASCADE,
+    days_requested NUMERIC(5, 2) NOT NULL,
+    year INT NOT NULL,
+    reason TEXT NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    approved_by_id UUID REFERENCES identity.users(id) ON DELETE SET NULL,
+    actioned_at TIMESTAMPTZ,
+    comments TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 
 --
 -- PostgreSQL database dump complete

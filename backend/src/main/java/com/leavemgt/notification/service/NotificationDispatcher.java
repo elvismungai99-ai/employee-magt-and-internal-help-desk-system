@@ -43,6 +43,7 @@ public class NotificationDispatcher implements DomainEventHandler {
     @Override
     public boolean canHandle(String eventType) {
         return "LeaveApproved".equalsIgnoreCase(eventType)
+                || "LeaveRequested".equalsIgnoreCase(eventType)
                 || "SLABreached".equalsIgnoreCase(eventType)
                 || "TicketAssigned".equalsIgnoreCase(eventType)
                 || "TicketUnassigned".equalsIgnoreCase(eventType);
@@ -56,6 +57,8 @@ public class NotificationDispatcher implements DomainEventHandler {
 
         if ("LeaveApproved".equalsIgnoreCase(eventType)) {
             dispatchLeaveApproved(event, payload);
+        } else if ("LeaveRequested".equalsIgnoreCase(eventType)) {
+            dispatchLeaveRequested(event, payload);
         } else if ("SLABreached".equalsIgnoreCase(eventType)) {
             dispatchSlaBreached(event, payload);
         } else if ("TicketUnassigned".equalsIgnoreCase(eventType)) {
@@ -73,7 +76,28 @@ public class NotificationDispatcher implements DomainEventHandler {
         userRepository.findById(employeeId).ifPresent(employee -> {
             String message = "Your leave request for " + startDate + " to " + endDate + " has been approved.";
             createAndSend(employee, event, NotificationChannel.EMAIL, message);
+            createAndSend(employee, event, NotificationChannel.WEBHOOK, message);
         });
+    }
+
+    private void dispatchLeaveRequested(EventOutbox event, JsonNode payload) {
+        String employeeName = payload.has("employeeName") ? payload.get("employeeName").asText() : "An employee";
+        String startDate = payload.has("startDate") ? payload.get("startDate").asText() : "";
+        String endDate = payload.has("endDate") ? payload.get("endDate").asText() : "";
+        String leaveTypeName = payload.has("leaveTypeName") ? payload.get("leaveTypeName").asText() : "Leave";
+        String totalDays = payload.has("totalDays") ? payload.get("totalDays").asText() : "1";
+
+        if (payload.has("managerId") && !payload.get("managerId").isNull() && !payload.get("managerId").asText().isBlank()) {
+            try {
+                UUID managerId = UUID.fromString(payload.get("managerId").asText());
+                userRepository.findById(managerId).ifPresent(manager -> {
+                    String message = String.format("New Leave Request: %s has submitted a request for %s days of %s (%s to %s) awaiting your review.",
+                            employeeName, totalDays, leaveTypeName, startDate, endDate);
+                    createAndSend(manager, event, NotificationChannel.EMAIL, message);
+                    createAndSend(manager, event, NotificationChannel.WEBHOOK, message);
+                });
+            } catch (Exception ignored) {}
+        }
     }
 
     private void dispatchSlaBreached(EventOutbox event, JsonNode payload) {

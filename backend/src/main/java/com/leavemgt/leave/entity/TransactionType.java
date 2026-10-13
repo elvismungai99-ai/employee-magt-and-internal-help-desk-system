@@ -5,5 +5,7 @@ public enum TransactionType {
     MANUAL_ADJUSTMENT,
     DEDUCTION,
     REVERSAL,
-    CARRYOVER_RESET
+    CARRYOVER_RESET,
+    COMP_OFF_CREDIT,
+    ENCASHMENT
 }

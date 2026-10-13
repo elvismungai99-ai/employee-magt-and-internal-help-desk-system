@@ -32,10 +32,36 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.leavemgt.leave.dto.DepartmentOverlapResponse;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Set;
+
 @Service
 public class LeaveRequestService {
 
     private static final Logger log = LoggerFactory.getLogger(LeaveRequestService.class);
+
+    @Value("${app.leave.attachment-storage-dir:uploads/leave}")
+    private String attachmentStorageDir;
+
+    @Value("${app.leave.max-attachment-size-bytes:10485760}")
+    private long maxAttachmentSizeBytes;
+
+    @Value("${app.leave.allowed-attachment-extensions:pdf,png,jpg,jpeg,gif,webp,doc,docx}")
+    private String allowedAttachmentExtensions;
 
     private final LeaveRequestRepository leaveRequestRepository;
     private final LeaveApprovalRepository leaveApprovalRepository;
@@ -207,12 +233,43 @@ public class LeaveRequestService {
                 .stepOrder(1)
                 .status(ApprovalStatus.PENDING)
                 .build();
-
         leaveRequest.getApprovals().add(approval);
+
+        // Multi-stage approval routing: Check if employee has a secondary dotted-line manager
+        List<ReportingHierarchy> dottedList = reportingHierarchyRepository.findActiveHierarchyForEmployeeAndType(
+                employeeId, RelationshipType.DOTTED_LINE, LocalDate.now());
+        if (!dottedList.isEmpty() && dottedList.get(0).getManager() != null
+                && !dottedList.get(0).getManager().getId().equals(manager.getId())) {
+            User secondaryManager = dottedList.get(0).getManager();
+            LeaveApproval secondaryApproval = LeaveApproval.builder()
+                    .leaveRequest(leaveRequest)
+                    .approver(secondaryManager)
+                    .stepOrder(2)
+                    .status(ApprovalStatus.PENDING)
+                    .build();
+            leaveRequest.getApprovals().add(secondaryApproval);
+            log.info("Multi-stage approval configured for employee {}: Step 1 -> {}, Step 2 -> {}",
+                    employee.getEmail(), manager.getEmail(), secondaryManager.getEmail());
+        }
+
         LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
 
         log.info("Leave request {} submitted by employee {} for {} days, routed to manager {}",
                 saved.getId(), employee.getEmail(), requestedDays, manager.getEmail());
+
+        // Publish LeaveRequested event for outbox and notification webhooks
+        Map<String, Object> reqPayload = new HashMap<>();
+        reqPayload.put("leaveRequestId", saved.getId().toString());
+        reqPayload.put("employeeId", saved.getUser().getId().toString());
+        reqPayload.put("employeeName", saved.getUser().getFullName());
+        reqPayload.put("employeeEmail", saved.getUser().getEmail());
+        reqPayload.put("leaveTypeName", saved.getLeaveType().getName());
+        reqPayload.put("startDate", saved.getStartDate().toString());
+        reqPayload.put("endDate", saved.getEndDate().toString());
+        reqPayload.put("totalDays", saved.getTotalDays().toString());
+        reqPayload.put("managerId", manager.getId().toString());
+        reqPayload.put("managerEmail", manager.getEmail());
+        eventPublisherService.publishEvent("LeaveRequested", "LEAVE", reqPayload);
 
         return mapToResponse(saved);
     }
@@ -232,12 +289,48 @@ public class LeaveRequestService {
         List<LeaveApproval> approvals = leaveApprovalRepository.findByLeaveRequestId(requestId);
         LeaveApproval pendingApproval = approvals.stream()
                 .filter(a -> a.getStatus() == ApprovalStatus.PENDING)
-                .findFirst()
+                .min(Comparator.comparing(LeaveApproval::getStepOrder))
                 .orElseThrow(() -> new IllegalStateException("No pending approval found for leave request: " + requestId));
 
         boolean isAssignedApprover = pendingApproval.getApprover().getId().equals(callerId);
         if (!isAssignedApprover && !isHrAdmin) {
             throw new AccessDeniedException("You are not authorized to approve this leave request. Only the assigned manager or HR Admin can approve.");
+        }
+
+        // Update approval record
+        String comment = decision != null ? decision.getComments() : null;
+        if (!isAssignedApprover && isHrAdmin) {
+            pendingApproval.setApprover(caller);
+            if (comment == null || comment.isBlank()) {
+                comment = "Approved by HR Admin on behalf of assigned manager";
+            }
+        }
+        pendingApproval.setStatus(ApprovalStatus.APPROVED);
+        pendingApproval.setComments(comment);
+        pendingApproval.setActionedAt(OffsetDateTime.now());
+        leaveApprovalRepository.save(pendingApproval);
+
+        // Multi-stage progression: Check if there is another pending stage (unless HR Admin overrides all)
+        boolean hasNextPendingStage = !isHrAdmin && approvals.stream()
+                .anyMatch(a -> a.getStepOrder() > pendingApproval.getStepOrder() && a.getStatus() == ApprovalStatus.PENDING);
+
+        if (hasNextPendingStage) {
+            log.info("Leave request {} Step {} APPROVED by {}; waiting for subsequent stage",
+                    requestId, pendingApproval.getStepOrder(), caller.getEmail());
+            return mapToResponse(request);
+        }
+
+        // If HR Admin approved, mark any remaining pending steps as APPROVED by HR Admin
+        if (isHrAdmin) {
+            for (LeaveApproval a : approvals) {
+                if (a.getStatus() == ApprovalStatus.PENDING) {
+                    a.setStatus(ApprovalStatus.APPROVED);
+                    a.setApprover(caller);
+                    a.setActionedAt(OffsetDateTime.now());
+                    a.setComments("Fast-tracked by HR Admin");
+                    leaveApprovalRepository.save(a);
+                }
+            }
         }
 
         // Balance deduction & release of pending hold
@@ -261,13 +354,9 @@ public class LeaveRequestService {
         leaveBalanceRepository.save(balance);
 
         // Record balance deduction transaction
-        String comment = decision != null ? decision.getComments() : null;
         String description = "Leave approval for request " + requestId;
         if (isHrAdmin && !isAssignedApprover) {
             description += " (Approved by HR Admin " + caller.getEmail() + " on behalf of assigned manager)";
-            if (comment == null || comment.isBlank()) {
-                comment = "Approved by HR Admin on behalf of assigned manager";
-            }
         }
 
         BalanceTransaction tx = BalanceTransaction.builder()
@@ -278,15 +367,6 @@ public class LeaveRequestService {
                 .createdBy(caller)
                 .build();
         transactionRepository.save(tx);
-
-        // Update approval record
-        if (!isAssignedApprover && isHrAdmin) {
-            pendingApproval.setApprover(caller);
-        }
-        pendingApproval.setStatus(ApprovalStatus.APPROVED);
-        pendingApproval.setComments(comment);
-        pendingApproval.setActionedAt(OffsetDateTime.now());
-        leaveApprovalRepository.save(pendingApproval);
 
         // Update leave request status
         request.setStatus(LeaveRequestStatus.APPROVED);
@@ -523,5 +603,145 @@ public class LeaveRequestService {
                 .createdAt(lr.getCreatedAt())
                 .updatedAt(lr.getUpdatedAt())
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<DepartmentOverlapResponse> getDepartmentOverlap(UUID callerId, LocalDate startDate, LocalDate endDate, UUID departmentId) {
+        User caller = userRepository.findById(callerId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + callerId));
+
+        UUID deptId = departmentId;
+        if (deptId == null && caller.getDepartment() != null) {
+            deptId = caller.getDepartment().getId();
+        }
+
+        if (deptId == null) {
+            return List.of();
+        }
+
+        List<LeaveRequestStatus> activeStatuses = List.of(LeaveRequestStatus.PENDING, LeaveRequestStatus.APPROVED);
+        List<LeaveRequest> overlaps = leaveRequestRepository.findOverlappingDepartmentRequests(
+                deptId, startDate, endDate, activeStatuses);
+
+        return overlaps.stream()
+                .filter(lr -> !lr.getUser().getId().equals(callerId))
+                .map(lr -> DepartmentOverlapResponse.builder()
+                        .requestId(lr.getId())
+                        .userId(lr.getUser().getId())
+                        .employeeName(lr.getUser().getFullName())
+                        .employeeEmail(lr.getUser().getEmail())
+                        .departmentName(lr.getUser().getDepartment() != null ? lr.getUser().getDepartment().getName() : "General")
+                        .leaveTypeName(lr.getLeaveType().getName())
+                        .startDate(lr.getStartDate())
+                        .endDate(lr.getEndDate())
+                        .totalDays(lr.getTotalDays())
+                        .status(lr.getStatus())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    public String uploadAttachmentFile(MultipartFile file, UUID callerId) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Attachment file cannot be empty");
+        }
+
+        if (file.getSize() > maxAttachmentSizeBytes) {
+            long maxMb = maxAttachmentSizeBytes / (1024 * 1024);
+            throw new IllegalArgumentException("Attachment file size exceeds maximum limit of " + maxMb + "MB");
+        }
+
+        String rawFileName = file.getOriginalFilename() != null ? file.getOriginalFilename().trim() : "attachment";
+        String baseName = Paths.get(rawFileName).getFileName().toString();
+        String sanitizedFileName = baseName.replaceAll("[^a-zA-Z0-9._-]", "_");
+
+        String lowerName = sanitizedFileName.toLowerCase();
+        if (lowerName.endsWith(".exe") || lowerName.endsWith(".bat") || lowerName.endsWith(".sh") || lowerName.endsWith(".dll") || lowerName.endsWith(".cmd")) {
+            throw new IllegalArgumentException("Executable file types are strictly prohibited");
+        }
+
+        int dotIndex = sanitizedFileName.lastIndexOf('.');
+        if (dotIndex <= 0 || dotIndex == sanitizedFileName.length() - 1) {
+            throw new IllegalArgumentException("File must have a valid extension");
+        }
+
+        Set<String> permittedExtensions = Arrays.stream(allowedAttachmentExtensions.split(","))
+                .map(String::trim)
+                .map(String::toLowerCase)
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.toSet());
+
+        String extension = sanitizedFileName.substring(dotIndex + 1).toLowerCase();
+        if (!permittedExtensions.contains(extension)) {
+            throw new IllegalArgumentException("File extension ." + extension + " is not permitted. Permitted types: " + String.join(", ", permittedExtensions));
+        }
+
+        Path targetDir = Paths.get(attachmentStorageDir);
+        Files.createDirectories(targetDir);
+        String uniqueFileName = UUID.randomUUID() + "_" + sanitizedFileName;
+        Path targetPath = targetDir.resolve(uniqueFileName);
+        Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+        log.info("Saved leave attachment {} for user {}", uniqueFileName, callerId);
+        return "/api/leave/requests/attachments/" + uniqueFileName;
+    }
+
+    public Resource getAttachmentResource(String fileName) throws IOException {
+        if (fileName == null || fileName.isBlank() || fileName.contains("..") || fileName.contains("/") || fileName.contains("\\")) {
+            throw new IllegalArgumentException("Invalid file name requested");
+        }
+
+        Path filePath = Paths.get(attachmentStorageDir).resolve(fileName).normalize();
+        if (!Files.exists(filePath) || !Files.isReadable(filePath)) {
+            throw new IllegalArgumentException("Attachment file not found: " + fileName);
+        }
+
+        return new UrlResource(filePath.toUri());
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] exportCalendarIcs(UUID requestId, UUID callerId, boolean isHrAdmin) {
+        LeaveRequest request = leaveRequestRepository.findById(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Leave request not found: " + requestId));
+
+        boolean isOwner = request.getUser().getId().equals(callerId);
+        boolean isApprover = request.getApprovals().stream()
+                .anyMatch(a -> a.getApprover() != null && a.getApprover().getId().equals(callerId));
+
+        if (!isOwner && !isApprover && !isHrAdmin) {
+            throw new AccessDeniedException("You do not have permission to export calendar for this leave request");
+        }
+
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyyMMdd");
+        DateTimeFormatter utcFormat = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'");
+        String dtStamp = OffsetDateTime.now(java.time.ZoneOffset.UTC).format(utcFormat);
+        String dtStart = request.getStartDate().format(dtf);
+        String dtEnd = request.getEndDate().plusDays(1).format(dtf);
+
+        String employeeName = request.getUser().getFullName();
+        String leaveTypeName = request.getLeaveType().getName();
+        String summary = "Leave: " + leaveTypeName + " - " + employeeName;
+        String cleanReason = request.getReason() != null ? request.getReason().replace("\n", " ").replace("\r", " ") : "";
+        String description = "Employee: " + employeeName + "\\nLeave Type: " + leaveTypeName +
+                "\\nTotal Days: " + request.getTotalDays() + "\\nReason: " + cleanReason +
+                "\\nStatus: " + request.getStatus();
+
+        String icsContent = "BEGIN:VCALENDAR\r\n" +
+                "VERSION:2.0\r\n" +
+                "PRODID:-//Leave Management System//EN\r\n" +
+                "CALSCALE:GREGORIAN\r\n" +
+                "METHOD:PUBLISH\r\n" +
+                "BEGIN:VEVENT\r\n" +
+                "UID:leave-" + request.getId() + "@company.com\r\n" +
+                "DTSTAMP:" + dtStamp + "\r\n" +
+                "DTSTART;VALUE=DATE:" + dtStart + "\r\n" +
+                "DTEND;VALUE=DATE:" + dtEnd + "\r\n" +
+                "SUMMARY:" + summary + "\r\n" +
+                "DESCRIPTION:" + description + "\r\n" +
+                "STATUS:CONFIRMED\r\n" +
+                "TRANSP:OPAQUE\r\n" +
+                "END:VEVENT\r\n" +
+                "END:VCALENDAR\r\n";
+
+        return icsContent.getBytes(StandardCharsets.UTF_8);
     }
 }

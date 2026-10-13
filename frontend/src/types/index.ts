@@ -102,10 +102,12 @@ export interface LeaveApproval {
   approverId: string;
   approverName?: string;
   approverEmail?: string;
-  level: number;
+  level?: number;
+  stepOrder?: number;
   status: string;
   comments?: string;
   decidedAt?: string;
+  actionedAt?: string;
 }
 
 export interface LeaveRequest {
@@ -140,6 +142,71 @@ export interface SubmitLeaveRequestDto {
   isHalfDay?: boolean;
   halfDayPeriod?: 'MORNING' | 'AFTERNOON';
   delegateId?: string;
+}
+
+export interface DepartmentOverlapItem {
+  requestId: string;
+  userId: string;
+  employeeName: string;
+  employeeEmail: string;
+  departmentName: string;
+  leaveTypeName: string;
+  startDate: string;
+  endDate: string;
+  totalDays: number;
+  status: LeaveRequestStatus;
+}
+
+export type CompOffStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface CompOffRequest {
+  id: string;
+  userId: string;
+  employeeName: string;
+  employeeEmail: string;
+  departmentName?: string;
+  workedDate: string;
+  daysEarned: number;
+  reason: string;
+  status: CompOffStatus;
+  approverId?: string;
+  approverName?: string;
+  comments?: string;
+  actionedAt?: string;
+  createdAt?: string;
+}
+
+export interface SubmitCompOffRequestDto {
+  workedDate: string;
+  daysEarned?: number;
+  reason: string;
+}
+
+export type EncashmentStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface LeaveEncashmentRequest {
+  id: string;
+  userId: string;
+  employeeName: string;
+  employeeEmail: string;
+  departmentName?: string;
+  leaveTypeId: string;
+  leaveTypeName: string;
+  daysRequested: number;
+  year: number;
+  reason: string;
+  status: EncashmentStatus;
+  approvedById?: string;
+  approvedByName?: string;
+  comments?: string;
+  actionedAt?: string;
+  createdAt?: string;
+}
+
+export interface SubmitEncashmentRequestDto {
+  leaveTypeId: string;
+  daysRequested: number;
+  reason: string;
 }
 
 // Help Desk Domain Types

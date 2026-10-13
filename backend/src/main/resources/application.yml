@@ -70,12 +70,17 @@ app:
     last-name: ${ADMIN_LAST_NAME:Admin}
     job-title: ${ADMIN_JOB_TITLE:HR Administrator}
     phone: ${ADMIN_PHONE:+254700000000}
+  leave:
+    attachment-storage-dir: ${LEAVE_ATTACHMENT_STORAGE_DIR:uploads/leave}
+    max-attachment-size-bytes: ${MAX_ATTACHMENT_SIZE_BYTES:10485760} # 10MB
+    allowed-attachment-extensions: ${ALLOWED_ATTACHMENT_EXTENSIONS:pdf,png,jpg,jpeg,gif,webp,doc,docx}
   helpdesk:
     max-attachment-size-bytes: ${MAX_ATTACHMENT_SIZE_BYTES:10485760} # 10MB
     allowed-attachment-extensions: ${ALLOWED_ATTACHMENT_EXTENSIONS:pdf,png,jpg,jpeg,gif,webp,txt,csv,doc,docx,xls,xlsx,zip}
     attachment-storage-dir: ${ATTACHMENT_STORAGE_DIR:uploads/tickets}
   notification:
     slack-webhook-url: ${SLACK_WEBHOOK_URL:}
+    webhook-url: ${WEBHOOK_NOTIFICATION_URL:}
     from-email: ${MAIL_FROM:noreply@company.com}
   scheduling:
     sla-monitor-rate-ms: ${SLA_MONITOR_RATE_MS:60000}

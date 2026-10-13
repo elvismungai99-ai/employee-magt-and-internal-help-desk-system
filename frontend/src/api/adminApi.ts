@@ -84,4 +84,22 @@ export const adminApi = {
     const res = await apiClient.post<ApiResponse<any>>('/api/admin/jobs/carryover-expiry/trigger', payload);
     return res.data.data;
   },
+
+  exportLeaveBalancesCsv: async (year?: number): Promise<Blob> => {
+    const url = year ? `/api/admin/reports/leave-balances/export-csv?year=${year}` : '/api/admin/reports/leave-balances/export-csv';
+    const res = await apiClient.get(url, { responseType: 'blob' });
+    return res.data;
+  },
+
+  exportDepartmentAbsencesCsv: async (year?: number): Promise<Blob> => {
+    const url = year ? `/api/admin/reports/department-absences/export-csv?year=${year}` : '/api/admin/reports/department-absences/export-csv';
+    const res = await apiClient.get(url, { responseType: 'blob' });
+    return res.data;
+  },
+
+  exportLeaveLiabilityCsv: async (year?: number): Promise<Blob> => {
+    const url = year ? `/api/admin/reports/leave-liability/export-csv?year=${year}` : '/api/admin/reports/leave-liability/export-csv';
+    const res = await apiClient.get(url, { responseType: 'blob' });
+    return res.data;
+  },
 };

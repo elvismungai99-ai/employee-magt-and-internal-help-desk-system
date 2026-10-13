@@ -30,6 +30,9 @@ public class NotificationSender {
     @Value("${app.notification.slack-webhook-url:}")
     private String slackWebhookUrl;
 
+    @Value("${app.notification.webhook-url:}")
+    private String genericWebhookUrl;
+
     public NotificationSender(ObjectProvider<JavaMailSender> mailSenderProvider) {
         this.mailSenderProvider = mailSenderProvider;
         this.httpClient = HttpClient.newBuilder()
@@ -105,6 +108,36 @@ public class NotificationSender {
                 }
             } else {
                 log.info("DISPATCHED [SLACK] notification to {} (Slack webhook not configured, logged only): {}",
+                        recipientEmail != null ? recipientEmail : "SYSTEM",
+                        notification.getMessage());
+            }
+        } else if (notification.getChannel() == NotificationChannel.WEBHOOK) {
+            if (genericWebhookUrl != null && !genericWebhookUrl.isBlank()) {
+                try {
+                    String escapedMsg = notification.getMessage()
+                            .replace("\"", "\\\"")
+                            .replace("\n", "\\n");
+                    String jsonBody = String.format("{\"recipient\":\"%s\",\"message\":\"%s\",\"channel\":\"WEBHOOK\"}",
+                            recipientEmail != null ? recipientEmail : "SYSTEM", escapedMsg);
+                    HttpRequest request = HttpRequest.newBuilder()
+                            .uri(URI.create(genericWebhookUrl))
+                            .header("Content-Type", "application/json")
+                            .timeout(Duration.ofSeconds(10))
+                            .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                            .build();
+
+                    HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                    if (response.statusCode() >= 400) {
+                        log.warn("Generic webhook returned HTTP {}: {}", response.statusCode(), response.body());
+                    } else {
+                        log.info("Successfully posted notification to generic webhook");
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to post generic webhook notification: {}", e.getMessage());
+                    throw e;
+                }
+            } else {
+                log.info("DISPATCHED [WEBHOOK] notification to {} (webhook URL not configured, logged only): {}",
                         recipientEmail != null ? recipientEmail : "SYSTEM",
                         notification.getMessage());
             }

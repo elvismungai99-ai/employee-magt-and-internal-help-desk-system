@@ -1,5 +1,16 @@
 import { apiClient } from './client';
-import { ApiResponse, LeaveBalance, LeaveRequest, LeaveType, SubmitLeaveRequestDto } from '../types';
+import {
+  ApiResponse,
+  LeaveBalance,
+  LeaveRequest,
+  LeaveType,
+  SubmitLeaveRequestDto,
+  DepartmentOverlapItem,
+  CompOffRequest,
+  SubmitCompOffRequestDto,
+  LeaveEncashmentRequest,
+  SubmitEncashmentRequestDto,
+} from '../types';
 
 export const leaveApi = {
   getLeaveTypes: async (): Promise<LeaveType[]> => {
@@ -56,6 +67,94 @@ export const leaveApi = {
 
   cancelRequest: async (id: string): Promise<LeaveRequest> => {
     const res = await apiClient.post<ApiResponse<LeaveRequest>>(`/api/leave/requests/${id}/cancel`);
+    return res.data.data;
+  },
+
+  // 1. Leave Attachment Upload
+  uploadAttachment: async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await apiClient.post<ApiResponse<{ attachmentUrl: string }>>('/api/leave/requests/upload-attachment', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data.data.attachmentUrl;
+  },
+
+  // 3. Department Overlap Check
+  getDepartmentOverlap: async (startDate: string, endDate: string, departmentId?: string): Promise<DepartmentOverlapItem[]> => {
+    let url = `/api/leave/requests/department-overlap?startDate=${startDate}&endDate=${endDate}`;
+    if (departmentId) url += `&departmentId=${departmentId}`;
+    const res = await apiClient.get<ApiResponse<DepartmentOverlapItem[]>>(url);
+    return res.data.data;
+  },
+
+  // 6. External Calendar (.ics) Download
+  downloadCalendarIcs: async (requestId: string): Promise<Blob> => {
+    const res = await apiClient.get(`/api/leave/requests/${requestId}/calendar.ics`, {
+      responseType: 'blob',
+    });
+    return res.data;
+  },
+
+  // 4. Compensatory Off (Comp-Off)
+  submitCompOff: async (payload: SubmitCompOffRequestDto): Promise<CompOffRequest> => {
+    const res = await apiClient.post<ApiResponse<CompOffRequest>>('/api/leave/comp-off/request', payload);
+    return res.data.data;
+  },
+
+  getMyCompOffRequests: async (): Promise<CompOffRequest[]> => {
+    const res = await apiClient.get<ApiResponse<CompOffRequest[]>>('/api/leave/comp-off/my-requests');
+    return res.data.data;
+  },
+
+  getPendingCompOffRequests: async (): Promise<CompOffRequest[]> => {
+    const res = await apiClient.get<ApiResponse<CompOffRequest[]>>('/api/leave/comp-off/pending');
+    return res.data.data;
+  },
+
+  getAllCompOffRequests: async (): Promise<CompOffRequest[]> => {
+    const res = await apiClient.get<ApiResponse<CompOffRequest[]>>('/api/leave/comp-off/all');
+    return res.data.data;
+  },
+
+  approveCompOff: async (id: string, comments?: string): Promise<CompOffRequest> => {
+    const res = await apiClient.post<ApiResponse<CompOffRequest>>(`/api/leave/comp-off/${id}/approve`, { comments });
+    return res.data.data;
+  },
+
+  rejectCompOff: async (id: string, comments?: string): Promise<CompOffRequest> => {
+    const res = await apiClient.post<ApiResponse<CompOffRequest>>(`/api/leave/comp-off/${id}/reject`, { comments });
+    return res.data.data;
+  },
+
+  // 8. Leave Encashment
+  submitEncashment: async (payload: SubmitEncashmentRequestDto): Promise<LeaveEncashmentRequest> => {
+    const res = await apiClient.post<ApiResponse<LeaveEncashmentRequest>>('/api/leave/encashment/request', payload);
+    return res.data.data;
+  },
+
+  getMyEncashmentRequests: async (): Promise<LeaveEncashmentRequest[]> => {
+    const res = await apiClient.get<ApiResponse<LeaveEncashmentRequest[]>>('/api/leave/encashment/my-requests');
+    return res.data.data;
+  },
+
+  getPendingEncashmentRequests: async (): Promise<LeaveEncashmentRequest[]> => {
+    const res = await apiClient.get<ApiResponse<LeaveEncashmentRequest[]>>('/api/leave/encashment/pending');
+    return res.data.data;
+  },
+
+  getAllEncashmentRequests: async (): Promise<LeaveEncashmentRequest[]> => {
+    const res = await apiClient.get<ApiResponse<LeaveEncashmentRequest[]>>('/api/leave/encashment/all');
+    return res.data.data;
+  },
+
+  approveEncashment: async (id: string, comments?: string): Promise<LeaveEncashmentRequest> => {
+    const res = await apiClient.post<ApiResponse<LeaveEncashmentRequest>>(`/api/leave/encashment/${id}/approve`, { comments });
+    return res.data.data;
+  },
+
+  rejectEncashment: async (id: string, comments?: string): Promise<LeaveEncashmentRequest> => {
+    const res = await apiClient.post<ApiResponse<LeaveEncashmentRequest>>(`/api/leave/encashment/${id}/reject`, { comments });
     return res.data.data;
   },
 };

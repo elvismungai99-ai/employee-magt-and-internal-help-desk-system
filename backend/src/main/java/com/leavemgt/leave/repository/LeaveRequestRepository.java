@@ -27,6 +27,14 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, UUID
                                               @Param("endDate") LocalDate endDate,
                                               @Param("activeStatuses") Collection<LeaveRequestStatus> activeStatuses);
 
+    @Query("SELECT lr FROM LeaveRequest lr WHERE lr.user.department.id = :departmentId " +
+           "AND lr.status IN :activeStatuses " +
+           "AND lr.startDate <= :endDate AND lr.endDate >= :startDate")
+    List<LeaveRequest> findOverlappingDepartmentRequests(@Param("departmentId") UUID departmentId,
+                                                         @Param("startDate") LocalDate startDate,
+                                                         @Param("endDate") LocalDate endDate,
+                                                         @Param("activeStatuses") Collection<LeaveRequestStatus> activeStatuses);
+
     List<LeaveRequest> findAllByStatusOrderByCreatedAtDesc(LeaveRequestStatus status);
 
     @org.springframework.data.jpa.repository.Modifying

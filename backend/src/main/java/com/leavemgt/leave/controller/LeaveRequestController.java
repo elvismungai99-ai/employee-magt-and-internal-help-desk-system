@@ -2,16 +2,24 @@ package com.leavemgt.leave.controller;
 
 import com.leavemgt.common.dto.ApiResponse;
 import com.leavemgt.leave.dto.ApprovalDecisionRequest;
+import com.leavemgt.leave.dto.DepartmentOverlapResponse;
 import com.leavemgt.leave.dto.LeaveRequestResponse;
 import com.leavemgt.leave.dto.SubmitLeaveRequest;
 import com.leavemgt.leave.service.LeaveRequestService;
 import jakarta.validation.Valid;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -128,6 +136,70 @@ public class LeaveRequestController {
 
         LeaveRequestResponse response = leaveRequestService.cancelRequest(id, callerId);
         return ResponseEntity.ok(ApiResponse.success(response, "Leave request cancelled successfully"));
+    }
+
+    @GetMapping("/department-overlap")
+    public ResponseEntity<ApiResponse<List<DepartmentOverlapResponse>>> getDepartmentOverlap(
+            @RequestParam("startDate") @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam("endDate") @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(value = "departmentId", required = false) UUID departmentId,
+            Authentication authentication) {
+        UUID callerId = extractUserId(authentication);
+        if (callerId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Unauthorized"));
+        }
+
+        List<DepartmentOverlapResponse> overlaps = leaveRequestService.getDepartmentOverlap(callerId, startDate, endDate, departmentId);
+        return ResponseEntity.ok(ApiResponse.success(overlaps, "Department overlap retrieved successfully"));
+    }
+
+    @PostMapping(value = "/upload-attachment", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadAttachment(
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication) throws IOException {
+        UUID callerId = extractUserId(authentication);
+        if (callerId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Unauthorized"));
+        }
+
+        String attachmentUrl = leaveRequestService.uploadAttachmentFile(file, callerId);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(Map.of("attachmentUrl", attachmentUrl), "File uploaded successfully"));
+    }
+
+    @GetMapping("/attachments/{fileName:.+}")
+    public ResponseEntity<Resource> downloadAttachment(
+            @PathVariable("fileName") String fileName) throws IOException {
+        Resource resource = leaveRequestService.getAttachmentResource(fileName);
+        String contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+        String lower = fileName.toLowerCase();
+        if (lower.endsWith(".pdf")) contentType = "application/pdf";
+        else if (lower.endsWith(".png")) contentType = "image/png";
+        else if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) contentType = "image/jpeg";
+        else if (lower.endsWith(".webp")) contentType = "image/webp";
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileName + "\"")
+                .body(resource);
+    }
+
+    @GetMapping("/{id}/calendar.ics")
+    public ResponseEntity<byte[]> exportCalendar(
+            @PathVariable("id") UUID id,
+            Authentication authentication) {
+        UUID callerId = extractUserId(authentication);
+        if (callerId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        boolean isHrAdmin = isHrAdmin(authentication);
+        byte[] icsData = leaveRequestService.exportCalendarIcs(id, callerId, isHrAdmin);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/calendar; charset=UTF-8"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"leave-" + id + ".ics\"")
+                .body(icsData);
     }
 
     private UUID extractUserId(Authentication authentication) {

@@ -23,11 +23,23 @@ import {
   RefreshCw,
   Bookmark,
   StickyNote,
-  Trash2
+  Trash2,
+  Paperclip,
+  Download,
+  Coins,
+  Users
 } from 'lucide-react';
 import { leaveApi } from '../api/leaveApi';
 import { authApi } from '../api/authApi';
-import { LeaveBalance, LeaveRequest, LeaveType, UserProfile } from '../types';
+import {
+  LeaveBalance,
+  LeaveRequest,
+  LeaveType,
+  UserProfile,
+  CompOffRequest,
+  LeaveEncashmentRequest,
+  DepartmentOverlapItem
+} from '../types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -132,12 +144,41 @@ export const LeavePortalPage: React.FC = () => {
     startDate: '',
     endDate: '',
     reason: '',
+    attachmentUrl: '',
     isHalfDay: false,
     halfDayPeriod: 'MORNING' as 'MORNING' | 'AFTERNOON',
     delegateId: '',
   });
   const [applyError, setApplyError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+
+  // Department Overlap State
+  const [departmentOverlap, setDepartmentOverlap] = useState<DepartmentOverlapItem[]>([]);
+  const [isLoadingOverlap, setIsLoadingOverlap] = useState(false);
+
+  // Leave Details Modal State
+  const [selectedLeaveDetail, setSelectedLeaveDetail] = useState<LeaveRequest | null>(null);
+
+  // Compensatory Off (Comp-Off) State
+  const [myCompOffs, setMyCompOffs] = useState<CompOffRequest[]>([]);
+  const [isCompOffModalOpen, setIsCompOffModalOpen] = useState(false);
+  const [compOffForm, setCompOffForm] = useState({
+    workedDate: '',
+    daysEarned: 1.0,
+    reason: '',
+  });
+  const [isSubmittingCompOff, setIsSubmittingCompOff] = useState(false);
+
+  // Leave Encashment State
+  const [myEncashments, setMyEncashments] = useState<LeaveEncashmentRequest[]>([]);
+  const [isEncashmentModalOpen, setIsEncashmentModalOpen] = useState(false);
+  const [encashmentForm, setEncashmentForm] = useState({
+    leaveTypeId: '',
+    daysRequested: 1.0,
+    reason: '',
+  });
+  const [isSubmittingEncashment, setIsSubmittingEncashment] = useState(false);
 
   // Feedback notifications
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -145,26 +186,33 @@ export const LeavePortalPage: React.FC = () => {
   // Table filters & active tab
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
-  const [activeTab, setActiveTab] = useState<'MY_REQUESTS' | 'APPROVALS' | 'ALL_ACTIVITY'>('MY_REQUESTS');
+  const [activeTab, setActiveTab] = useState<'MY_REQUESTS' | 'APPROVALS' | 'ALL_ACTIVITY' | 'COMP_OFF' | 'ENCASHMENT'>('MY_REQUESTS');
 
   // Load backend data
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [balData, typesData, myReqData, colleaguesData] = await Promise.all([
+      const [balData, typesData, myReqData, colleaguesData, compOffData, encashData] = await Promise.all([
         leaveApi.getMyBalances(currentYear).catch(() => []),
         leaveApi.getLeaveTypes().catch(() => []),
         leaveApi.getMyRequests().catch(() => []),
         authApi.getColleagues().catch(() => []),
+        leaveApi.getMyCompOffRequests().catch(() => []),
+        leaveApi.getMyEncashmentRequests().catch(() => []),
       ]);
 
       setBalances(balData);
       setLeaveTypes(typesData);
       setMyRequests(myReqData);
       setColleagues(colleaguesData.filter((c) => c.id !== user?.id));
+      setMyCompOffs(compOffData);
+      setMyEncashments(encashData);
 
       if (typesData.length > 0 && !applyForm.leaveTypeId) {
         setApplyForm((prev) => ({ ...prev, leaveTypeId: typesData[0].id }));
+      }
+      if (typesData.length > 0 && !encashmentForm.leaveTypeId) {
+        setEncashmentForm((prev) => ({ ...prev, leaveTypeId: typesData[0].id }));
       }
 
       // If user has manager or admin privileges, fetch approvals and team activity
@@ -408,6 +456,7 @@ export const LeavePortalPage: React.FC = () => {
         startDate: applyForm.startDate,
         endDate: effectiveEndDate,
         reason: applyForm.reason.trim(),
+        attachmentUrl: applyForm.attachmentUrl || undefined,
         isHalfDay: applyForm.isHalfDay,
         halfDayPeriod: applyForm.isHalfDay ? applyForm.halfDayPeriod : undefined,
         delegateId: applyForm.delegateId || undefined,
@@ -425,10 +474,12 @@ export const LeavePortalPage: React.FC = () => {
         startDate: '',
         endDate: '',
         reason: '',
+        attachmentUrl: '',
         isHalfDay: false,
         halfDayPeriod: 'MORNING',
         delegateId: '',
       });
+      setDepartmentOverlap([]);
 
       // Reload balances and request queue
       await loadData();
@@ -437,6 +488,133 @@ export const LeavePortalPage: React.FC = () => {
       setApplyError(msg);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Department Overlap Live Fetcher
+  useEffect(() => {
+    if (isApplyModalOpen && applyForm.startDate && (applyForm.isHalfDay || applyForm.endDate)) {
+      const endD = applyForm.isHalfDay ? applyForm.startDate : applyForm.endDate;
+      let isMounted = true;
+      setIsLoadingOverlap(true);
+      leaveApi.getDepartmentOverlap(applyForm.startDate, endD)
+        .then((data) => {
+          if (isMounted) setDepartmentOverlap(data);
+        })
+        .catch(() => {
+          if (isMounted) setDepartmentOverlap([]);
+        })
+        .finally(() => {
+          if (isMounted) setIsLoadingOverlap(false);
+        });
+      return () => {
+        isMounted = false;
+      };
+    } else {
+      setDepartmentOverlap([]);
+    }
+  }, [isApplyModalOpen, applyForm.startDate, applyForm.endDate, applyForm.isHalfDay]);
+
+  // Handle Attachment Upload in Apply Form
+  const handleAttachmentFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingAttachment(true);
+    setApplyError(null);
+    try {
+      const url = await leaveApi.uploadAttachment(file);
+      setApplyForm((prev) => ({ ...prev, attachmentUrl: url }));
+      setFeedback({
+        type: 'success',
+        message: `Document '${file.name}' attached successfully.`,
+      });
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Failed to upload attachment.';
+      setApplyError(msg);
+    } finally {
+      setIsUploadingAttachment(false);
+    }
+  };
+
+  // 1-Click Calendar (.ics) Download
+  const handleDownloadIcs = async (requestId: string, leaveName: string) => {
+    try {
+      const blob = await leaveApi.downloadCalendarIcs(requestId);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `leave-${requestId}.ics`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setFeedback({
+        type: 'success',
+        message: `Calendar invitation (.ics) downloaded for ${leaveName}. Sync ready with Google & Outlook Calendar.`,
+      });
+    } catch {
+      setFeedback({
+        type: 'error',
+        message: 'Unable to generate calendar export file.',
+      });
+    }
+  };
+
+  // Compensatory Off Submit
+  const handleCompOffSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmittingCompOff(true);
+    try {
+      await leaveApi.submitCompOff({
+        workedDate: compOffForm.workedDate,
+        daysEarned: Number(compOffForm.daysEarned) || 1.0,
+        reason: compOffForm.reason.trim(),
+      });
+      setIsCompOffModalOpen(false);
+      setCompOffForm({ workedDate: '', daysEarned: 1.0, reason: '' });
+      setFeedback({
+        type: 'success',
+        message: 'Compensatory off claim submitted successfully for review.',
+      });
+      const updated = await leaveApi.getMyCompOffRequests();
+      setMyCompOffs(updated);
+      await loadData();
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Failed to submit compensatory off claim.';
+      setFeedback({ type: 'error', message: msg });
+    } finally {
+      setIsSubmittingCompOff(false);
+    }
+  };
+
+  // Leave Encashment Submit
+  const handleEncashmentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmittingEncashment(true);
+    try {
+      await leaveApi.submitEncashment({
+        leaveTypeId: encashmentForm.leaveTypeId,
+        daysRequested: Number(encashmentForm.daysRequested),
+        reason: encashmentForm.reason.trim(),
+      });
+      setIsEncashmentModalOpen(false);
+      setEncashmentForm({
+        leaveTypeId: leaveTypes[0]?.id || '',
+        daysRequested: 1.0,
+        reason: '',
+      });
+      setFeedback({
+        type: 'success',
+        message: 'Leave encashment request submitted successfully for HR Admin review.',
+      });
+      const updated = await leaveApi.getMyEncashmentRequests();
+      setMyEncashments(updated);
+      await loadData();
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Failed to submit leave encashment request.';
+      setFeedback({ type: 'error', message: msg });
+    } finally {
+      setIsSubmittingEncashment(false);
     }
   };
 
@@ -511,6 +689,29 @@ export const LeavePortalPage: React.FC = () => {
       return matchesSearch && matchesStatus;
     });
   }, [activeTab, myRequests, pendingApprovals, allRequests, searchQuery, statusFilter]);
+
+  // Filtered Comp-Off claims
+  const displayedCompOffs = useMemo(() => {
+    return myCompOffs.filter((item) => {
+      const matchesSearch =
+        (item.reason || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.employeeName || '').toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'ALL' || item.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [myCompOffs, searchQuery, statusFilter]);
+
+  // Filtered Encashment requests
+  const displayedEncashments = useMemo(() => {
+    return myEncashments.filter((item) => {
+      const matchesSearch =
+        (item.reason || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.leaveTypeName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.employeeName || '').toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'ALL' || item.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [myEncashments, searchQuery, statusFilter]);
 
   // Overall totals calculation
   const totalAvailableAcrossTypes = useMemo(() => {
@@ -598,12 +799,29 @@ export const LeavePortalPage: React.FC = () => {
             </button>
             <button
               type="button"
+              onClick={() => setIsCompOffModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-white hover:bg-teal-50 px-3 py-2 text-xs font-semibold text-[#0e4a5c] shadow-2xs transition cursor-pointer"
+            >
+              <Briefcase className="h-3.5 w-3.5" />
+              <span>Claim Comp-Off</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsEncashmentModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-white hover:bg-teal-50 px-3 py-2 text-xs font-semibold text-[#0e4a5c] shadow-2xs transition cursor-pointer"
+            >
+              <Coins className="h-3.5 w-3.5" />
+              <span>Request Encashment</span>
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 setApplyForm({
                   leaveTypeId: leaveTypes[0]?.id || '',
                   startDate: '',
                   endDate: '',
                   reason: '',
+                  attachmentUrl: '',
                   isHalfDay: false,
                   halfDayPeriod: 'MORNING',
                   delegateId: '',
@@ -1159,6 +1377,32 @@ export const LeavePortalPage: React.FC = () => {
                 All Team Activity ({allRequests.length})
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('COMP_OFF')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-xl transition ${
+                activeTab === 'COMP_OFF'
+                  ? 'bg-[#0e4a5c] text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-[#0d2836] hover:bg-slate-100'
+              }`}
+            >
+              <Briefcase className="h-3.5 w-3.5" />
+              <span>Comp-Off ({myCompOffs.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('ENCASHMENT')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-xl transition ${
+                activeTab === 'ENCASHMENT'
+                  ? 'bg-[#0e4a5c] text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-[#0d2836] hover:bg-slate-100'
+              }`}
+            >
+              <Coins className="h-3.5 w-3.5" />
+              <span>Encashment ({myEncashments.length})</span>
+            </button>
           </div>
 
           {/* Search & Filter Controls */}
@@ -1187,122 +1431,309 @@ export const LeavePortalPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Requests Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-teal-50 bg-[#f8faf9] text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                <th className="py-3 px-4">Employee</th>
-                <th className="py-3 px-4">Leave Type</th>
-                <th className="py-3 px-4">Period</th>
-                <th className="py-3 px-4">Working Days</th>
-                <th className="py-3 px-4">Reason</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-teal-50 text-xs">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={7} className="py-6 px-4">
-                    <TableSkeleton rows={4} cols={7} />
-                  </td>
+        {/* Content Table by Active Tab */}
+        {activeTab === 'COMP_OFF' ? (
+          <div className="overflow-x-auto">
+            <div className="p-4 bg-[#f8faf9] border-b border-teal-50 flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-bold text-[#0d2836]">Compensatory Off (Comp-Off / TOIL) Claims</h4>
+                <p className="text-[11px] text-slate-500">Track and submit compensatory days earned for extra work or weekend duty.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCompOffModalOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#0e4a5c] hover:bg-[#083543] px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Claim Comp-Off</span>
+              </button>
+            </div>
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-teal-50 bg-[#f8faf9] text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="py-3 px-4">Date Worked</th>
+                  <th className="py-3 px-4">Days Earned</th>
+                  <th className="py-3 px-4">Reason / Assignment</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4">Approver</th>
+                  <th className="py-3 px-4 text-right">Created Date</th>
                 </tr>
-              ) : displayedRequests.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-10 text-center text-slate-400">
-                    No leave requests found for this filter.
-                  </td>
-                </tr>
-              ) : (
-                displayedRequests.map((req) => {
-                  const isOwner = user?.id === req.userId;
-                  return (
-                    <tr key={req.id} className="hover:bg-[#f6faf8] transition-colors">
-                      <td className="py-3.5 px-4">
-                        <div>
-                          <p className="font-bold text-[#0d2836]">
-                            {req.employeeName || user?.fullName || 'Employee'}
-                          </p>
-                          <p className="text-[10px] text-slate-400">
-                            {req.employeeEmail || user?.email}
-                          </p>
-                        </div>
-                      </td>
-
-                      <td className="py-3.5 px-4 font-semibold text-[#0e4a5c]">
-                        {req.leaveTypeName || req.leaveTypeCode || 'Leave'}
-                      </td>
-
-                      <td className="py-3.5 px-4 text-slate-700 whitespace-nowrap">
-                        <div>
-                          <span>{req.startDate}{req.startDate !== req.endDate ? ` to ${req.endDate}` : ''}</span>
-                          {req.isHalfDay && (
-                            <span className="block text-[10px] font-semibold text-[#0e4a5c]">
-                              Half Day ({req.halfDayPeriod === 'AFTERNOON' ? 'Afternoon' : 'Morning'})
-                            </span>
-                          )}
-                          {req.delegateName && (
-                            <span className="block text-[10px] text-slate-500">
-                              Backup: {req.delegateName}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
+              </thead>
+              <tbody className="divide-y divide-teal-50 text-xs">
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={6} className="py-6 px-4">
+                      <TableSkeleton rows={3} cols={6} />
+                    </td>
+                  </tr>
+                ) : displayedCompOffs.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-10 text-center text-slate-400">
+                      No compensatory off claims found for this filter.
+                    </td>
+                  </tr>
+                ) : (
+                  displayedCompOffs.map((item) => (
+                    <tr key={item.id} className="hover:bg-[#f6faf8] transition-colors">
                       <td className="py-3.5 px-4 font-bold text-[#0d2836]">
-                        {req.totalDays} day{req.totalDays !== 1 ? 's' : ''}
+                        {item.workedDate}
                       </td>
-
-                      <td className="py-3.5 px-4 text-slate-600 max-w-xs truncate" title={req.reason}>
-                        {req.reason}
+                      <td className="py-3.5 px-4 font-bold text-[#0e4a5c]">
+                        {item.daysEarned} day{item.daysEarned !== 1 ? 's' : ''}
                       </td>
-
+                      <td className="py-3.5 px-4 text-slate-600 max-w-sm truncate" title={item.reason}>
+                        {item.reason}
+                      </td>
                       <td className="py-3.5 px-4">
-                        <StatusBadge status={req.status} />
+                        <StatusBadge status={item.status} />
                       </td>
-
-                      <td className="py-3.5 px-4 text-right">
-                        {/* If user is manager/admin and on pending approvals tab or viewing a pending request */}
-                        {hasAnyRole(['LINE_MANAGER', 'HR_ADMIN']) && req.status === 'PENDING' && !isOwner && (
-                          <div className="inline-flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => handleManagerDecision(req.id, 'APPROVE')}
-                              className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-2.5 py-1 text-xs font-bold transition shadow-xs"
-                            >
-                              <Check className="h-3 w-3" />
-                              <span>Approve</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleManagerDecision(req.id, 'REJECT')}
-                              className="inline-flex items-center gap-1 rounded-lg border border-rose-200 text-rose-700 hover:bg-rose-50 px-2.5 py-1 text-xs font-semibold transition"
-                            >
-                              <X className="h-3 w-3" />
-                              <span>Reject</span>
-                            </button>
-                          </div>
+                      <td className="py-3.5 px-4 text-slate-700">
+                        {item.approverName || <span className="text-slate-400 italic">Pending review</span>}
+                        {item.comments && (
+                          <span className="block text-[10px] text-slate-500 truncate italic">
+                            &ldquo;{item.comments}&rdquo;
+                          </span>
                         )}
-
-                        {/* If user is the owner and request is still PENDING, allow cancellation */}
-                        {isOwner && req.status === 'PENDING' && (
-                          <button
-                            type="button"
-                            onClick={() => handleCancelRequest(req.id)}
-                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 px-2.5 py-1 text-xs font-semibold transition"
-                          >
-                            <span>Cancel</span>
-                          </button>
-                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-right text-slate-400 text-[11px]">
+                        {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '-'}
                       </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : activeTab === 'ENCASHMENT' ? (
+          <div className="overflow-x-auto">
+            <div className="p-4 bg-[#f8faf9] border-b border-teal-50 flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-bold text-[#0d2836]">Leave Encashment Requests</h4>
+                <p className="text-[11px] text-slate-500">Submit requests to monetize unused statutory leave balances.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEncashmentModalOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#0e4a5c] hover:bg-[#083543] px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Request Encashment</span>
+              </button>
+            </div>
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-teal-50 bg-[#f8faf9] text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="py-3 px-4">Leave Type</th>
+                  <th className="py-3 px-4">Days Requested</th>
+                  <th className="py-3 px-4">Year</th>
+                  <th className="py-3 px-4">Reason / Notes</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4">HR Reviewer</th>
+                  <th className="py-3 px-4 text-right">Created Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-teal-50 text-xs">
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={7} className="py-6 px-4">
+                      <TableSkeleton rows={3} cols={7} />
+                    </td>
+                  </tr>
+                ) : displayedEncashments.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-10 text-center text-slate-400">
+                      No leave encashment requests found for this filter.
+                    </td>
+                  </tr>
+                ) : (
+                  displayedEncashments.map((item) => (
+                    <tr key={item.id} className="hover:bg-[#f6faf8] transition-colors">
+                      <td className="py-3.5 px-4 font-bold text-[#0e4a5c]">
+                        {item.leaveTypeName}
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-[#0d2836]">
+                        {item.daysRequested} day{item.daysRequested !== 1 ? 's' : ''}
+                      </td>
+                      <td className="py-3.5 px-4 font-medium text-slate-700">
+                        {item.year}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-600 max-w-sm truncate" title={item.reason}>
+                        {item.reason}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <StatusBadge status={item.status} />
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-700">
+                        {item.approvedByName || <span className="text-slate-400 italic">Pending HR review</span>}
+                        {item.comments && (
+                          <span className="block text-[10px] text-slate-500 truncate italic">
+                            &ldquo;{item.comments}&rdquo;
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-right text-slate-400 text-[11px]">
+                        {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '-'}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-teal-50 bg-[#f8faf9] text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="py-3 px-4">Employee</th>
+                  <th className="py-3 px-4">Leave Type</th>
+                  <th className="py-3 px-4">Period</th>
+                  <th className="py-3 px-4">Working Days</th>
+                  <th className="py-3 px-4">Reason &amp; Attachment</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-teal-50 text-xs">
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={7} className="py-6 px-4">
+                      <TableSkeleton rows={4} cols={7} />
+                    </td>
+                  </tr>
+                ) : displayedRequests.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-10 text-center text-slate-400">
+                      No leave requests found for this filter.
+                    </td>
+                  </tr>
+                ) : (
+                  displayedRequests.map((req) => {
+                    const isOwner = user?.id === req.userId;
+                    return (
+                      <tr key={req.id} className="hover:bg-[#f6faf8] transition-colors">
+                        <td className="py-3.5 px-4">
+                          <div>
+                            <p className="font-bold text-[#0d2836]">
+                              {req.employeeName || user?.fullName || 'Employee'}
+                            </p>
+                            <p className="text-[10px] text-slate-400">
+                              {req.employeeEmail || user?.email}
+                            </p>
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 font-semibold text-[#0e4a5c]">
+                          {req.leaveTypeName || req.leaveTypeCode || 'Leave'}
+                        </td>
+
+                        <td className="py-3.5 px-4 text-slate-700 whitespace-nowrap">
+                          <div>
+                            <span>{req.startDate}{req.startDate !== req.endDate ? ` to ${req.endDate}` : ''}</span>
+                            {req.isHalfDay && (
+                              <span className="block text-[10px] font-semibold text-[#0e4a5c]">
+                                Half Day ({req.halfDayPeriod === 'AFTERNOON' ? 'Afternoon' : 'Morning'})
+                              </span>
+                            )}
+                            {req.delegateName && (
+                              <span className="block text-[10px] text-slate-500">
+                                Backup: {req.delegateName}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 font-bold text-[#0d2836]">
+                          {req.totalDays} day{req.totalDays !== 1 ? 's' : ''}
+                        </td>
+
+                        <td className="py-3.5 px-4 text-slate-600 max-w-xs" title={req.reason}>
+                          <p className="truncate">{req.reason}</p>
+                          {req.attachmentUrl && (
+                            <a
+                              href={req.attachmentUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] text-[#0e4a5c] hover:underline font-bold mt-1"
+                            >
+                              <Paperclip className="h-3 w-3" />
+                              <span>View Attachment</span>
+                            </a>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <StatusBadge status={req.status} />
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="inline-flex items-center gap-1.5 justify-end">
+                            {/* View Details & Approval History Modal */}
+                            <button
+                              type="button"
+                              onClick={() => setSelectedLeaveDetail(req)}
+                              className="inline-flex items-center gap-1 rounded-lg border border-teal-200 bg-white hover:bg-teal-50 text-[#0e4a5c] px-2 py-1 text-xs font-semibold transition shadow-2xs"
+                              title="View details and multi-stage approval history"
+                            >
+                              <FileText className="h-3 w-3" />
+                              <span>Details</span>
+                            </button>
+
+                            {/* 1-Click Calendar Download (.ics) */}
+                            {req.status === 'APPROVED' && (
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadIcs(req.id, req.leaveTypeName || 'Leave')}
+                                className="inline-flex items-center gap-1 rounded-lg border border-teal-200 text-[#0e4a5c] hover:bg-[#e3f4f1] px-2 py-1 text-xs font-semibold transition"
+                                title="Download .ics Calendar Sync (RFC 5545)"
+                              >
+                                <Download className="h-3 w-3" />
+                                <span>.ics</span>
+                              </button>
+                            )}
+
+                            {/* If user is manager/admin and on pending approvals tab or viewing a pending request */}
+                            {hasAnyRole(['LINE_MANAGER', 'HR_ADMIN']) && req.status === 'PENDING' && !isOwner && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleManagerDecision(req.id, 'APPROVE')}
+                                  className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-2.5 py-1 text-xs font-bold transition shadow-xs"
+                                >
+                                  <Check className="h-3 w-3" />
+                                  <span>Approve</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleManagerDecision(req.id, 'REJECT')}
+                                  className="inline-flex items-center gap-1 rounded-lg border border-rose-200 text-rose-700 hover:bg-rose-50 px-2.5 py-1 text-xs font-semibold transition"
+                                >
+                                  <X className="h-3 w-3" />
+                                  <span>Reject</span>
+                                </button>
+                              </>
+                            )}
+
+                            {/* If user is the owner and request is still PENDING, allow cancellation */}
+                            {isOwner && req.status === 'PENDING' && (
+                              <button
+                                type="button"
+                                onClick={() => handleCancelRequest(req.id)}
+                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 px-2.5 py-1 text-xs font-semibold transition"
+                              >
+                                <span>Cancel</span>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* =========================================================================
@@ -1474,6 +1905,39 @@ export const LeavePortalPage: React.FC = () => {
               </div>
             )}
 
+            {/* Department Overlap / Team Coverage Alert (Step 3) */}
+            {isLoadingOverlap && (
+              <div className="rounded-xl border border-teal-100 bg-teal-50/50 p-2.5 text-xs text-teal-800 flex items-center gap-2">
+                <RefreshCw className="h-3.5 w-3.5 animate-spin text-[#0e4a5c]" />
+                <span>Checking department coverage for overlapping colleague leaves...</span>
+              </div>
+            )}
+            {!isLoadingOverlap && departmentOverlap.length > 0 && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                <div className="flex items-center gap-1.5 font-bold mb-1">
+                  <Users className="h-4 w-4 text-amber-700 shrink-0" />
+                  <span>Department Team Coverage Alert ({departmentOverlap.length} colleague{departmentOverlap.length > 1 ? 's' : ''} away)</span>
+                </div>
+                <p className="text-[11px] text-amber-800 mb-2">
+                  The following members in your department have scheduled or pending leave during this window:
+                </p>
+                <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                  {departmentOverlap.map((item) => (
+                    <div key={item.requestId} className="flex items-center justify-between bg-white/80 px-2.5 py-1.5 rounded-lg border border-amber-100 text-[11px]">
+                      <div>
+                        <span className="font-bold text-slate-900">{item.employeeName}</span>
+                        <span className="text-slate-500 ml-1.5 font-medium">({item.leaveTypeName})</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-semibold text-amber-900">{item.startDate} &rarr; {item.endDate}</span>
+                        <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">{item.status}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Reason */}
             <div>
               <label className="block text-xs font-bold text-[#0d2836] mb-1">
@@ -1489,6 +1953,32 @@ export const LeavePortalPage: React.FC = () => {
               />
             </div>
 
+            {/* Attachment Upload (Step 1) */}
+            <div>
+              <label className="block text-xs font-bold text-[#0d2836] mb-1">
+                Attachment / Medical Certificate / Supporting Document <span className="text-slate-400 font-normal">(Optional)</span>
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                  onChange={handleAttachmentFileChange}
+                  disabled={isUploadingAttachment}
+                  className="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#e3f4f1] file:text-[#0e4a5c] hover:file:bg-[#cbebe5] cursor-pointer"
+                />
+              </div>
+              {isUploadingAttachment && (
+                <p className="text-[11px] text-[#0e4a5c] mt-1 font-medium flex items-center gap-1">
+                  <RefreshCw className="h-3 w-3 animate-spin" /> Uploading attachment...
+                </p>
+              )}
+              {applyForm.attachmentUrl && !isUploadingAttachment && (
+                <p className="text-[11px] text-emerald-700 mt-1 flex items-center gap-1 font-semibold">
+                  <Check className="h-3.5 w-3.5" /> File attached and ready for submission
+                </p>
+              )}
+            </div>
+
             {/* Actions */}
             <div className="flex justify-end gap-2.5 pt-2 border-t border-teal-50">
               <button
@@ -1501,9 +1991,326 @@ export const LeavePortalPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSubmitting || isInsufficient}
-                className="flex items-center gap-1.5 rounded-xl bg-[#0e4a5c] hover:bg-[#083543] px-5 py-2 text-xs font-bold text-white shadow-xs disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-xl bg-[#0e4a5c] hover:bg-[#083543] px-5 py-2 text-xs font-bold text-white shadow-xs disabled:opacity-50 cursor-pointer"
               >
                 {isSubmitting ? 'Submitting...' : 'Submit Leave Request'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* =========================================================================
+          MODAL: LEAVE DETAILS & MULTI-STAGE APPROVAL TIMELINE (Step 2 & Step 6)
+         ========================================================================= */}
+      {selectedLeaveDetail && (
+        <Modal
+          isOpen={Boolean(selectedLeaveDetail)}
+          onClose={() => setSelectedLeaveDetail(null)}
+          title="Leave Request Details & Approvals"
+        >
+          <div className="space-y-4 text-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-teal-100">
+              <div>
+                <h4 className="font-bold text-sm text-[#0d2836]">
+                  {selectedLeaveDetail.employeeName || 'Employee'}
+                </h4>
+                <p className="text-slate-500 text-[11px]">{selectedLeaveDetail.employeeEmail}</p>
+              </div>
+              <StatusBadge status={selectedLeaveDetail.status} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 bg-[#f8faf9] p-3 rounded-xl border border-teal-50">
+              <div>
+                <span className="text-slate-400 text-[10px] block">Leave Type</span>
+                <span className="font-bold text-[#0e4a5c]">
+                  {selectedLeaveDetail.leaveTypeName || selectedLeaveDetail.leaveTypeCode}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 text-[10px] block">Total Working Days</span>
+                <span className="font-bold text-[#0d2836]">
+                  {selectedLeaveDetail.totalDays} day{selectedLeaveDetail.totalDays !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 text-[10px] block">Period</span>
+                <span className="font-semibold text-slate-800">
+                  {selectedLeaveDetail.startDate} &rarr; {selectedLeaveDetail.endDate}
+                  {selectedLeaveDetail.isHalfDay && ` (Half Day - ${selectedLeaveDetail.halfDayPeriod})`}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 text-[10px] block">Coverage Backup</span>
+                <span className="font-semibold text-slate-800">
+                  {selectedLeaveDetail.delegateName || 'None assigned'}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <span className="text-slate-400 text-[10px] block">Reason / Justification</span>
+              <p className="mt-1 text-slate-700 bg-white p-2.5 rounded-xl border border-teal-100">
+                {selectedLeaveDetail.reason}
+              </p>
+            </div>
+
+            {selectedLeaveDetail.attachmentUrl && (
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#e3f4f1]/50 border border-teal-200">
+                <div className="flex items-center gap-2">
+                  <Paperclip className="h-4 w-4 text-[#0e4a5c]" />
+                  <span className="font-semibold text-[#0d2836]">Attached Supporting Document</span>
+                </div>
+                <a
+                  href={selectedLeaveDetail.attachmentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1 rounded-lg bg-[#0e4a5c] text-white font-bold hover:bg-[#083543] transition"
+                >
+                  Download / View
+                </a>
+              </div>
+            )}
+
+            {/* Multi-Stage Approval Routing & Progression Timeline (Step 2) */}
+            <div className="pt-2 border-t border-teal-100">
+              <div className="flex items-center gap-1.5 mb-2 font-bold text-[#0d2836]">
+                <ShieldCheck className="h-4 w-4 text-[#0e4a5c]" />
+                <span>Multi-Stage Approval Hierarchy &amp; Audit Trail</span>
+              </div>
+
+              {selectedLeaveDetail.approvals && selectedLeaveDetail.approvals.length > 0 ? (
+                <div className="space-y-2">
+                  {selectedLeaveDetail.approvals.map((appr, idx) => (
+                    <div
+                      key={appr.id || idx}
+                      className="p-3 rounded-xl border border-teal-100 bg-[#fafcfb] flex items-center justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-[#0d2836]">
+                            Stage {appr.stepOrder ?? idx + 1}: {appr.approverName || 'Designated Approver'}
+                          </span>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                              appr.status === 'APPROVED'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : appr.status === 'REJECTED'
+                                ? 'bg-rose-100 text-rose-800'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                          >
+                            {appr.status}
+                          </span>
+                        </div>
+                        {appr.approverEmail && (
+                          <p className="text-[10px] text-slate-400">{appr.approverEmail}</p>
+                        )}
+                        {appr.comments && (
+                          <p className="text-[11px] text-slate-600 mt-1 italic">
+                            &ldquo;{appr.comments}&rdquo;
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right text-[10px] text-slate-400">
+                        {appr.actionedAt
+                          ? new Date(appr.actionedAt).toLocaleDateString()
+                          : 'Pending Action'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-3 rounded-xl bg-slate-50 text-slate-500 italic text-[11px]">
+                  Standard direct manager review routing in effect.
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between pt-3 border-t border-teal-100">
+              {selectedLeaveDetail.status === 'APPROVED' ? (
+                <button
+                  type="button"
+                  onClick={() => handleDownloadIcs(selectedLeaveDetail.id, selectedLeaveDetail.leaveTypeName || 'Leave')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-teal-200 text-[#0e4a5c] hover:bg-[#e3f4f1] font-bold transition cursor-pointer"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Download .ics Calendar File</span>
+                </button>
+              ) : <div />}
+
+              <button
+                type="button"
+                onClick={() => setSelectedLeaveDetail(null)}
+                className="px-4 py-1.5 rounded-xl border border-teal-200 text-slate-600 hover:bg-slate-50 font-semibold cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* =========================================================================
+          MODAL: CLAIM COMPENSATORY OFF (Step 4)
+         ========================================================================= */}
+      {isCompOffModalOpen && (
+        <Modal
+          isOpen={isCompOffModalOpen}
+          onClose={() => setIsCompOffModalOpen(false)}
+          title="Claim Compensatory Off (Comp-Off / TOIL)"
+        >
+          <form onSubmit={handleCompOffSubmit} className="space-y-4">
+            <div>
+              <p className="text-xs text-slate-600 mb-3">
+                Claim compensatory off for overtime, weekend support, or public holiday duty. Once approved by your manager, compensatory days will be credited directly to your leave balance.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[#0d2836] mb-1">
+                Worked Date <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="date"
+                required
+                value={compOffForm.workedDate}
+                onChange={(e) => setCompOffForm({ ...compOffForm, workedDate: e.target.value })}
+                className="w-full rounded-xl border border-teal-200/90 bg-white px-3 py-2 text-xs text-slate-800 focus:border-[#0e4a5c] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[#0d2836] mb-1">
+                Days Earned <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="number"
+                step="0.5"
+                min="0.5"
+                max="5.0"
+                required
+                value={compOffForm.daysEarned}
+                onChange={(e) => setCompOffForm({ ...compOffForm, daysEarned: parseFloat(e.target.value) || 1.0 })}
+                className="w-full rounded-xl border border-teal-200/90 bg-white px-3 py-2 text-xs text-slate-800 focus:border-[#0e4a5c] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[#0d2836] mb-1">
+                Reason / Duty Description <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                required
+                rows={3}
+                placeholder="Explain the duties or system maintenance performed outside normal working hours..."
+                value={compOffForm.reason}
+                onChange={(e) => setCompOffForm({ ...compOffForm, reason: e.target.value })}
+                className="w-full rounded-xl border border-teal-200/90 bg-white px-3 py-2 text-xs text-slate-800 focus:border-[#0e4a5c] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c]"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2.5 pt-2 border-t border-teal-50">
+              <button
+                type="button"
+                onClick={() => setIsCompOffModalOpen(false)}
+                className="rounded-xl border border-teal-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmittingCompOff}
+                className="flex items-center gap-1.5 rounded-xl bg-[#0e4a5c] hover:bg-[#083543] px-5 py-2 text-xs font-bold text-white shadow-xs disabled:opacity-50 cursor-pointer"
+              >
+                {isSubmittingCompOff ? 'Submitting...' : 'Submit Claim'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* =========================================================================
+          MODAL: SUBMIT LEAVE ENCASHMENT (Step 8)
+         ========================================================================= */}
+      {isEncashmentModalOpen && (
+        <Modal
+          isOpen={isEncashmentModalOpen}
+          onClose={() => setIsEncashmentModalOpen(false)}
+          title="Submit Leave Encashment Request"
+        >
+          <form onSubmit={handleEncashmentSubmit} className="space-y-4">
+            <div>
+              <p className="text-xs text-slate-600 mb-3">
+                Request financial reimbursement for unused annual leave days. Upon HR Admin approval, the encashed days will be deducted from your leave quota and forwarded to payroll.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[#0d2836] mb-1">
+                Leave Type <span className="text-rose-500">*</span>
+              </label>
+              <select
+                required
+                value={encashmentForm.leaveTypeId}
+                onChange={(e) => setEncashmentForm({ ...encashmentForm, leaveTypeId: e.target.value })}
+                className="w-full rounded-xl border border-teal-200/90 bg-white px-3 py-2 text-xs text-slate-800 focus:border-[#0e4a5c] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c]"
+              >
+                {leaveTypes.map((t) => {
+                  const bal = balances.find((b) => b.leaveTypeId === t.id);
+                  const avail = bal ? Number(bal.availableDays) || 0 : 0;
+                  return (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.code}) &mdash; {avail} days available
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[#0d2836] mb-1">
+                Days to Encash <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="number"
+                step="0.5"
+                min="0.5"
+                required
+                value={encashmentForm.daysRequested}
+                onChange={(e) => setEncashmentForm({ ...encashmentForm, daysRequested: parseFloat(e.target.value) || 1.0 })}
+                className="w-full rounded-xl border border-teal-200/90 bg-white px-3 py-2 text-xs text-slate-800 focus:border-[#0e4a5c] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[#0d2836] mb-1">
+                Reason / Notes for HR Payroll <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                required
+                rows={3}
+                placeholder="Year-end encashment of unused annual leave days as per company policy..."
+                value={encashmentForm.reason}
+                onChange={(e) => setEncashmentForm({ ...encashmentForm, reason: e.target.value })}
+                className="w-full rounded-xl border border-teal-200/90 bg-white px-3 py-2 text-xs text-slate-800 focus:border-[#0e4a5c] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c]"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2.5 pt-2 border-t border-teal-50">
+              <button
+                type="button"
+                onClick={() => setIsEncashmentModalOpen(false)}
+                className="rounded-xl border border-teal-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmittingEncashment}
+                className="flex items-center gap-1.5 rounded-xl bg-[#0e4a5c] hover:bg-[#083543] px-5 py-2 text-xs font-bold text-white shadow-xs disabled:opacity-50 cursor-pointer"
+              >
+                {isSubmittingEncashment ? 'Submitting...' : 'Submit Encashment'}
               </button>
             </div>
           </form>

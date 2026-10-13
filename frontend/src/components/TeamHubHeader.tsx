@@ -11,6 +11,7 @@ import {
   Plus,
   Bell,
   CheckCircle2,
+  Check,
   Clock,
   Sparkles,
   Ticket
@@ -70,8 +71,19 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
     ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase() || 'EM'
     : 'EM';
 
-  // Dynamic interactive notifications
-  const [notifications, setNotifications] = useState<Array<{
+  // User-scoped localStorage persistence key
+  const userStorageKey = `read_notifications_${user?.id || user?.employeeCode || 'default'}`;
+
+  const getStoredReadIds = (): string[] => {
+    try {
+      const stored = localStorage.getItem(userStorageKey);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  interface SystemNotification {
     id: string;
     title: string;
     message: string;
@@ -79,33 +91,17 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
     read: boolean;
     type: 'leave' | 'ticket' | 'admin' | 'approval';
     link: string;
-  }>>([
-    {
-      id: '1',
-      title: 'Leave Policy Active',
-      message: 'Kenyan statutory holidays & public calendar active for working day calculations.',
-      time: 'Just now',
-      read: false,
-      type: 'leave',
-      link: '/leave',
-    },
-    {
-      id: '2',
-      title: 'Help Desk SLA Monitor',
-      message: 'Business-hours SLA policies (08:00–17:00) active with auto-pause on pending requests.',
-      time: '10m ago',
-      read: false,
-      type: 'ticket',
-      link: '/helpdesk',
-    },
-  ]);
+  }
+
+  const [notifications, setNotifications] = useState<SystemNotification[]>([]);
 
   useEffect(() => {
-    const list = [...notifications];
-    if (hasRole('HR_ADMIN') && !list.some((n) => n.id === 'admin-approvals')) {
-      list.unshift({
+    const items: SystemNotification[] = [];
+
+    if (hasRole('HR_ADMIN')) {
+      items.push({
         id: 'admin-approvals',
-        title: 'Employee Approvals',
+        title: 'Employee Approvals & Quotas',
         message: 'Review newly registered staff, assign managers, and allocate leave quotas.',
         time: 'Active',
         read: false,
@@ -113,10 +109,11 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
         link: '/admin',
       });
     }
-    if (hasRole('LINE_MANAGER') && !list.some((n) => n.id === 'manager-approvals')) {
-      list.unshift({
+
+    if (hasRole('LINE_MANAGER')) {
+      items.push({
         id: 'manager-approvals',
-        title: 'Pending Staff Leave',
+        title: 'Pending Staff Leave Requests',
         message: 'Review and approve leave applications submitted by your reporting staff.',
         time: 'Active',
         read: false,
@@ -124,8 +121,9 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
         link: '/approvals',
       });
     }
-    if (hasRole('SUPPORT_AGENT') && !list.some((n) => n.id === 'agent-triage')) {
-      list.unshift({
+
+    if (hasRole('SUPPORT_AGENT')) {
+      items.push({
         id: 'agent-triage',
         title: 'Support Triage Queue',
         message: 'Incoming IT, HR, and facilities tickets awaiting claim and resolution.',
@@ -135,21 +133,75 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
         link: '/agent-queue',
       });
     }
-    setNotifications(list);
-  }, [roles]);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+    items.push({
+      id: 'leave-policy',
+      title: 'Leave Policy & Calendar Active',
+      message: 'Kenyan statutory holidays & public calendar active for working day calculations.',
+      time: 'Just now',
+      read: false,
+      type: 'leave',
+      link: '/leave',
+    });
+
+    items.push({
+      id: 'helpdesk-sla',
+      title: 'Help Desk SLA Monitor',
+      message: 'Business-hours SLA policies (08:00–17:00) active with auto-pause on pending requests.',
+      time: '10m ago',
+      read: false,
+      type: 'ticket',
+      link: '/helpdesk',
+    });
+
+    const readIds = getStoredReadIds();
+    setNotifications(
+      items.map((item) => ({
+        ...item,
+        read: readIds.includes(item.id),
+      }))
+    );
+  }, [roles, user?.id]);
+
+  // Only unread notifications are displayed in the active notifications section
+  const unreadNotifications = notifications.filter((n) => !n.read);
+  const unreadCount = unreadNotifications.length;
+
+  const markSingleRead = (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+    try {
+      const readIds = getStoredReadIds();
+      if (!readIds.includes(id)) {
+        localStorage.setItem(userStorageKey, JSON.stringify([...readIds, id]));
+      }
+    } catch {
+      // Ignore
+    }
+  };
 
   const markAllRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    try {
+      const allIds = notifications.map((n) => n.id);
+      localStorage.setItem(userStorageKey, JSON.stringify(allIds));
+    } catch {
+      // Ignore
+    }
   };
 
-  const handleNotificationClick = (item: (typeof notifications)[0]) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === item.id ? { ...n, read: true } : n))
-    );
+  const handleNotificationClick = (item: SystemNotification) => {
+    markSingleRead(item.id);
     setNotificationsOpen(false);
     navigate(item.link);
+  };
+
+  const handleResetNotifications = () => {
+    try {
+      localStorage.removeItem(userStorageKey);
+    } catch {}
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: false })));
   };
 
   return (
@@ -254,42 +306,80 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
           </button>
 
           {notificationsOpen && (
-            <div className="absolute right-0 mt-2 w-80 rounded-2xl border border-teal-100 bg-white p-3 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100">
+            <div className="absolute right-0 mt-2 w-80 sm:w-88 rounded-2xl border border-teal-100 bg-white p-3 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100">
               <div className="flex items-center justify-between pb-2 mb-2 border-b border-teal-50">
-                <span className="text-xs font-bold text-[#0d2836]">System Activity &amp; Alerts</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-[#0d2836]">System Activity &amp; Alerts</span>
+                  {unreadCount > 0 && (
+                    <span className="text-[10px] bg-teal-50 text-[#0e4a5c] px-2 py-0.5 rounded-full font-bold border border-teal-200/60">
+                      {unreadCount}
+                    </span>
+                  )}
+                </div>
                 {unreadCount > 0 && (
                   <button
                     type="button"
                     onClick={markAllRead}
-                    className="text-[10px] font-semibold text-[#0e4a5c] hover:underline"
+                    className="text-[10px] font-semibold text-[#0e4a5c] hover:underline cursor-pointer"
                   >
                     Mark all read
                   </button>
                 )}
               </div>
 
-              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                {notifications.map((n) => (
-                  <div
-                    key={n.id}
-                    onClick={() => handleNotificationClick(n)}
-                    className={`p-2.5 rounded-xl border text-xs transition cursor-pointer hover:shadow-2xs ${
-                      n.read
-                        ? 'bg-white border-slate-100 text-slate-600 hover:bg-[#f8fbfb]'
-                        : 'bg-[#f0f9f8] border-teal-200 text-[#0d2836] hover:bg-[#e6f4f2]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between font-bold mb-0.5">
-                      <span className="flex items-center gap-1.5">
-                        <span className={`w-1.5 h-1.5 rounded-full ${n.read ? 'bg-slate-300' : 'bg-[#0e4a5c]'}`} />
-                        {n.title}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-normal">{n.time}</span>
+              {unreadNotifications.length > 0 ? (
+                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                  {unreadNotifications.map((n) => (
+                    <div
+                      key={n.id}
+                      onClick={() => handleNotificationClick(n)}
+                      className="group relative p-2.5 rounded-xl border border-teal-200/90 bg-[#f0f9f8] text-[#0d2836] text-xs transition cursor-pointer hover:bg-[#e6f4f2] hover:shadow-2xs"
+                    >
+                      <div className="flex items-center justify-between font-bold mb-0.5">
+                        <span className="flex items-center gap-1.5 min-w-0 pr-6">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#0e4a5c] shrink-0" />
+                          <span className="truncate">{n.title}</span>
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-normal shrink-0">{n.time}</span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 pl-3 leading-relaxed">{n.message}</p>
+                      
+                      {/* Mark single notification as read button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          markSingleRead(n.id);
+                        }}
+                        title="Mark as read"
+                        aria-label="Mark as read"
+                        className="absolute top-2 right-2 p-1 rounded-lg text-slate-400 hover:text-teal-700 hover:bg-teal-100/70 transition opacity-80 sm:opacity-0 group-hover:opacity-100 cursor-pointer"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                      </button>
                     </div>
-                    <p className="text-[11px] text-slate-600 pl-3">{n.message}</p>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-7 px-4 text-center">
+                  <div className="w-10 h-10 rounded-full bg-teal-50 dark:bg-teal-950/60 text-[#0e4a5c] dark:text-[#38bdf8] flex items-center justify-center mx-auto mb-2 shadow-xs border border-teal-100 dark:border-teal-900/40">
+                    <CheckCircle2 className="w-5 h-5" />
                   </div>
-                ))}
-              </div>
+                  <p className="text-xs font-bold text-[#0d2836] dark:text-slate-200">
+                    No new notifications
+                  </p>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                    You're all caught up!
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleResetNotifications}
+                    className="text-[10px] font-semibold text-[#0e4a5c] dark:text-[#38bdf8] hover:underline mt-3 inline-block cursor-pointer"
+                  >
+                    Restore notifications
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

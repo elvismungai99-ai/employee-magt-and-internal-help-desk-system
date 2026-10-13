@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { adminApi } from '../api/adminApi';
 import { AccrualRunResult, EventOutboxItem, PageResponse, SlaMonitorRunResult, UserProfile } from '../types';
 import { Modal } from '../components/Modal';
 import { Alert } from '../components/Alert';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { TableSkeleton } from '../components/Skeleton';
-import { Search } from 'lucide-react';
+import { Search, RefreshCw } from 'lucide-react';
 
 export const AdminDashboardPage: React.FC = () => {
   const [lastAccrual, setLastAccrual] = useState<AccrualRunResult | null>(null);
@@ -14,6 +14,11 @@ export const AdminDashboardPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [isCheckingSla, setIsCheckingSla] = useState<boolean>(false);
+
+  const hierarchyFormRef = useRef<HTMLDivElement>(null);
+  const managerSelectRef = useRef<HTMLSelectElement>(null);
 
   // Generic Confirmation Dialog State
   const [confirmAction, setConfirmAction] = useState<{
@@ -55,8 +60,9 @@ export const AdminDashboardPage: React.FC = () => {
   // Feedback Alert
   const [pageAlert, setPageAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const loadAdminData = async (silent = false) => {
-    if (!silent) {
+  const loadAdminData = async (silent: boolean = false) => {
+    const isSilent = silent === true;
+    if (!isSilent) {
       setIsLoading(true);
     }
     try {
@@ -74,21 +80,54 @@ export const AdminDashboardPage: React.FC = () => {
       if (usersRes) setUsers(usersRes);
       if (pendingRes) setPendingUsers(pendingRes);
     } catch (err: any) {
-      if (!silent) {
+      if (!isSilent) {
         setPageAlert({
           type: 'error',
           message: err.response?.data?.message || 'Failed to load admin telemetry.',
         });
       }
     } finally {
-      if (!silent) {
+      if (!isSilent) {
         setIsLoading(false);
       }
     }
   };
 
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await loadAdminData(false);
+      setPageAlert({
+        type: 'success',
+        message: 'Administration telemetry, employee directory, and transactional outbox refreshed.',
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleTriggerSlaCheck = async () => {
+    setIsCheckingSla(true);
+    try {
+      const res = await adminApi.triggerSlaMonitor();
+      setLastSla(res);
+      setPageAlert({
+        type: 'success',
+        message: res.message || `SLA breach scan completed: ${res.ticketsChecked ?? 0} tickets inspected, ${res.breachesDetected ?? 0} breach(es) detected.`,
+      });
+      await loadAdminData(true);
+    } catch (err: any) {
+      setPageAlert({
+        type: 'error',
+        message: err.response?.data?.message || 'Failed to trigger SLA breach check.',
+      });
+    } finally {
+      setIsCheckingSla(false);
+    }
+  };
+
   useEffect(() => {
-    loadAdminData();
+    loadAdminData(false);
 
     // Automatically poll every 10 seconds so newly registered users appear immediately
     const pollInterval = setInterval(() => {
@@ -325,14 +364,18 @@ export const AdminDashboardPage: React.FC = () => {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={loadAdminData}
-            className="px-3.5 py-2 border border-teal-200 text-slate-800 bg-white hover:bg-[#f8fbfb] rounded-lg text-sm font-semibold transition shadow-2xs"
+            type="button"
+            onClick={handleManualRefresh}
+            disabled={isRefreshing || isLoading}
+            className="inline-flex items-center gap-2 px-3.5 py-2 border border-teal-200 text-slate-800 bg-white hover:bg-[#f8fbfb] rounded-lg text-sm font-semibold transition shadow-2xs disabled:opacity-60 cursor-pointer"
           >
-            Refresh
+            <RefreshCw className={`h-4 w-4 text-[#0e4a5c] ${isRefreshing || isLoading ? 'animate-spin' : ''}`} />
+            <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
           </button>
           <button
+            type="button"
             onClick={() => setIsTriggerModalOpen(true)}
-            className="px-4 py-2 bg-[#0e4a5c] hover:bg-[#083543] text-white rounded-lg text-sm font-semibold transition shadow-xs"
+            className="px-4 py-2 bg-[#0e4a5c] hover:bg-[#083543] text-white rounded-lg text-sm font-semibold transition shadow-xs cursor-pointer"
           >
             Run Accrual
           </button>
@@ -496,9 +539,20 @@ export const AdminDashboardPage: React.FC = () => {
         <div className="bg-white rounded-xl border border-teal-100 p-6 shadow-xs">
           <div className="flex items-center justify-between pb-3 border-b border-teal-100">
             <h2 className="text-sm font-bold text-slate-950">SLA Breach Monitor</h2>
-            <span className="text-xs px-2.5 py-0.5 rounded-lg bg-[#e3f4f1] text-[#0e4a5c] font-semibold border border-teal-200">
-              Active Poller (0 */5 * * *)
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs px-2.5 py-0.5 rounded-lg bg-[#e3f4f1] text-[#0e4a5c] font-semibold border border-teal-200">
+                Active Poller (0 */5 * * *)
+              </span>
+              <button
+                type="button"
+                disabled={isCheckingSla}
+                onClick={handleTriggerSlaCheck}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#0e4a5c] hover:bg-[#083543] text-white rounded-lg text-xs font-semibold transition disabled:opacity-50 cursor-pointer shadow-2xs"
+              >
+                <RefreshCw className={`h-3 w-3 ${isCheckingSla ? 'animate-spin' : ''}`} />
+                <span>{isCheckingSla ? 'Checking...' : 'Run SLA Check'}</span>
+              </button>
+            </div>
           </div>
 
           <div className="mt-4 space-y-3 text-xs text-slate-600">
@@ -524,10 +578,13 @@ export const AdminDashboardPage: React.FC = () => {
                     <strong className="text-sm text-rose-800">{lastSla.breachesFlagged ?? lastSla.breachesDetected ?? 0}</strong>
                   </div>
                 </div>
+                {lastSla.message && (
+                  <p className="text-[11px] text-slate-600 pt-1 italic">{lastSla.message}</p>
+                )}
               </>
             ) : (
               <div className="py-6 text-center text-slate-400 italic">
-                Awaiting first scheduled SLA monitoring cycle.
+                Awaiting first scheduled SLA monitoring cycle. Click "Run SLA Check" to inspect now.
               </div>
             )}
           </div>
@@ -535,7 +592,7 @@ export const AdminDashboardPage: React.FC = () => {
       </div>
 
       {/* Organizational Hierarchy: Assign Direct Manager */}
-      <div className="bg-white rounded-xl border border-teal-100 p-6 shadow-xs">
+      <div ref={hierarchyFormRef} className="bg-white rounded-xl border border-teal-100 p-6 shadow-xs">
         <div className="pb-4 border-b border-teal-100">
           <h2 className="text-sm font-bold text-slate-950">Reporting Hierarchy Assignment</h2>
           <p className="text-xs text-slate-600 mt-0.5">
@@ -568,6 +625,7 @@ export const AdminDashboardPage: React.FC = () => {
               Select Direct Manager <span className="text-rose-500">*</span>
             </label>
             <select
+              ref={managerSelectRef}
               required
               value={assignForm.managerId}
               onChange={(e) => setAssignForm({ ...assignForm, managerId: e.target.value })}
@@ -711,18 +769,26 @@ export const AdminDashboardPage: React.FC = () => {
                     <td className="px-6 py-3.5 whitespace-nowrap text-right">
                       {u.status === 'PENDING_APPROVAL' ? (
                         <button
+                          type="button"
                           onClick={() => handleOpenApproveModal(u)}
-                          className="px-2.5 py-1 bg-[#0e4a5c] hover:bg-[#083543] text-white rounded text-xs font-semibold transition shadow-xs"
+                          className="px-2.5 py-1 bg-[#0e4a5c] hover:bg-[#083543] text-white rounded text-xs font-semibold transition shadow-xs cursor-pointer"
                         >
                           Approve
                         </button>
                       ) : (
                         <button
+                          type="button"
                           onClick={() => {
-                            setAssignForm((prev) => ({ ...prev, employeeId: u.id }));
-                            window.scrollTo({ top: 400, behavior: 'smooth' });
+                            setAssignForm({
+                              employeeId: u.id,
+                              managerId: u.manager?.id || '',
+                            });
+                            hierarchyFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            setTimeout(() => {
+                              managerSelectRef.current?.focus();
+                            }, 350);
                           }}
-                          className="px-2.5 py-1 bg-white hover:bg-[#f0f9f8] text-slate-800 rounded text-xs font-semibold border border-teal-200 transition shadow-2xs"
+                          className="px-2.5 py-1 bg-white hover:bg-[#f0f9f8] text-slate-800 rounded text-xs font-semibold border border-teal-200 transition shadow-2xs cursor-pointer"
                         >
                           Set Manager
                         </button>
@@ -943,10 +1009,10 @@ export const AdminDashboardPage: React.FC = () => {
         >
           <div className="space-y-4 text-xs">
             <div className="grid grid-cols-2 gap-2 bg-[#fafcfb] border border-teal-100 p-3 rounded-xl text-slate-800">
-              <div>Aggregate Type: <strong>{selectedEvent.aggregateType}</strong></div>
-              <div>Aggregate ID: <strong className="font-mono">{selectedEvent.aggregateId}</strong></div>
+              <div>Aggregate Type: <strong>{selectedEvent.aggregateType || selectedEvent.sourceDomain}</strong></div>
+              <div>Aggregate ID: <strong className="font-mono">{selectedEvent.aggregateId || selectedEvent.id}</strong></div>
               <div>Status: <strong>{selectedEvent.status}</strong></div>
-              <div>Retry Count: <strong>{selectedEvent.retryCount}</strong></div>
+              <div>Retry Count: <strong>{selectedEvent.retryCount ?? selectedEvent.retryAttempts ?? 0}</strong></div>
             </div>
 
             <div>
@@ -968,6 +1034,16 @@ export const AdminDashboardPage: React.FC = () => {
                 <p>{selectedEvent.lastError}</p>
               </div>
             )}
+
+            <div className="pt-2 border-t border-teal-100 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedEvent(null)}
+                className="px-4 py-1.5 bg-[#0e4a5c] hover:bg-[#083543] text-white rounded-lg text-xs font-semibold transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </Modal>
       )}

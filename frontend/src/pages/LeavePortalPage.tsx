@@ -20,6 +20,7 @@ import {
   FileText,
   ShieldCheck,
   RotateCcw,
+  RefreshCw,
   Bookmark,
   StickyNote,
   Trash2
@@ -357,6 +358,9 @@ export const LeavePortalPage: React.FC = () => {
       startDate: calendarSelectedStart || '',
       endDate: calendarSelectedEnd || calendarSelectedStart || '',
       reason: '',
+      isHalfDay: false,
+      halfDayPeriod: 'MORNING',
+      delegateId: '',
     });
     setApplyError(null);
     setIsApplyModalOpen(true);
@@ -585,16 +589,28 @@ export const LeavePortalPage: React.FC = () => {
           <div className="flex items-center gap-3">
             <button
               type="button"
+              onClick={() => loadData()}
+              disabled={isLoading}
+              className="inline-flex items-center gap-2 rounded-xl border border-teal-200 bg-white hover:bg-[#f0f9f8] px-3.5 py-2.5 text-xs font-bold text-slate-800 shadow-2xs transition disabled:opacity-60 cursor-pointer"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 text-[#0e4a5c] ${isLoading ? 'animate-spin' : ''}`} />
+              <span>{isLoading ? 'Refreshing...' : 'Refresh'}</span>
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 setApplyForm({
                   leaveTypeId: leaveTypes[0]?.id || '',
                   startDate: '',
                   endDate: '',
                   reason: '',
+                  isHalfDay: false,
+                  halfDayPeriod: 'MORNING',
+                  delegateId: '',
                 });
                 setIsApplyModalOpen(true);
               }}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#0e4a5c] hover:bg-[#083543] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#0e4a5c] hover:bg-[#083543] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition cursor-pointer"
             >
               <Plus className="h-4 w-4" />
               <span>Apply for Leave</span>
@@ -691,10 +707,13 @@ export const LeavePortalPage: React.FC = () => {
                           startDate: calendarSelectedStart || '',
                           endDate: calendarSelectedEnd || calendarSelectedStart || '',
                           reason: '',
+                          isHalfDay: false,
+                          halfDayPeriod: 'MORNING',
+                          delegateId: '',
                         });
                         setIsApplyModalOpen(true);
                       }}
-                      className="text-xs font-bold text-[#0e4a5c] hover:text-[#083543] hover:underline"
+                      className="text-xs font-bold text-[#0e4a5c] hover:text-[#083543] hover:underline cursor-pointer"
                     >
                       Apply &rarr;
                     </button>

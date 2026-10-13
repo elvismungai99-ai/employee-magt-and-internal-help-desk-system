@@ -12,7 +12,7 @@ import {
   TicketPriority, 
   TicketStatus 
 } from '../types';
-import { Search, Clock, AlertTriangle, Plus, Paperclip } from 'lucide-react';
+import { Search, Clock, AlertTriangle, Plus, Paperclip, RefreshCw } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
 import { Modal } from '../components/Modal';
 import { Alert } from '../components/Alert';
@@ -280,16 +280,27 @@ export const HelpDeskPage: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setCreateError(null);
-            setIsCreateModalOpen(true);
-          }}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#0e4a5c] hover:bg-[#083543] text-white rounded-xl font-bold text-xs transition shadow-xs"
-        >
-          <Plus className="h-4 w-4" />
-          <span>New Ticket</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={loadData}
+            disabled={isLoading}
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-teal-200 text-slate-800 bg-white hover:bg-[#f0f9f8] rounded-xl text-xs font-bold transition shadow-2xs disabled:opacity-60 cursor-pointer"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 text-[#0e4a5c] ${isLoading ? 'animate-spin' : ''}`} />
+            <span>{isLoading ? 'Refreshing...' : 'Refresh'}</span>
+          </button>
+          <button
+            onClick={() => {
+              setCreateError(null);
+              setIsCreateModalOpen(true);
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#0e4a5c] hover:bg-[#083543] text-white rounded-xl font-bold text-xs transition shadow-xs cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            <span>New Ticket</span>
+          </button>
+        </div>
       </div>
 
       {actionAlert && (
@@ -613,16 +624,28 @@ export const HelpDeskPage: React.FC = () => {
                 <span className="text-sm font-semibold text-emerald-950 block">
                   Support marked this issue as RESOLVED.
                 </span>
+                <input
+                  type="text"
+                  value={feedbackText || reopenReason}
+                  onChange={(e) => {
+                    setFeedbackText(e.target.value);
+                    setReopenReason(e.target.value);
+                  }}
+                  placeholder="Optional feedback or reason if reopening..."
+                  className="block w-full px-3 py-1.5 border border-emerald-200 rounded-lg text-xs bg-white text-slate-900 focus:outline-none focus:border-[#0e4a5c]"
+                />
                 <div className="flex gap-2">
                   <button
+                    type="button"
                     onClick={handleCloseTicket}
-                    className="px-3.5 py-1.5 bg-[#0e4a5c] hover:bg-[#083543] text-white rounded-xl text-xs font-bold shadow-xs transition"
+                    className="px-3.5 py-1.5 bg-[#0e4a5c] hover:bg-[#083543] text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
                   >
                     Accept &amp; Close Ticket
                   </button>
                   <button
+                    type="button"
                     onClick={handleReopenTicket}
-                    className="px-3.5 py-1.5 bg-white border border-emerald-300 text-emerald-900 hover:bg-emerald-100 rounded-xl text-xs font-semibold transition"
+                    className="px-3.5 py-1.5 bg-white border border-emerald-300 text-emerald-900 hover:bg-emerald-100 rounded-xl text-xs font-semibold transition cursor-pointer"
                   >
                     Reopen (Issue Not Fixed)
                   </button>

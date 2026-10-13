@@ -55,6 +55,13 @@ public class AdminJobController {
         return ResponseEntity.ok(ApiResponse.success(result, "Last SLA monitor run retrieved successfully"));
     }
 
+    @PostMapping("/jobs/sla-monitor/trigger")
+    public ResponseEntity<ApiResponse<SlaMonitorRunResult>> triggerSlaMonitor() {
+        log.info("Manual SLA breach monitor sweep triggered by HR Admin");
+        SlaMonitorRunResult result = slaBreachMonitorEngine.sweepBreachedTickets();
+        return ResponseEntity.ok(ApiResponse.success(result, result.getMessage()));
+    }
+
     @GetMapping("/events")
     public ResponseEntity<ApiResponse<Page<EventOutbox>>> getOutboxEvents(
             @RequestParam(name = "status", required = false) String statusParam,

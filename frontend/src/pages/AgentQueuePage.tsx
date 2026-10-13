@@ -297,11 +297,13 @@ export const AgentQueuePage: React.FC = () => {
             Tickets in Queue ({filteredTickets.length})
           </span>
           <button
+            type="button"
             onClick={loadQueuesAndTickets}
-            className="inline-flex items-center gap-1 text-xs text-[#0e4a5c] hover:text-[#083543] font-bold transition"
+            disabled={isLoading}
+            className="inline-flex items-center gap-1.5 text-xs text-[#0e4a5c] hover:text-[#083543] font-bold transition disabled:opacity-50 cursor-pointer"
           >
-            <RefreshCw className="h-3.5 w-3.5" />
-            <span>Refresh Queue</span>
+            <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>{isLoading ? 'Refreshing...' : 'Refresh Queue'}</span>
           </button>
         </div>
 

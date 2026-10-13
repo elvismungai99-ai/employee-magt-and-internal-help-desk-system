@@ -19,6 +19,11 @@ export const adminApi = {
     return res.data.data;
   },
 
+  triggerSlaMonitor: async (): Promise<SlaMonitorRunResult> => {
+    const res = await apiClient.post<ApiResponse<SlaMonitorRunResult>>('/api/admin/jobs/sla-monitor/trigger', {});
+    return res.data.data;
+  },
+
   getOutboxEvents: async (page = 0, size = 20, status?: string): Promise<PageResponse<EventOutboxItem>> => {
     let url = `/api/admin/events?page=${page}&size=${size}`;
     if (status) {

@@ -69,8 +69,16 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
     ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase() || 'EM'
     : 'EM';
 
-  // Sample dynamic notifications
-  const [notifications, setNotifications] = useState([
+  // Dynamic interactive notifications
+  const [notifications, setNotifications] = useState<Array<{
+    id: string;
+    title: string;
+    message: string;
+    time: string;
+    read: boolean;
+    type: 'leave' | 'ticket' | 'admin' | 'approval';
+    link: string;
+  }>>([
     {
       id: '1',
       title: 'Leave Policy Active',
@@ -78,21 +86,69 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
       time: 'Just now',
       read: false,
       type: 'leave',
+      link: '/leave',
     },
     {
       id: '2',
       title: 'Help Desk SLA Monitor',
       message: 'Business-hours SLA policies (08:00–17:00) active with auto-pause on pending requests.',
-      time: '1h ago',
+      time: '10m ago',
       read: false,
       type: 'ticket',
+      link: '/helpdesk',
     },
   ]);
+
+  useEffect(() => {
+    const list = [...notifications];
+    if (hasRole('HR_ADMIN') && !list.some((n) => n.id === 'admin-approvals')) {
+      list.unshift({
+        id: 'admin-approvals',
+        title: 'Employee Approvals',
+        message: 'Review newly registered staff, assign managers, and allocate leave quotas.',
+        time: 'Active',
+        read: false,
+        type: 'admin',
+        link: '/admin',
+      });
+    }
+    if (hasRole('LINE_MANAGER') && !list.some((n) => n.id === 'manager-approvals')) {
+      list.unshift({
+        id: 'manager-approvals',
+        title: 'Pending Staff Leave',
+        message: 'Review and approve leave applications submitted by your reporting staff.',
+        time: 'Active',
+        read: false,
+        type: 'approval',
+        link: '/approvals',
+      });
+    }
+    if (hasRole('SUPPORT_AGENT') && !list.some((n) => n.id === 'agent-triage')) {
+      list.unshift({
+        id: 'agent-triage',
+        title: 'Support Triage Queue',
+        message: 'Incoming IT, HR, and facilities tickets awaiting claim and resolution.',
+        time: 'Active',
+        read: false,
+        type: 'ticket',
+        link: '/agent-queue',
+      });
+    }
+    setNotifications(list);
+  }, [roles]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const markAllRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
+
+  const handleNotificationClick = (item: (typeof notifications)[0]) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === item.id ? { ...n, read: true } : n))
+    );
+    setNotificationsOpen(false);
+    navigate(item.link);
   };
 
   return (
@@ -215,10 +271,11 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
                 {notifications.map((n) => (
                   <div
                     key={n.id}
-                    className={`p-2.5 rounded-xl border text-xs transition ${
+                    onClick={() => handleNotificationClick(n)}
+                    className={`p-2.5 rounded-xl border text-xs transition cursor-pointer hover:shadow-2xs ${
                       n.read
-                        ? 'bg-white border-slate-100 text-slate-600'
-                        : 'bg-[#f0f9f8] border-teal-200 text-[#0d2836]'
+                        ? 'bg-white border-slate-100 text-slate-600 hover:bg-[#f8fbfb]'
+                        : 'bg-[#f0f9f8] border-teal-200 text-[#0d2836] hover:bg-[#e6f4f2]'
                     }`}
                   >
                     <div className="flex items-center justify-between font-bold mb-0.5">

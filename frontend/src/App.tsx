@@ -21,7 +21,7 @@ export default function App() {
   React.useEffect(() => {
     const apiBase = import.meta.env.VITE_API_BASE_URL || '';
     if (apiBase) {
-      fetch(`${apiBase}/actuator/health`, { mode: 'no-cors', cache: 'no-store' }).catch(() => {});
+      fetch(`${apiBase}/api/auth/ping`, { cache: 'no-store' }).catch(() => {});
     }
   }, []);
 

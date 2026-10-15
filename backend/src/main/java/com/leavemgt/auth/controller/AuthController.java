@@ -28,6 +28,11 @@ public class AuthController {
             "^([0-9]{1,3}\\.){3}[0-9]{1,3}$|^([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}$"
     );
 
+    @GetMapping("/ping")
+    public ResponseEntity<ApiResponse<Map<String, String>>> ping() {
+        return ResponseEntity.ok(ApiResponse.success(Map.of("status", "UP"), "Service operational"));
+    }
+
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<Map<String, Object>>> register(@Valid @RequestBody RegisterRequest request) {
         User registeredUser = authService.register(request);

@@ -25,14 +25,6 @@ export const LoginPage: React.FC = () => {
     }
   }, []);
 
-  // Proactively ping the backend on mount
-  useEffect(() => {
-    const apiBase = import.meta.env.VITE_API_BASE_URL || '';
-    if (apiBase) {
-      fetch(`${apiBase}/actuator/health`, { mode: 'no-cors', cache: 'no-store' }).catch(() => {});
-    }
-  }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);

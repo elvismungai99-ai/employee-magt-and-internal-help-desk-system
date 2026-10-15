@@ -86,3 +86,19 @@ app:
     sla-monitor-rate-ms: ${SLA_MONITOR_RATE_MS:60000}
     accrual-cron: ${ACCRUAL_CRON:0 0 1 1 * *}
     outbox-poll-interval-ms: ${OUTBOX_POLL_INTERVAL_MS:5000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  health:
+    mail:
+      enabled: false
+    diskspace:
+      enabled: false
+

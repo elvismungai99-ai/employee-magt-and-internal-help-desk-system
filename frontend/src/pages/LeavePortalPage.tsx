@@ -38,7 +38,8 @@ import {
   UserProfile,
   CompOffRequest,
   LeaveEncashmentRequest,
-  DepartmentOverlapItem
+  DepartmentOverlapItem,
+  TeamCapacityDay
 } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
@@ -148,6 +149,9 @@ export const LeavePortalPage: React.FC = () => {
     isHalfDay: false,
     halfDayPeriod: 'MORNING' as 'MORNING' | 'AFTERNOON',
     delegateId: '',
+    documentType: '',
+    documentNumber: '',
+    medicalCertIssueDate: '',
   });
   const [applyError, setApplyError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -156,6 +160,11 @@ export const LeavePortalPage: React.FC = () => {
   // Department Overlap State
   const [departmentOverlap, setDepartmentOverlap] = useState<DepartmentOverlapItem[]>([]);
   const [isLoadingOverlap, setIsLoadingOverlap] = useState(false);
+
+  // Team Capacity & Absence Heatmap State
+  const [isCapacityModalOpen, setIsCapacityModalOpen] = useState(false);
+  const [teamCapacity, setTeamCapacity] = useState<TeamCapacityDay[]>([]);
+  const [isLoadingCapacity, setIsLoadingCapacity] = useState(false);
 
   // Leave Details Modal State
   const [selectedLeaveDetail, setSelectedLeaveDetail] = useState<LeaveRequest | null>(null);
@@ -238,6 +247,37 @@ export const LeavePortalPage: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [currentYear]);
+
+  const handleOpenCapacityModal = async () => {
+    setIsCapacityModalOpen(true);
+    setIsLoadingCapacity(true);
+    try {
+      const data = await leaveApi.getTeamCapacity();
+      setTeamCapacity(data);
+    } catch {
+      setFeedback({
+        type: 'error',
+        message: 'Unable to load team capacity heatmap from server.',
+      });
+    } finally {
+      setIsLoadingCapacity(false);
+    }
+  };
+
+  const handleExportMyIcs = async () => {
+    try {
+      await leaveApi.downloadMyLeavesIcs();
+      setFeedback({
+        type: 'success',
+        message: 'Personal leave calendar (.ics) downloaded. Import it to Google Calendar, Outlook, or Apple Calendar.',
+      });
+    } catch {
+      setFeedback({
+        type: 'error',
+        message: 'Failed to download calendar feed.',
+      });
+    }
+  };
 
   // Calendar Navigation handlers
   const handlePrevMonth = () => {
@@ -460,6 +500,9 @@ export const LeavePortalPage: React.FC = () => {
         isHalfDay: applyForm.isHalfDay,
         halfDayPeriod: applyForm.isHalfDay ? applyForm.halfDayPeriod : undefined,
         delegateId: applyForm.delegateId || undefined,
+        documentType: applyForm.documentType.trim() || undefined,
+        documentNumber: applyForm.documentNumber.trim() || undefined,
+        medicalCertIssueDate: applyForm.medicalCertIssueDate || undefined,
       });
 
       setFeedback({
@@ -478,6 +521,9 @@ export const LeavePortalPage: React.FC = () => {
         isHalfDay: false,
         halfDayPeriod: 'MORNING',
         delegateId: '',
+        documentType: '',
+        documentNumber: '',
+        medicalCertIssueDate: '',
       });
       setDepartmentOverlap([]);
 
@@ -796,6 +842,24 @@ export const LeavePortalPage: React.FC = () => {
             >
               <RefreshCw className={`h-3.5 w-3.5 text-[#0e4a5c] ${isLoading ? 'animate-spin' : ''}`} />
               <span>{isLoading ? 'Refreshing...' : 'Refresh'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleExportMyIcs}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-white hover:bg-teal-50 px-3 py-2 text-xs font-semibold text-[#0e4a5c] shadow-2xs transition cursor-pointer"
+              title="Download iCal feed to sync with Google Calendar or Outlook"
+            >
+              <CalendarDays className="h-3.5 w-3.5" />
+              <span>Export (.ics)</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenCapacityModal}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-white hover:bg-teal-50 px-3 py-2 text-xs font-semibold text-[#0e4a5c] shadow-2xs transition cursor-pointer"
+              title="View 30-day team staffing capacity and absence forecast"
+            >
+              <Users className="h-3.5 w-3.5" />
+              <span>Team Capacity</span>
             </button>
             <button
               type="button"
@@ -1979,6 +2043,50 @@ export const LeavePortalPage: React.FC = () => {
               )}
             </div>
 
+            {/* Medical Certificate / Statutory Document details */}
+            <div className="rounded-xl border border-teal-100 bg-[#fafcfb] p-3 space-y-2">
+              <span className="text-xs font-bold text-[#0d2836] block">
+                Official Document Verification (Optional / Statutory Leave)
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Document Type
+                  </label>
+                  <input
+                    type="text"
+                    value={applyForm.documentType}
+                    onChange={(e) => setApplyForm({ ...applyForm, documentType: e.target.value })}
+                    placeholder="e.g., Medical Cert"
+                    className="w-full rounded-xl border border-teal-200/90 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:border-[#0e4a5c] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Document / Cert #
+                  </label>
+                  <input
+                    type="text"
+                    value={applyForm.documentNumber}
+                    onChange={(e) => setApplyForm({ ...applyForm, documentNumber: e.target.value })}
+                    placeholder="e.g., MED-2026-90"
+                    className="w-full rounded-xl border border-teal-200/90 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:border-[#0e4a5c] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Issue Date
+                  </label>
+                  <input
+                    type="date"
+                    value={applyForm.medicalCertIssueDate}
+                    onChange={(e) => setApplyForm({ ...applyForm, medicalCertIssueDate: e.target.value })}
+                    className="w-full rounded-xl border border-teal-200/90 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:border-[#0e4a5c] focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Actions */}
             <div className="flex justify-end gap-2.5 pt-2 border-t border-teal-50">
               <button
@@ -2314,6 +2422,87 @@ export const LeavePortalPage: React.FC = () => {
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* Team Capacity & Absence Heatmap Modal */}
+      {isCapacityModalOpen && (
+        <Modal
+          isOpen={isCapacityModalOpen}
+          onClose={() => setIsCapacityModalOpen(false)}
+          title="Team Capacity & Absence Heatmap (30-Day Forecast)"
+          maxWidth="2xl"
+        >
+          <div className="space-y-4">
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Real-time daily staffing availability. Days with less than 75% staffing available are flagged as potential operational bottlenecks.
+            </p>
+
+            {isLoadingCapacity ? (
+              <div className="p-6">
+                <TableSkeleton rows={4} cols={4} />
+              </div>
+            ) : teamCapacity.length === 0 ? (
+              <div className="p-8 text-center text-slate-500 text-xs">
+                No capacity records found for your department.
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                {teamCapacity.map((day) => (
+                  <div
+                    key={day.date}
+                    className={`p-3 rounded-xl border text-xs transition flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
+                      day.isBottleneck
+                        ? 'bg-rose-50/70 border-rose-200 text-rose-950'
+                        : day.capacityPercentage < 100
+                        ? 'bg-amber-50/60 border-amber-200 text-amber-950'
+                        : 'bg-white border-teal-100 text-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono font-bold text-xs px-2 py-0.5 rounded bg-black/5">
+                        {day.date} ({day.dayOfWeek})
+                      </span>
+                      {day.isBottleneck && (
+                        <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-rose-200 text-rose-800">
+                          Bottleneck Alert
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      {day.absentEmployeesCount > 0 ? (
+                        <div className="text-[11px] text-slate-600">
+                          Absent: <strong className="font-semibold text-slate-800">{day.absentEmployeeNames.join(', ')}</strong>
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-emerald-700 font-semibold">Full Staffing (100%)</span>
+                      )}
+
+                      <div className="text-right">
+                        <span className={`font-extrabold text-xs ${day.isBottleneck ? 'text-rose-700' : 'text-[#0e4a5c]'}`}>
+                          {day.capacityPercentage}%
+                        </span>
+                        <span className="text-[10px] text-slate-400 block">
+                          ({day.availableCapacityCount}/{day.totalActiveEmployees} present)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="pt-3 border-t border-teal-100 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsCapacityModalOpen(false)}
+                className="px-4 py-2 border border-teal-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </Modal>
       )}
 

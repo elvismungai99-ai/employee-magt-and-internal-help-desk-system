@@ -5,7 +5,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { Modal } from '../components/Modal';
 import { Alert } from '../components/Alert';
 import { TableSkeleton } from '../components/Skeleton';
-import { RefreshCw, Check, X } from 'lucide-react';
+import { RefreshCw, Check, X, CalendarDays, FileText } from 'lucide-react';
 
 export const ManagerApprovalsPage: React.FC = () => {
   const [pendingRequests, setPendingRequests] = useState<LeaveRequest[]>([]);
@@ -48,6 +48,21 @@ export const ManagerApprovalsPage: React.FC = () => {
   useEffect(() => {
     loadPendingApprovals();
   }, []);
+
+  const handleExportDepartmentIcs = async () => {
+    try {
+      await leaveApi.downloadDepartmentLeavesIcs();
+      setPageBanner({
+        type: 'success',
+        message: 'Department team leave calendar (.ics) downloaded. Sync it to Google Calendar or Microsoft Outlook.',
+      });
+    } catch {
+      setPageBanner({
+        type: 'error',
+        message: 'Failed to download department leave calendar.',
+      });
+    }
+  };
 
   const openDecisionModal = (request: LeaveRequest, type: 'approve' | 'reject') => {
     setComments('');
@@ -122,15 +137,26 @@ export const ManagerApprovalsPage: React.FC = () => {
           <span className="font-bold text-[#0d2836] dark:text-slate-100 text-sm">
             Pending Approval Queue ({pendingRequests.length})
           </span>
-          <button
-            type="button"
-            onClick={loadPendingApprovals}
-            disabled={isLoading}
-            className="inline-flex items-center gap-1.5 text-xs text-[#0e4a5c] dark:text-[#38bdf8] hover:text-[#083543] dark:hover:text-white font-bold transition disabled:opacity-50 cursor-pointer"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>{isLoading ? 'Refreshing...' : 'Refresh Queue'}</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleExportDepartmentIcs}
+              className="inline-flex items-center gap-1.5 text-xs text-[#0e4a5c] dark:text-[#38bdf8] hover:text-[#083543] dark:hover:text-white font-bold transition cursor-pointer"
+              title="Export department leave calendar (.ics)"
+            >
+              <CalendarDays className="h-3.5 w-3.5" />
+              <span>Export Team Calendar (.ics)</span>
+            </button>
+            <button
+              type="button"
+              onClick={loadPendingApprovals}
+              disabled={isLoading}
+              className="inline-flex items-center gap-1.5 text-xs text-[#0e4a5c] dark:text-[#38bdf8] hover:text-[#083543] dark:hover:text-white font-bold transition disabled:opacity-50 cursor-pointer"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              <span>{isLoading ? 'Refreshing...' : 'Refresh Queue'}</span>
+            </button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -178,6 +204,27 @@ export const ManagerApprovalsPage: React.FC = () => {
                     </span>
                     {req.reason}
                   </div>
+
+                  {(req.documentNumber || req.documentType || req.attachmentUrl) && (
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      {(req.documentNumber || req.documentType) && (
+                        <span className="text-[11px] font-semibold text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/60 px-2 py-0.5 rounded flex items-center gap-1">
+                          <FileText className="h-3 w-3" />
+                          <span>{req.documentType || 'Doc'}: {req.documentNumber} {req.medicalCertIssueDate ? `(Issued: ${req.medicalCertIssueDate})` : ''}</span>
+                        </span>
+                      )}
+                      {req.attachmentUrl && (
+                        <a
+                          href={req.attachmentUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-[#0e4a5c] dark:text-[#38bdf8] hover:underline font-bold"
+                        >
+                          View Uploaded Document &rarr;
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2.5 shrink-0">

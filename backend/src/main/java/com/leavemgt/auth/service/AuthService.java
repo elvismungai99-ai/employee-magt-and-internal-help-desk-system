@@ -72,63 +72,82 @@ public class AuthService {
             throw new IllegalArgumentException("Email already in use");
         }
 
-        // Collect requested role(s)
-        Set<String> requestedRoleNames = new LinkedHashSet<>();
-        if (request.getRoles() != null && !request.getRoles().isEmpty()) {
-            requestedRoleNames.addAll(request.getRoles());
-        }
-        if (request.getRole() != null && !request.getRole().isBlank()) {
-            for (String r : request.getRole().split(",")) {
-                if (!r.isBlank()) {
-                    requestedRoleNames.add(r.trim());
-                }
-            }
-        }
-
-        // Strict role privilege escalation prevention:
-        // Anonymous self-registration must NEVER grant administrative privileges (HR_ADMIN, ADMIN).
-        Set<String> sanitizedRoleNames = new LinkedHashSet<>();
-        for (String rName : requestedRoleNames) {
-            String cleanName = rName.toUpperCase().replace("ROLE_", "").trim();
-            if ("HR_ADMIN".equals(cleanName) || "ADMIN".equals(cleanName) || "SUPERADMIN".equals(cleanName)) {
-                log.warn("SECURITY ALERT: Blocked privilege escalation attempt during registration for email {}. Forbidden role: {}",
-                        request.getEmail(), cleanName);
-                continue;
-            }
-            if (ALLOWED_REGISTRATION_ROLES.contains(cleanName)) {
-                sanitizedRoleNames.add(cleanName);
-            } else {
-                log.warn("Ignored unauthorized or unknown registration role '{}' for email {}", cleanName, request.getEmail());
-            }
-        }
-
-        // Default to EMPLOYEE role if no permitted role was provided
-        if (sanitizedRoleNames.isEmpty()) {
-            sanitizedRoleNames.add("EMPLOYEE");
-        }
-
+        boolean isFirstUser = userRepository.count() == 0;
         Set<Role> assignedRoles = new HashSet<>();
-        for (String rName : sanitizedRoleNames) {
-            Role resolvedRole = roleRepository.findByName(rName)
+        String initialStatus;
+
+        if (isFirstUser) {
+            // First user bootstrap: automatically promote the very first user in an empty system to HR_ADMIN with ACTIVE status
+            Role adminRole = roleRepository.findByName("HR_ADMIN")
                     .orElseGet(() -> roleRepository.save(Role.builder()
-                            .name(rName)
-                            .description(rName + " role")
+                            .name("HR_ADMIN")
+                            .description("HR and system administrator with full access")
                             .isSystemRole(true)
                             .build()));
-            assignedRoles.add(resolvedRole);
+            assignedRoles.add(adminRole);
+            initialStatus = "ACTIVE";
+            log.info("FIRST-TIME SYSTEM SETUP: Zero users detected. Registering initial administrator account for email: {}", request.getEmail());
+        } else {
+            // Collect requested role(s)
+            Set<String> requestedRoleNames = new LinkedHashSet<>();
+            if (request.getRoles() != null && !request.getRoles().isEmpty()) {
+                requestedRoleNames.addAll(request.getRoles());
+            }
+            if (request.getRole() != null && !request.getRole().isBlank()) {
+                for (String r : request.getRole().split(",")) {
+                    if (!r.isBlank()) {
+                        requestedRoleNames.add(r.trim());
+                    }
+                }
+            }
+
+            // Strict role privilege escalation prevention:
+            // Anonymous self-registration must NEVER grant administrative privileges (HR_ADMIN, ADMIN).
+            Set<String> sanitizedRoleNames = new LinkedHashSet<>();
+            for (String rName : requestedRoleNames) {
+                String cleanName = rName.toUpperCase().replace("ROLE_", "").trim();
+                if ("HR_ADMIN".equals(cleanName) || "ADMIN".equals(cleanName) || "SUPERADMIN".equals(cleanName)) {
+                    log.warn("SECURITY ALERT: Blocked privilege escalation attempt during registration for email {}. Forbidden role: {}",
+                            request.getEmail(), cleanName);
+                    continue;
+                }
+                if (ALLOWED_REGISTRATION_ROLES.contains(cleanName)) {
+                    sanitizedRoleNames.add(cleanName);
+                } else {
+                    log.warn("Ignored unauthorized or unknown registration role '{}' for email {}", cleanName, request.getEmail());
+                }
+            }
+
+            // Default to EMPLOYEE role if no permitted role was provided
+            if (sanitizedRoleNames.isEmpty()) {
+                sanitizedRoleNames.add("EMPLOYEE");
+            }
+
+            for (String rName : sanitizedRoleNames) {
+                Role resolvedRole = roleRepository.findByName(rName)
+                        .orElseGet(() -> roleRepository.save(Role.builder()
+                                .name(rName)
+                                .description(rName + " role")
+                                .isSystemRole(true)
+                                .build()));
+                assignedRoles.add(resolvedRole);
+            }
+
+            initialStatus = requireRegistrationApproval ? "PENDING_APPROVAL" : "ACTIVE";
         }
 
         Department department = null;
         if (request.getDepartmentId() != null) {
             department = departmentRepository.findById(request.getDepartmentId()).orElse(null);
         }
+        if (department == null && isFirstUser) {
+            department = departmentRepository.findByCode("HR").orElse(null);
+        }
 
         String employeeCode = "EMP-" + (10000 + new Random().nextInt(90000));
         while (userRepository.existsByEmployeeCode(employeeCode)) {
             employeeCode = "EMP-" + (10000 + new Random().nextInt(90000));
         }
-
-        String initialStatus = requireRegistrationApproval ? "PENDING_APPROVAL" : "ACTIVE";
 
         User user = User.builder()
                 .firstName(request.getFirstName())

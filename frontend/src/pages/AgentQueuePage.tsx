@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { helpdeskApi } from '../api/helpdeskApi';
-import { SupportQueue, Ticket, TicketPriority, TicketStatus } from '../types';
-import { Search, Clock, AlertTriangle, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { cannedResponseApi } from '../api/cannedResponseApi';
+import { SupportQueue, Ticket, TicketPriority, TicketStatus, CannedResponse } from '../types';
+import { Search, Clock, AlertTriangle, RefreshCw, CheckCircle2, Zap, Star } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
 import { Modal } from '../components/Modal';
 import { Alert } from '../components/Alert';
@@ -14,6 +15,7 @@ export const AgentQueuePage: React.FC = () => {
   const [queues, setQueues] = useState<SupportQueue[]>([]);
   const [selectedQueueId, setSelectedQueueId] = useState<string>('');
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [cannedResponses, setCannedResponses] = useState<CannedResponse[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -36,11 +38,14 @@ export const AgentQueuePage: React.FC = () => {
   const loadQueuesAndTickets = async () => {
     setIsLoading(true);
     try {
-      const qList = await helpdeskApi.getQueues();
+      const [qList, tList, crList] = await Promise.all([
+        helpdeskApi.getQueues(),
+        helpdeskApi.getQueueTickets(selectedQueueId || undefined),
+        cannedResponseApi.getAll().catch(() => []),
+      ]);
       setQueues(qList);
-
-      const tList = await helpdeskApi.getQueueTickets(selectedQueueId || undefined);
       setTickets(tList);
+      setCannedResponses(crList);
     } catch (err: any) {
       setPageAlert({
         type: 'error',
@@ -340,6 +345,12 @@ export const AgentQueuePage: React.FC = () => {
                       <StatusBadge status={t.status} />
                       <StatusBadge priority={t.priority} />
                       {renderSlaBadge(t)}
+                      {t.csatRating && (
+                        <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-2 py-0.5 rounded flex items-center gap-1">
+                          <Star className="h-3 w-3 fill-amber-400 text-amber-500" />
+                          <span>CSAT: {t.csatRating}/5</span>
+                        </span>
+                      )}
                       {t.leaveRequestSummary && (
                         <span className="text-[11px] font-semibold text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/60 px-2 py-0.5 rounded">
                           Linked: {t.leaveRequestSummary}
@@ -468,6 +479,12 @@ export const AgentQueuePage: React.FC = () => {
                     Queue: <strong className="text-slate-800 dark:text-slate-200">{activeTicket.queueName}</strong>
                   </span>
                 )}
+                {activeTicket.csatRating && (
+                  <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-2 py-0.5 rounded flex items-center gap-1">
+                    <Star className="h-3 w-3 fill-amber-400 text-amber-500" />
+                    <span>Requester Rating: {activeTicket.csatRating}/5 {activeTicket.csatFeedback ? `("${activeTicket.csatFeedback}")` : ''}</span>
+                  </span>
+                )}
               </div>
               <h2 className="text-base font-bold text-[#0d2836] dark:text-slate-100">{activeTicket.title}</h2>
               <div className="mt-2 text-xs text-slate-700 dark:text-slate-200 bg-[#f8fbfb] dark:bg-[#0e1c24] p-3.5 rounded-xl border border-teal-100 dark:border-[#1e3845] whitespace-pre-wrap leading-relaxed">
@@ -589,6 +606,30 @@ export const AgentQueuePage: React.FC = () => {
 
               {/* Add Comment Form */}
               <form onSubmit={handleAddComment} className="pt-2 space-y-2 border-t border-teal-100 dark:border-[#1e3845]">
+                {cannedResponses.length > 0 && (
+                  <div className="flex items-center justify-between pb-1">
+                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1">
+                      <Zap className="h-3 w-3 text-amber-500" /> Canned Response Macro:
+                    </span>
+                    <select
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setCommentText((prev) => (prev ? `${prev}\n${e.target.value}` : e.target.value));
+                        }
+                      }}
+                      defaultValue=""
+                      className="px-2 py-1 rounded-lg text-xs border border-teal-200 dark:border-[#1e3845] bg-white dark:bg-[#0d1b22] text-[#0d2836] dark:text-slate-200 cursor-pointer"
+                    >
+                      <option value="">-- Insert Quick Response Macro --</option>
+                      {cannedResponses.map((cr) => (
+                        <option key={cr.id} value={cr.content}>
+                          {cr.title} ({cr.shortcut})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <textarea
                   rows={2}
                   required

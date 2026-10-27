@@ -244,7 +244,7 @@ export const RegisterPage: React.FC = () => {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="name@company.com"
+                placeholder="name@example.com"
                 className="block w-full px-3.5 py-2 border border-blue-200 rounded-lg text-sm text-slate-950 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-slate-950 focus:border-slate-950 bg-white"
               />
             </div>

@@ -24,7 +24,7 @@ public class NotificationSender {
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
     private final HttpClient httpClient;
 
-    @Value("${app.notification.from-email:noreply@company.com}")
+    @Value("${app.notification.from-email:noreply@leavemgt.local}")
     private String fromEmail;
 
     @Value("${app.notification.slack-webhook-url:}")

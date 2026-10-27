@@ -2,8 +2,10 @@ package com.leavemgt.platform.controller;
 
 import com.leavemgt.identity.entity.User;
 import com.leavemgt.leave.entity.LeaveBalance;
+import com.leavemgt.leave.entity.LeaveEncashmentRequest;
 import com.leavemgt.leave.entity.LeaveRequest;
 import com.leavemgt.leave.repository.LeaveBalanceRepository;
+import com.leavemgt.leave.repository.LeaveEncashmentRequestRepository;
 import com.leavemgt.leave.repository.LeaveRequestRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -30,11 +32,14 @@ public class AdminReportController {
 
     private final LeaveBalanceRepository balanceRepository;
     private final LeaveRequestRepository requestRepository;
+    private final LeaveEncashmentRequestRepository encashmentRepository;
 
     public AdminReportController(LeaveBalanceRepository balanceRepository,
-                                 LeaveRequestRepository requestRepository) {
+                                 LeaveRequestRepository requestRepository,
+                                 LeaveEncashmentRequestRepository encashmentRepository) {
         this.balanceRepository = balanceRepository;
         this.requestRepository = requestRepository;
+        this.encashmentRepository = encashmentRepository;
     }
 
     @GetMapping("/leave-balances/export-csv")
@@ -202,6 +207,62 @@ public class AdminReportController {
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"leave_liability_" + year + ".csv\"")
+                .body(csvData);
+    }
+
+    @GetMapping("/leave-encashment/export-csv")
+    public ResponseEntity<byte[]> exportLeaveEncashmentCsv(
+            @RequestParam(name = "year", required = false) Integer yearParam) {
+        int year = yearParam != null ? yearParam : LocalDate.now().getYear();
+        log.info("Exporting leave encashment CSV for year {}", year);
+
+        StringWriter sw = new StringWriter();
+        PrintWriter writer = new PrintWriter(sw);
+        writer.println("Request ID,Employee Code,Employee Name,Email,Department,Job Title,Leave Type,Year,Days Encashed,Status,Approved By,Actioned At,Reason,Comments");
+
+        List<LeaveEncashmentRequest> requests = encashmentRepository.findAllByOrderByCreatedAtDesc();
+        for (LeaveEncashmentRequest req : requests) {
+            if (req.getYear() != null && req.getYear() == year) {
+                User u = req.getUser();
+                String reqId = req.getId() != null ? req.getId().toString() : "";
+                String empCode = u != null && u.getEmployeeCode() != null ? escapeCsv(u.getEmployeeCode()) : "";
+                String name = u != null && u.getFullName() != null ? escapeCsv(u.getFullName()) : "";
+                String email = u != null && u.getEmail() != null ? escapeCsv(u.getEmail()) : "";
+                String dept = u != null && u.getDepartment() != null && u.getDepartment().getName() != null
+                        ? escapeCsv(u.getDepartment().getName()) : "General";
+                String jobTitle = u != null && u.getJobTitle() != null ? escapeCsv(u.getJobTitle()) : "";
+                String leaveType = req.getLeaveType() != null && req.getLeaveType().getName() != null
+                        ? escapeCsv(req.getLeaveType().getName()) : "";
+                String status = req.getStatus() != null ? req.getStatus().name() : "";
+                String approvedBy = req.getApprovedBy() != null ? escapeCsv(req.getApprovedBy().getFullName()) : "";
+                String actionedAt = req.getActionedAt() != null ? req.getActionedAt().toString() : "";
+                String reason = escapeCsv(req.getReason());
+                String comments = escapeCsv(req.getComments());
+
+                writer.printf(Locale.US, "%s,%s,%s,%s,%s,%s,%s,%d,%.2f,%s,%s,%s,%s,%s%n",
+                        reqId,
+                        empCode,
+                        name,
+                        email,
+                        dept,
+                        jobTitle,
+                        leaveType,
+                        req.getYear(),
+                        req.getDaysRequested() != null ? req.getDaysRequested() : BigDecimal.ZERO,
+                        status,
+                        approvedBy,
+                        actionedAt,
+                        reason,
+                        comments
+                );
+            }
+        }
+        writer.flush();
+
+        byte[] csvData = sw.toString().getBytes(StandardCharsets.UTF_8);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"leave_encashment_payroll_" + year + ".csv\"")
                 .body(csvData);
     }
 

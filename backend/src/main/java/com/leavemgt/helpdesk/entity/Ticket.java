@@ -95,6 +95,15 @@ public class Ticket {
     @Column(name = "closed_at")
     private OffsetDateTime closedAt;
 
+    @Column(name = "csat_rating")
+    private Integer csatRating;
+
+    @Column(name = "csat_feedback", length = 1000)
+    private String csatFeedback;
+
+    @Column(name = "csat_submitted_at")
+    private OffsetDateTime csatSubmittedAt;
+
     @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<TicketComment> comments = new ArrayList<>();

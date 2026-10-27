@@ -88,7 +88,7 @@ export const LoginPage: React.FC = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@company.com"
+                placeholder="name@example.com"
                 className="block w-full px-3.5 py-2 border border-teal-200/90 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-[#0e4a5c] focus:border-[#0e4a5c] bg-white"
               />
             </div>

@@ -51,6 +51,10 @@ public class TicketResponse {
     private OffsetDateTime resolvedAt;
     private OffsetDateTime closedAt;
 
+    private Integer csatRating;
+    private String csatFeedback;
+    private OffsetDateTime csatSubmittedAt;
+
     private List<TicketCommentResponse> comments;
     private List<TicketAttachmentResponse> attachments;
 }

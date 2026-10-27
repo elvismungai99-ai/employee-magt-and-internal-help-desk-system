@@ -177,6 +177,20 @@ public class TicketController {
         return ResponseEntity.ok(ApiResponse.success(response, "Ticket status updated to " + status));
     }
 
+    @PostMapping("/{id}/csat")
+    public ResponseEntity<ApiResponse<TicketResponse>> submitCsat(
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody SubmitCsatRequest request,
+            Authentication authentication) {
+        UUID callerId = extractUserId(authentication);
+        if (callerId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Unauthorized"));
+        }
+        boolean isHrAdmin = isHrAdmin(authentication);
+        TicketResponse response = ticketService.submitCsat(id, request, callerId, isHrAdmin);
+        return ResponseEntity.ok(ApiResponse.success(response, "CSAT rating submitted successfully"));
+    }
+
     // =========================================================================
     // 4. ATTACHMENTS & HISTORY
     // =========================================================================

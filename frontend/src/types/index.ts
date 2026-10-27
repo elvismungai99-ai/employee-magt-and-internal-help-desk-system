@@ -124,6 +124,8 @@ export interface LeaveRequest {
   reason: string;
   status: LeaveRequestStatus;
   attachmentUrl?: string;
+  documentUrl?: string;
+  documentName?: string;
   isHalfDay?: boolean;
   halfDayPeriod?: 'MORNING' | 'AFTERNOON';
   delegateId?: string;
@@ -279,6 +281,10 @@ export interface Ticket {
   createdAt?: string;
   updatedAt?: string;
   resolvedAt?: string;
+  closedAt?: string;
+  csatRating?: number;
+  csatFeedback?: string;
+  csatSubmittedAt?: string;
   comments?: TicketComment[];
   attachments?: TicketAttachment[];
 }
@@ -370,4 +376,86 @@ export interface PageResponse<T> {
   totalPages: number;
   size: number;
   number: number;
+}
+
+
+// Enterprise Capabilities Types
+export interface KnowledgeBaseArticle {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  categoryId?: string;
+  categoryName?: string;
+  tags?: string;
+  isPublished: boolean;
+  viewCount: number;
+  helpfulCount: number;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CreateArticleDto {
+  title: string;
+  content: string;
+  categoryId?: string;
+  tags?: string;
+  isPublished?: boolean;
+}
+
+export interface CannedResponse {
+  id: string;
+  title: string;
+  shortcut: string;
+  content: string;
+  categoryId?: string;
+  categoryName?: string;
+  createdAt?: string;
+}
+
+export interface CreateCannedResponseDto {
+  title: string;
+  shortcut: string;
+  content: string;
+  categoryId?: string;
+}
+
+export interface AuditLogItem {
+  id: string;
+  timestamp: string;
+  actorId?: string;
+  actorEmail?: string;
+  action: string;
+  entityType: string;
+  entityId?: string;
+  details?: string;
+  ipAddress?: string;
+}
+
+export interface ExecutiveAnalyticsSummary {
+  totalEmployees: number;
+  activeLeavesToday: number;
+  pendingLeaveRequests: number;
+  pendingCompOffClaims: number;
+  pendingEncashmentClaims: number;
+  totalApprovedEncashmentDays: number;
+  totalTickets: number;
+  openTickets: number;
+  resolvedTickets: number;
+  breachedTickets: number;
+  slaCompliancePercentage: number;
+  averageCsatRating?: number | null;
+  totalCsatResponses: number;
+  ticketsByPriority: Record<string, number>;
+  ticketsByCategory: Record<string, number>;
+}
+
+export interface TeamCapacityDay {
+  date: string;
+  dayOfWeek: string;
+  totalDepartmentMembers: number;
+  onLeaveCount: number;
+  availableCount: number;
+  capacityPercentage: number;
+  onLeaveEmployees: string[];
 }

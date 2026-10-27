@@ -5,7 +5,9 @@ import {
   EventOutboxItem, 
   PageResponse, 
   SlaMonitorRunResult, 
-  UserProfile 
+  UserProfile,
+  AuditLogItem,
+  ExecutiveAnalyticsSummary
 } from '../types';
 
 export const adminApi = {
@@ -101,5 +103,27 @@ export const adminApi = {
     const url = year ? `/api/admin/reports/leave-liability/export-csv?year=${year}` : '/api/admin/reports/leave-liability/export-csv';
     const res = await apiClient.get(url, { responseType: 'blob' });
     return res.data;
+  },
+
+  exportLeaveEncashmentCsv: async (year?: number): Promise<Blob> => {
+    const url = year ? `/api/admin/reports/leave-encashment/export-csv?year=${year}` : '/api/admin/reports/leave-encashment/export-csv';
+    const res = await apiClient.get(url, { responseType: 'blob' });
+    return res.data;
+  },
+
+  getExecutiveSummary: async (): Promise<ExecutiveAnalyticsSummary> => {
+    const res = await apiClient.get<ApiResponse<ExecutiveAnalyticsSummary>>('/api/admin/analytics/summary');
+    return res.data.data;
+  },
+
+  getAuditLogs: async (params?: { action?: string; entityType?: string; actorEmail?: string; page?: number; size?: number }): Promise<PageResponse<AuditLogItem>> => {
+    const query = new URLSearchParams();
+    if (params?.action) query.append('action', params.action);
+    if (params?.entityType) query.append('entityType', params.entityType);
+    if (params?.actorEmail) query.append('actorEmail', params.actorEmail);
+    query.append('page', String(params?.page ?? 0));
+    query.append('size', String(params?.size ?? 20));
+    const res = await apiClient.get<ApiResponse<PageResponse<AuditLogItem>>>(`/api/admin/audit-logs?${query.toString()}`);
+    return res.data.data;
   },
 };

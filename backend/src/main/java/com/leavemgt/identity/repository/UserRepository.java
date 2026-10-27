@@ -18,4 +18,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     java.util.List<User> findByRoleName(@org.springframework.data.repository.query.Param("roleName") String roleName);
 
     java.util.List<User> findByStatusOrderByCreatedAtDesc(String status);
+
+    java.util.List<User> findByDepartmentId(UUID departmentId);
 }

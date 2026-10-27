@@ -3,6 +3,7 @@ package com.leavemgt.leave.controller;
 import com.leavemgt.common.dto.ApiResponse;
 import com.leavemgt.leave.dto.ApprovalDecisionRequest;
 import com.leavemgt.leave.dto.DepartmentOverlapResponse;
+import com.leavemgt.leave.dto.TeamCapacityDayResponse;
 import com.leavemgt.leave.dto.LeaveRequestResponse;
 import com.leavemgt.leave.dto.SubmitLeaveRequest;
 import com.leavemgt.leave.service.LeaveRequestService;
@@ -151,6 +152,21 @@ public class LeaveRequestController {
 
         List<DepartmentOverlapResponse> overlaps = leaveRequestService.getDepartmentOverlap(callerId, startDate, endDate, departmentId);
         return ResponseEntity.ok(ApiResponse.success(overlaps, "Department overlap retrieved successfully"));
+    }
+
+    @GetMapping("/team-capacity")
+    public ResponseEntity<ApiResponse<List<TeamCapacityDayResponse>>> getTeamCapacity(
+            @RequestParam("startDate") @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam("endDate") @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(value = "departmentId", required = false) UUID departmentId,
+            Authentication authentication) {
+        UUID callerId = extractUserId(authentication);
+        if (callerId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Unauthorized"));
+        }
+
+        List<TeamCapacityDayResponse> capacity = leaveRequestService.getTeamCapacityHeatmap(callerId, startDate, endDate, departmentId);
+        return ResponseEntity.ok(ApiResponse.success(capacity, "Team capacity retrieved successfully"));
     }
 
     @PostMapping(value = "/upload-attachment", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

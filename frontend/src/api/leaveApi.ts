@@ -10,6 +10,7 @@ import {
   SubmitCompOffRequestDto,
   LeaveEncashmentRequest,
   SubmitEncashmentRequestDto,
+  TeamCapacityDay,
 } from '../types';
 
 export const leaveApi = {
@@ -156,5 +157,36 @@ export const leaveApi = {
   rejectEncashment: async (id: string, comments?: string): Promise<LeaveEncashmentRequest> => {
     const res = await apiClient.post<ApiResponse<LeaveEncashmentRequest>>(`/api/leave/encashment/${id}/reject`, { comments });
     return res.data.data;
+  },
+
+  getTeamCapacity: async (startDate: string, endDate: string, departmentId?: string): Promise<TeamCapacityDay[]> => {
+    const params = new URLSearchParams({ startDate, endDate });
+    if (departmentId) params.append('departmentId', departmentId);
+    const res = await apiClient.get<ApiResponse<TeamCapacityDay[]>>(`/api/leave/requests/team-capacity?${params.toString()}`);
+    return res.data.data;
+  },
+
+  downloadMyLeavesIcs: async (): Promise<void> => {
+    const res = await apiClient.get('/api/leave/calendar/my-leaves.ics', { responseType: 'blob' });
+    const url = window.URL.createObjectURL(new Blob([res.data], { type: 'text/calendar' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'my_approved_leaves.ics');
+    document.body.appendChild(link);
+    link.click();
+    link.parentNode?.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  },
+
+  downloadDepartmentLeavesIcs: async (): Promise<void> => {
+    const res = await apiClient.get('/api/leave/calendar/department.ics', { responseType: 'blob' });
+    const url = window.URL.createObjectURL(new Blob([res.data], { type: 'text/calendar' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'department_leaves.ics');
+    document.body.appendChild(link);
+    link.click();
+    link.parentNode?.removeChild(link);
+    window.URL.revokeObjectURL(url);
   },
 };

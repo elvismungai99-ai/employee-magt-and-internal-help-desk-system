@@ -1,0 +1,128 @@
+package com.leavemgt.platform.controller;
+
+import com.leavemgt.common.dto.ApiResponse;
+import com.leavemgt.helpdesk.entity.Ticket;
+import com.leavemgt.helpdesk.entity.TicketStatus;
+import com.leavemgt.helpdesk.repository.TicketRepository;
+import com.leavemgt.identity.repository.UserRepository;
+import com.leavemgt.leave.entity.EncashmentStatus;
+import com.leavemgt.leave.entity.LeaveEncashmentRequest;
+import com.leavemgt.leave.entity.LeaveRequest;
+import com.leavemgt.leave.entity.LeaveRequestStatus;
+import com.leavemgt.leave.repository.CompOffRequestRepository;
+import com.leavemgt.leave.repository.LeaveEncashmentRequestRepository;
+import com.leavemgt.leave.repository.LeaveRequestRepository;
+import com.leavemgt.platform.dto.ExecutiveAnalyticsSummary;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/api/admin/analytics")
+@RequiredArgsConstructor
+@PreAuthorize("hasAnyAuthority('ROLE_HR_ADMIN', 'HR_ADMIN')")
+@Slf4j
+public class AdminAnalyticsController {
+
+    private final UserRepository userRepository;
+    private final LeaveRequestRepository leaveRequestRepository;
+    private final CompOffRequestRepository compOffRequestRepository;
+    private final LeaveEncashmentRequestRepository encashmentRepository;
+    private final TicketRepository ticketRepository;
+
+    @GetMapping("/summary")
+    public ResponseEntity<ApiResponse<ExecutiveAnalyticsSummary>> getExecutiveSummary() {
+        LocalDate today = LocalDate.now();
+
+        long totalEmployees = userRepository.count();
+
+        List<LeaveRequest> allLeaves = leaveRequestRepository.findAllByOrderByCreatedAtDesc();
+        long activeLeavesToday = allLeaves.stream()
+                .filter(r -> r.getStatus() == LeaveRequestStatus.APPROVED)
+                .filter(r -> r.getStartDate() != null && r.getEndDate() != null &&
+                             !today.isBefore(r.getStartDate()) && !today.isAfter(r.getEndDate()))
+                .count();
+
+        long pendingLeaves = allLeaves.stream()
+                .filter(r -> r.getStatus() == LeaveRequestStatus.PENDING)
+                .count();
+
+        long pendingCompOff = compOffRequestRepository.findAll().stream()
+                .filter(r -> r.getStatus() != null && "PENDING".equalsIgnoreCase(r.getStatus().name()))
+                .count();
+
+        List<LeaveEncashmentRequest> encashments = encashmentRepository.findAll();
+        long pendingEncashments = encashments.stream()
+                .filter(r -> r.getStatus() == EncashmentStatus.PENDING)
+                .count();
+
+        BigDecimal totalApprovedDays = encashments.stream()
+                .filter(r -> r.getStatus() == EncashmentStatus.APPROVED)
+                .map(r -> r.getDaysRequested() != null ? r.getDaysRequested() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<Ticket> allTickets = ticketRepository.findAll();
+        long totalTickets = allTickets.size();
+
+        long openTickets = allTickets.stream()
+                .filter(t -> t.getStatus() != TicketStatus.RESOLVED && t.getStatus() != TicketStatus.CLOSED)
+                .count();
+
+        long resolvedTickets = allTickets.stream()
+                .filter(t -> t.getStatus() == TicketStatus.RESOLVED || t.getStatus() == TicketStatus.CLOSED)
+                .count();
+
+        long breachedTickets = allTickets.stream()
+                .filter(t -> Boolean.TRUE.equals(t.getSlaBreached()))
+                .count();
+
+        double slaCompliance = totalTickets > 0
+                ? Math.round(((double) (totalTickets - breachedTickets) / totalTickets * 100.0) * 10.0) / 10.0
+                : 100.0;
+
+        List<Ticket> ratedTickets = allTickets.stream()
+                .filter(t -> t.getCsatRating() != null && t.getCsatRating() > 0)
+                .toList();
+
+        Double avgCsat = ratedTickets.isEmpty()
+                ? null
+                : Math.round(ratedTickets.stream().mapToInt(Ticket::getCsatRating).average().orElse(0.0) * 10.0) / 10.0;
+
+        Map<String, Long> byPriority = allTickets.stream()
+                .filter(t -> t.getPriority() != null)
+                .collect(Collectors.groupingBy(t -> t.getPriority().name(), Collectors.counting()));
+
+        Map<String, Long> byCategory = allTickets.stream()
+                .filter(t -> t.getCategory() != null && t.getCategory().getName() != null)
+                .collect(Collectors.groupingBy(t -> t.getCategory().getName(), Collectors.counting()));
+
+        ExecutiveAnalyticsSummary summary = ExecutiveAnalyticsSummary.builder()
+                .totalEmployees(totalEmployees)
+                .activeLeavesToday(activeLeavesToday)
+                .pendingLeaveRequests(pendingLeaves)
+                .pendingCompOffClaims(pendingCompOff)
+                .pendingEncashmentClaims(pendingEncashments)
+                .totalApprovedEncashmentDays(totalApprovedDays)
+                .totalTickets(totalTickets)
+                .openTickets(openTickets)
+                .resolvedTickets(resolvedTickets)
+                .breachedTickets(breachedTickets)
+                .slaCompliancePercentage(slaCompliance)
+                .averageCsatRating(avgCsat)
+                .totalCsatResponses(ratedTickets.size())
+                .ticketsByPriority(byPriority)
+                .ticketsByCategory(byCategory)
+                .build();
+
+        return ResponseEntity.ok(ApiResponse.success(summary, "Executive analytics retrieved successfully"));
+    }
+}

@@ -50,6 +50,9 @@ public class TicketService {
     @org.springframework.beans.factory.annotation.Value("${app.helpdesk.attachment-storage-dir:uploads/tickets}")
     private String attachmentStorageDir;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.leavemgt.platform.service.AuditLogService auditLogService;
+
     public TicketService(TicketRepository ticketRepository,
                          TicketCommentRepository ticketCommentRepository,
                          TicketAttachmentRepository ticketAttachmentRepository,
@@ -523,6 +526,32 @@ public class TicketService {
     }
 
     @Transactional
+    public TicketResponse submitCsat(UUID ticketId, SubmitCsatRequest request, UUID callerId, boolean isHrAdmin) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new IllegalArgumentException("Ticket not found with ID: " + ticketId));
+
+        if (ticket.getStatus() != TicketStatus.RESOLVED && ticket.getStatus() != TicketStatus.CLOSED) {
+            throw new IllegalStateException("CSAT ratings can only be submitted for RESOLVED or CLOSED tickets");
+        }
+
+        boolean isRequester = ticket.getRequester().getId().equals(callerId);
+        if (!isRequester && !isHrAdmin) {
+            throw new org.springframework.security.access.AccessDeniedException("Only the ticket requester or HR Admin can submit CSAT feedback");
+        }
+
+        ticket.setCsatRating(request.getRating());
+        ticket.setCsatFeedback(request.getFeedback());
+        ticket.setCsatSubmittedAt(OffsetDateTime.now());
+
+        Ticket saved = ticketRepository.save(ticket);
+        if (auditLogService != null) {
+            auditLogService.log(callerId, null, "TICKET_CSAT_RATED", "TICKET", saved.getId().toString(), "Submitted " + request.getRating() + "-star CSAT rating", null);
+        }
+        log.info("CSAT rating {} submitted for ticket {} by user {}", request.getRating(), saved.getTicketNumber(), callerId);
+        return mapTicket(saved, Collections.emptyList());
+    }
+
+    @Transactional
     public TicketResponse reopenTicket(UUID ticketId, String reason, UUID callerId, boolean isHrAdmin) {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket not found with ID: " + ticketId));
@@ -867,6 +896,9 @@ public class TicketService {
                 .updatedAt(t.getUpdatedAt())
                 .resolvedAt(t.getResolvedAt())
                 .closedAt(t.getClosedAt())
+                .csatRating(t.getCsatRating())
+                .csatFeedback(t.getCsatFeedback())
+                .csatSubmittedAt(t.getCsatSubmittedAt())
                 .comments(comments)
                 .attachments(attachments)
                 .build();

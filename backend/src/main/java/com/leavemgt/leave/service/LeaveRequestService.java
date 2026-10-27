@@ -33,6 +33,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import com.leavemgt.leave.dto.DepartmentOverlapResponse;
+import com.leavemgt.leave.dto.TeamCapacityDayResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -72,6 +73,9 @@ public class LeaveRequestService {
     private final UserRepository userRepository;
     private final EventPublisherService eventPublisherService;
     private final HolidayService holidayService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.leavemgt.platform.service.AuditLogService auditLogService;
 
     public LeaveRequestService(LeaveRequestRepository leaveRequestRepository,
                                LeaveApprovalRepository leaveApprovalRepository,
@@ -254,6 +258,10 @@ public class LeaveRequestService {
 
         LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
 
+        if (auditLogService != null) {
+            auditLogService.log(employee.getId(), employee.getEmail(), "LEAVE_REQUESTED", "LEAVE_REQUEST", saved.getId().toString(), "Requested " + saved.getTotalDays() + " days of " + leaveType.getName(), null);
+        }
+
         log.info("Leave request {} submitted by employee {} for {} days, routed to manager {}",
                 saved.getId(), employee.getEmail(), requestedDays, manager.getEmail());
 
@@ -372,6 +380,10 @@ public class LeaveRequestService {
         request.setStatus(LeaveRequestStatus.APPROVED);
         LeaveRequest updated = leaveRequestRepository.save(request);
 
+        if (auditLogService != null) {
+            auditLogService.log(caller.getId(), caller.getEmail(), "LEAVE_APPROVED", "LEAVE_REQUEST", updated.getId().toString(), "Approved leave request for " + updated.getUser().getFullName(), null);
+        }
+
         log.info("Leave request {} APPROVED by user {} (isHrAdmin={})", requestId, caller.getEmail(), isHrAdmin);
 
         // Publish LeaveApproved event in the same transaction
@@ -441,6 +453,10 @@ public class LeaveRequestService {
         request.setStatus(LeaveRequestStatus.REJECTED);
         LeaveRequest updated = leaveRequestRepository.save(request);
 
+        if (auditLogService != null) {
+            auditLogService.log(caller.getId(), caller.getEmail(), "LEAVE_REJECTED", "LEAVE_REQUEST", updated.getId().toString(), "Rejected leave request for " + updated.getUser().getFullName(), null);
+        }
+
         log.info("Leave request {} REJECTED by user {} (isHrAdmin={})", requestId, caller.getEmail(), isHrAdmin);
 
         return mapToResponse(updated);
@@ -496,6 +512,10 @@ public class LeaveRequestService {
 
         request.setStatus(LeaveRequestStatus.CANCELLED);
         LeaveRequest updated = leaveRequestRepository.save(request);
+
+        if (auditLogService != null) {
+            auditLogService.log(callerId, updated.getUser().getEmail(), "LEAVE_CANCELLED", "LEAVE_REQUEST", updated.getId().toString(), "Cancelled leave request", null);
+        }
 
         log.info("Leave request {} CANCELLED by employee {}", requestId, callerId);
 
@@ -640,6 +660,62 @@ public class LeaveRequestService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<TeamCapacityDayResponse> getTeamCapacityHeatmap(UUID callerId, LocalDate startDate, LocalDate endDate, UUID departmentId) {
+        User caller = userRepository.findById(callerId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + callerId));
+
+        UUID deptId = departmentId;
+        if (deptId == null && caller.getDepartment() != null) {
+            deptId = caller.getDepartment().getId();
+        }
+
+        List<User> deptMembers = (deptId != null)
+                ? userRepository.findByDepartmentId(deptId)
+                : userRepository.findAll();
+        int totalMembers = Math.max(1, deptMembers.size());
+
+        List<LeaveRequestStatus> activeStatuses = List.of(LeaveRequestStatus.PENDING, LeaveRequestStatus.APPROVED);
+        List<LeaveRequest> overlappingRequests;
+        if (deptId != null) {
+            overlappingRequests = leaveRequestRepository.findOverlappingDepartmentRequests(deptId, startDate, endDate, activeStatuses);
+        } else {
+            overlappingRequests = leaveRequestRepository.findAllByOrderByCreatedAtDesc().stream()
+                    .filter(r -> activeStatuses.contains(r.getStatus()))
+                    .filter(r -> !r.getStartDate().isAfter(endDate) && !r.getEndDate().isBefore(startDate))
+                    .collect(Collectors.toList());
+        }
+
+        List<TeamCapacityDayResponse> result = new java.util.ArrayList<>();
+        LocalDate curr = startDate;
+        while (!curr.isAfter(endDate)) {
+            final LocalDate day = curr;
+            List<String> onLeaveNames = overlappingRequests.stream()
+                    .filter(r -> !day.isBefore(r.getStartDate()) && !day.isAfter(r.getEndDate()))
+                    .map(r -> r.getUser() != null ? r.getUser().getFullName() : "Employee")
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            int onLeaveCount = onLeaveNames.size();
+            int availableCount = Math.max(0, totalMembers - onLeaveCount);
+            double capacityPct = Math.round(((double) availableCount / totalMembers * 100.0) * 10.0) / 10.0;
+
+            result.add(TeamCapacityDayResponse.builder()
+                    .date(day)
+                    .dayOfWeek(day.getDayOfWeek().name())
+                    .totalDepartmentMembers(totalMembers)
+                    .onLeaveCount(onLeaveCount)
+                    .availableCount(availableCount)
+                    .capacityPercentage(capacityPct)
+                    .onLeaveEmployees(onLeaveNames)
+                    .build());
+
+            curr = curr.plusDays(1);
+        }
+
+        return result;
+    }
+
     public String uploadAttachmentFile(MultipartFile file, UUID callerId) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Attachment file cannot be empty");
@@ -731,7 +807,7 @@ public class LeaveRequestService {
                 "CALSCALE:GREGORIAN\r\n" +
                 "METHOD:PUBLISH\r\n" +
                 "BEGIN:VEVENT\r\n" +
-                "UID:leave-" + request.getId() + "@company.com\r\n" +
+                "UID:leave-" + request.getId() + "@" + (request.getUser() != null && request.getUser().getEmail() != null && request.getUser().getEmail().contains("@") ? request.getUser().getEmail().substring(request.getUser().getEmail().indexOf('@') + 1) : "leavemgt.local") + "\r\n" +
                 "DTSTAMP:" + dtStamp + "\r\n" +
                 "DTSTART;VALUE=DATE:" + dtStart + "\r\n" +
                 "DTEND;VALUE=DATE:" + dtEnd + "\r\n" +

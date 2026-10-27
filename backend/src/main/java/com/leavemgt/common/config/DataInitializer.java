@@ -1,9 +1,13 @@
 package com.leavemgt.common.config;
 
+import com.leavemgt.helpdesk.entity.CannedResponse;
+import com.leavemgt.helpdesk.entity.KnowledgeBaseArticle;
 import com.leavemgt.helpdesk.entity.SlaPolicy;
 import com.leavemgt.helpdesk.entity.SupportQueue;
 import com.leavemgt.helpdesk.entity.TicketCategory;
 import com.leavemgt.helpdesk.entity.TicketPriority;
+import com.leavemgt.helpdesk.repository.CannedResponseRepository;
+import com.leavemgt.helpdesk.repository.KnowledgeBaseArticleRepository;
 import com.leavemgt.helpdesk.repository.SlaPolicyRepository;
 import com.leavemgt.helpdesk.repository.SupportQueueRepository;
 import com.leavemgt.helpdesk.repository.TicketCategoryRepository;
@@ -47,15 +51,17 @@ public class DataInitializer implements CommandLineRunner {
     private final TicketCategoryRepository ticketCategoryRepository;
     private final SupportQueueRepository supportQueueRepository;
     private final SlaPolicyRepository slaPolicyRepository;
+    private final KnowledgeBaseArticleRepository knowledgeBaseArticleRepository;
+    private final CannedResponseRepository cannedResponseRepository;
     private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     @org.springframework.beans.factory.annotation.Value("${app.seed-admin-user:false}")
     private boolean seedAdminUser;
 
-    @org.springframework.beans.factory.annotation.Value("${app.admin.email:hr.admin@company.com}")
+    @org.springframework.beans.factory.annotation.Value("${app.admin.email:}")
     private String adminEmail;
 
-    @org.springframework.beans.factory.annotation.Value("${app.admin.password:Admin123!}")
+    @org.springframework.beans.factory.annotation.Value("${app.admin.password:}")
     private String adminPassword;
 
     @org.springframework.beans.factory.annotation.Value("${app.admin.employee-code:EMP-00001}")
@@ -70,7 +76,7 @@ public class DataInitializer implements CommandLineRunner {
     @org.springframework.beans.factory.annotation.Value("${app.admin.job-title:HR Administrator}")
     private String adminJobTitle;
 
-    @org.springframework.beans.factory.annotation.Value("${app.admin.phone:+254700000000}")
+    @org.springframework.beans.factory.annotation.Value("${app.admin.phone:}")
     private String adminPhone;
 
     public DataInitializer(RoleRepository roleRepository,
@@ -84,6 +90,8 @@ public class DataInitializer implements CommandLineRunner {
                            TicketCategoryRepository ticketCategoryRepository,
                            SupportQueueRepository supportQueueRepository,
                            SlaPolicyRepository slaPolicyRepository,
+                           KnowledgeBaseArticleRepository knowledgeBaseArticleRepository,
+                           CannedResponseRepository cannedResponseRepository,
                            org.springframework.jdbc.core.JdbcTemplate jdbcTemplate) {
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
@@ -96,6 +104,8 @@ public class DataInitializer implements CommandLineRunner {
         this.ticketCategoryRepository = ticketCategoryRepository;
         this.supportQueueRepository = supportQueueRepository;
         this.slaPolicyRepository = slaPolicyRepository;
+        this.knowledgeBaseArticleRepository = knowledgeBaseArticleRepository;
+        this.cannedResponseRepository = cannedResponseRepository;
         this.jdbcTemplate = jdbcTemplate;
     }
 
@@ -128,6 +138,9 @@ public class DataInitializer implements CommandLineRunner {
 
         // 6. Seed Help Desk Taxonomy (Queues, Categories, SLA Policies)
         initHelpdeskTaxonomy();
+
+        // 7. Seed Knowledge Base Articles & Canned Responses
+        initKnowledgeBaseAndCannedResponses();
 
         log.info("Seed data initialization completed successfully.");
     }
@@ -239,6 +252,52 @@ public class DataInitializer implements CommandLineRunner {
             );
         } catch (Exception e) {
             log.debug("Platform notifications constraint patch skipped: {}", e.getMessage());
+        }
+
+        // Schema patches for Knowledge Base, Canned Responses, CSAT, Document Upload, and Audit Logs
+        String[] enterprisePatches = {
+                "CREATE TABLE IF NOT EXISTS helpdesk.knowledge_base_articles (" +
+                        "id UUID PRIMARY KEY DEFAULT gen_random_uuid(), " +
+                        "title VARCHAR(255) NOT NULL, " +
+                        "slug VARCHAR(255) NOT NULL, " +
+                        "content TEXT NOT NULL, " +
+                        "category_id UUID, " +
+                        "tags VARCHAR(255), " +
+                        "is_published BOOLEAN DEFAULT true NOT NULL, " +
+                        "view_count INTEGER DEFAULT 0 NOT NULL, " +
+                        "helpful_count INTEGER DEFAULT 0 NOT NULL, " +
+                        "created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL, " +
+                        "updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL)",
+                "CREATE TABLE IF NOT EXISTS helpdesk.canned_responses (" +
+                        "id UUID PRIMARY KEY DEFAULT gen_random_uuid(), " +
+                        "title VARCHAR(100) NOT NULL, " +
+                        "shortcut VARCHAR(50) NOT NULL, " +
+                        "content TEXT NOT NULL, " +
+                        "category_id UUID, " +
+                        "created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL)",
+                "ALTER TABLE helpdesk.tickets ADD COLUMN IF NOT EXISTS csat_rating INTEGER",
+                "ALTER TABLE helpdesk.tickets ADD COLUMN IF NOT EXISTS csat_feedback VARCHAR(1000)",
+                "ALTER TABLE helpdesk.tickets ADD COLUMN IF NOT EXISTS csat_submitted_at TIMESTAMPTZ",
+                "ALTER TABLE leave.leave_requests ADD COLUMN IF NOT EXISTS document_url VARCHAR(500)",
+                "ALTER TABLE leave.leave_requests ADD COLUMN IF NOT EXISTS document_name VARCHAR(255)",
+                "CREATE TABLE IF NOT EXISTS platform.audit_logs (" +
+                        "id UUID PRIMARY KEY DEFAULT gen_random_uuid(), " +
+                        "timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL, " +
+                        "actor_id UUID, " +
+                        "actor_email VARCHAR(255), " +
+                        "action VARCHAR(100) NOT NULL, " +
+                        "entity_type VARCHAR(100) NOT NULL, " +
+                        "entity_id VARCHAR(100), " +
+                        "details TEXT, " +
+                        "ip_address VARCHAR(50))"
+        };
+
+        for (String sql : enterprisePatches) {
+            try {
+                jdbcTemplate.execute(sql);
+            } catch (Exception e) {
+                log.debug("Enterprise schema patch skipped: {}", e.getMessage());
+            }
         }
     }
 
@@ -364,6 +423,11 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private User initAdminUser(Role adminRole, Department hrDept) {
+        if (adminEmail == null || adminEmail.isBlank() || adminPassword == null || adminPassword.isBlank()) {
+            log.info("Admin seeding requested via configuration, but email or password is not provided. Skipping admin account creation.");
+            return null;
+        }
+
         Optional<User> existing = userRepository.findByEmail(adminEmail);
         if (existing.isPresent()) {
             return existing.get();
@@ -555,6 +619,107 @@ public class DataInitializer implements CommandLineRunner {
             }
         }
         log.info("Initialized Help Desk queues, categories, and SLA policies.");
+    }
+
+    private void initKnowledgeBaseAndCannedResponses() {
+        // 1. Canned Responses
+        if (cannedResponseRepository.count() == 0) {
+            TicketCategory itCat = ticketCategoryRepository.findByCode("NETWORK").orElse(null);
+            TicketCategory accessCat = ticketCategoryRepository.findByCode("ACCESS_REQUEST").orElse(null);
+
+            cannedResponseRepository.save(CannedResponse.builder()
+                    .title("VPN Connection Troubleshooting")
+                    .shortcut("#vpn-fix")
+                    .content("Please verify your MFA token has not expired. Restart the OpenVPN client and reconnect to vpn.company.com. If the handshake fails, clear your DNS cache with 'ipconfig /flushdns' and retry.")
+                    .category(itCat)
+                    .build());
+
+            cannedResponseRepository.save(CannedResponse.builder()
+                    .title("Password Reset Sent")
+                    .shortcut("#pwd-reset")
+                    .content("A temporary password reset link has been dispatched to your registered alternate email address. Please click the link and configure your new passphrase within 15 minutes.")
+                    .category(accessCat)
+                    .build());
+
+            cannedResponseRepository.save(CannedResponse.builder()
+                    .title("Requesting Additional Information")
+                    .shortcut("#need-info")
+                    .content("To assist you further with this ticket, please reply with screenshots of any error codes, your workstation machine name, and the exact steps taken prior to encountering the issue.")
+                    .build());
+
+            cannedResponseRepository.save(CannedResponse.builder()
+                    .title("Incident Resolved Confirmation")
+                    .shortcut("#resolved-confirm")
+                    .content("We have applied a fix to resolve this reported incident. Please verify on your side. If everything works as expected, you can submit your feedback via the 5-star survey rating below.")
+                    .build());
+
+            log.info("Initialized default IT Support canned macro responses.");
+        }
+
+        // 2. Knowledge Base Articles
+        if (knowledgeBaseArticleRepository.count() == 0) {
+            TicketCategory netCat = ticketCategoryRepository.findByCode("NETWORK").orElse(null);
+            TicketCategory accessCat = ticketCategoryRepository.findByCode("ACCESS_REQUEST").orElse(null);
+            TicketCategory hrCat = ticketCategoryRepository.findByCode("HR_QUERY").orElse(null);
+            TicketCategory hardCat = ticketCategoryRepository.findByCode("IT_HARDWARE").orElse(null);
+
+            knowledgeBaseArticleRepository.save(KnowledgeBaseArticle.builder()
+                    .title("How to Connect to Corporate Office VPN (GlobalProtect / OpenVPN)")
+                    .slug("how-to-connect-to-corporate-office-vpn")
+                    .content("### Corporate VPN Connection Guide\n\n1. Ensure you have an active internet connection.\n2. Open your VPN client from the system tray.\n3. Enter the portal gateway: `vpn.company.com`.\n4. Input your corporate username and password.\n5. When prompted, enter the 6-digit TOTP code generated in Google Authenticator or Microsoft Authenticator.\n\n*Note: If you receive 'Certificate Expired', re-download the IT root certificate from the intranet.*")
+                    .category(netCat)
+                    .tags("vpn, network, remote, connectivity, security")
+                    .isPublished(true)
+                    .viewCount(24)
+                    .helpfulCount(18)
+                    .build());
+
+            knowledgeBaseArticleRepository.save(KnowledgeBaseArticle.builder()
+                    .title("Self-Service Password Reset and Account Unlock Guide")
+                    .slug("self-service-password-reset-and-account-unlock-guide")
+                    .content("### Resetting Your Corporate Password\n\n- Visit `https://auth.company.com/reset-password`\n- Enter your Employee Code or Corporate Email Address.\n- Verify your identity using SMS OTP or Authenticator app.\n- Choose a strong passphrase with at least 10 characters, including upper, lower, number, and special symbols.\n\nIf your account is locked after 5 failed attempts, wait 15 minutes for the lockout window to reset automatically or open a high-priority ticket.")
+                    .category(accessCat)
+                    .tags("password, reset, credentials, auth, lock, account")
+                    .isPublished(true)
+                    .viewCount(35)
+                    .helpfulCount(29)
+                    .build());
+
+            knowledgeBaseArticleRepository.save(KnowledgeBaseArticle.builder()
+                    .title("Annual Leave Entitlement, Accruals & Encashment Rules (Kenya Statutory)")
+                    .slug("annual-leave-entitlement-accruals-and-encashment-rules")
+                    .content("### Statutory Leave Policy & Encashment Guidelines\n\n- **Annual Entitlement**: Permanent employees earn 21 working days per calendar year, accrued at 1.75 days per completed month of service.\n- **Kenyan Public Holidays**: Official national gazetted holidays are excluded from leave deductions.\n- **Leave Encashment**: Eligible employees with earned annual leave balances exceeding 10 days may request encashment of up to 10 days per fiscal year upon Line Manager and HR Admin approval.\n- Payouts are computed using your gross basic daily rate and reflected on your month-end payslip.")
+                    .category(hrCat)
+                    .tags("leave, annual, accrual, encashment, payout, kenya, statutory")
+                    .isPublished(true)
+                    .viewCount(52)
+                    .helpfulCount(41)
+                    .build());
+
+            knowledgeBaseArticleRepository.save(KnowledgeBaseArticle.builder()
+                    .title("Compensatory Off (Comp-Off) Submission & Claim Rules")
+                    .slug("compensatory-off-comp-off-submission-and-claim-rules")
+                    .content("### Overtime Compensatory Off Policy\n\n- Employees who perform pre-approved official work on weekends or gazetted public holidays are eligible for 1 comp-off credit per full workday (8 hours).\n- Claims must be logged via the **Leave Portal ➔ Compensatory Off Claims** within 30 days of the duty date.\n- Approved credits are added to your available leave ledger under `COMP_OFF_CREDIT`.")
+                    .category(hrCat)
+                    .tags("comp-off, overtime, weekend, holiday, credit, claim")
+                    .isPublished(true)
+                    .viewCount(19)
+                    .helpfulCount(15)
+                    .build());
+
+            knowledgeBaseArticleRepository.save(KnowledgeBaseArticle.builder()
+                    .title("Troubleshooting USB-C Docking Station & Dual Monitor Displays")
+                    .slug("troubleshooting-usb-c-docking-station-dual-monitors")
+                    .content("### External Display & Docking Diagnostics\n\n1. Disconnect the USB-C dock power cable and laptop for 10 seconds to power-cycle the DisplayLink chip.\n2. Reconnect power first, then plug into your laptop Thunderbolt/USB-C port.\n3. On Windows, press `Win + P` and verify display mode is set to **Extend**.\n4. Check Windows Update for the latest OEM Display Driver.")
+                    .category(hardCat)
+                    .tags("hardware, display, monitor, dock, usb-c, dual-screen")
+                    .isPublished(true)
+                    .viewCount(14)
+                    .helpfulCount(9)
+                    .build());
+
+            log.info("Initialized default Knowledge Base articles.");
+        }
     }
 
     private record PermissionDefinition(String code, String domain, String description) {}

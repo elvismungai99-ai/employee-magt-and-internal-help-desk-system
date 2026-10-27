@@ -114,4 +114,12 @@ export const helpdeskApi = {
     const res = await apiClient.patch<ApiResponse<Ticket>>(`/api/helpdesk/tickets/${id}/status`, { status });
     return res.data.data;
   },
+
+  submitCsat: async (ticketId: string, rating: number, feedback?: string): Promise<Ticket> => {
+    const res = await apiClient.post<ApiResponse<Ticket>>(`/api/helpdesk/tickets/${ticketId}/csat`, {
+      rating,
+      feedback,
+    });
+    return res.data.data;
+  },
 };

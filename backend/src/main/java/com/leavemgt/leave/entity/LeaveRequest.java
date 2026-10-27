@@ -65,6 +65,12 @@ public class LeaveRequest {
     @JoinColumn(name = "delegate_id")
     private User delegate;
 
+    @Column(name = "document_url", length = 500)
+    private String documentUrl;
+
+    @Column(name = "document_name", length = 255)
+    private String documentName;
+
     @Builder.Default
     @OneToMany(mappedBy = "leaveRequest", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<LeaveApproval> approvals = new ArrayList<>();

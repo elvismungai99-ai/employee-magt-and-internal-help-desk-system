@@ -398,3 +398,46 @@ ALTER TABLE public.out_of_office_records ADD COLUMN IF NOT EXISTS delegate_id UU
 ALTER TABLE public.tickets ADD COLUMN IF NOT EXISTS leave_request_id UUID REFERENCES public.leave_requests(id) ON DELETE SET NULL;
 ALTER TABLE public.tickets ADD COLUMN IF NOT EXISTS paused_at TIMESTAMPTZ;
 ALTER TABLE public.tickets ADD COLUMN IF NOT EXISTS total_paused_minutes INT DEFAULT 0;
+
+-- Enterprise Enhancements: Knowledge Base, Canned Responses, CSAT, Document Upload, and Audit Logs
+CREATE TABLE IF NOT EXISTS helpdesk.knowledge_base_articles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    category_id UUID REFERENCES helpdesk.ticket_categories(id) ON DELETE SET NULL,
+    tags VARCHAR(255),
+    is_published BOOLEAN DEFAULT true NOT NULL,
+    view_count INTEGER DEFAULT 0 NOT NULL,
+    helpful_count INTEGER DEFAULT 0 NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS helpdesk.canned_responses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(100) NOT NULL,
+    shortcut VARCHAR(50) NOT NULL,
+    content TEXT NOT NULL,
+    category_id UUID REFERENCES helpdesk.ticket_categories(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+ALTER TABLE helpdesk.tickets ADD COLUMN IF NOT EXISTS csat_rating INTEGER;
+ALTER TABLE helpdesk.tickets ADD COLUMN IF NOT EXISTS csat_feedback VARCHAR(1000);
+ALTER TABLE helpdesk.tickets ADD COLUMN IF NOT EXISTS csat_submitted_at TIMESTAMPTZ;
+
+ALTER TABLE leave.leave_requests ADD COLUMN IF NOT EXISTS document_url VARCHAR(500);
+ALTER TABLE leave.leave_requests ADD COLUMN IF NOT EXISTS document_name VARCHAR(255);
+
+CREATE TABLE IF NOT EXISTS platform.audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    actor_id UUID,
+    actor_email VARCHAR(255),
+    action VARCHAR(100) NOT NULL,
+    entity_type VARCHAR(100) NOT NULL,
+    entity_id VARCHAR(100),
+    details TEXT,
+    ip_address VARCHAR(50)
+);

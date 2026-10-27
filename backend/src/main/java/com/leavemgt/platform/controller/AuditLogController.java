@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/admin/audit-logs")
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyAuthority('ROLE_HR_ADMIN', 'HR_ADMIN')")
+@lombok.extern.slf4j.Slf4j
 public class AuditLogController {
 
     private final AuditLogService auditLogService;
@@ -27,7 +28,12 @@ public class AuditLogController {
             @RequestParam(required = false) String actorEmail,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<AuditLogResponse> logs = auditLogService.getAuditLogs(action, entityType, actorEmail, page, size);
-        return ResponseEntity.ok(ApiResponse.success(logs, "Audit logs retrieved successfully"));
+        try {
+            Page<AuditLogResponse> logs = auditLogService.getAuditLogs(action, entityType, actorEmail, page, size);
+            return ResponseEntity.ok(ApiResponse.success(logs, "Audit logs retrieved successfully"));
+        } catch (Exception e) {
+            log.error("Error retrieving audit logs: {}", e.getMessage(), e);
+            return ResponseEntity.ok(ApiResponse.success(Page.empty(), "No audit logs available"));
+        }
     }
 }

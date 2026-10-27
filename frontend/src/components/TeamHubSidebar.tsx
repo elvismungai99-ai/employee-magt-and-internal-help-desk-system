@@ -40,7 +40,7 @@ export const TeamHubSidebar: React.FC<TeamHubSidebarProps> = ({ mobileOpen, onCl
       helpdeskApi.getQueueTickets()
         .then((res) => {
           if (isMounted) {
-            const openCount = res?.filter((t) => t.status === 'NEW' || t.status === 'OPEN' || t.status === 'IN_PROGRESS')?.length || 0;
+            const openCount = Array.isArray(res) ? res.filter((t) => t.status === 'NEW' || t.status === 'OPEN' || t.status === 'IN_PROGRESS').length : 0;
             setQueueCount(openCount);
           }
         })

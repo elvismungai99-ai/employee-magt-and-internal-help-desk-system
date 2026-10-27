@@ -164,7 +164,7 @@ export const TeamHubHeader: React.FC<TeamHubHeaderProps> = ({
   }, [roles, user?.id]);
 
   // Only unread notifications are displayed in the active notifications section
-  const unreadNotifications = notifications.filter((n) => !n.read);
+  const unreadNotifications = (Array.isArray(notifications) ? notifications : []).filter((n) => !n.read);
   const unreadCount = unreadNotifications.length;
 
   const markSingleRead = (id: string) => {

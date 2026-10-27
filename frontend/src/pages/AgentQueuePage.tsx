@@ -169,7 +169,7 @@ export const AgentQueuePage: React.FC = () => {
     }
   };
 
-  const filteredTickets = tickets.filter((t) => {
+  const filteredTickets = (Array.isArray(tickets) ? tickets : []).filter((t) => {
     const matchesStatus = statusFilter === 'ALL' || t.status === statusFilter;
     const q = searchQuery.toLowerCase().trim();
     if (!q) return matchesStatus;

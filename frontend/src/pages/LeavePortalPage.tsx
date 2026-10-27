@@ -213,7 +213,7 @@ export const LeavePortalPage: React.FC = () => {
       setBalances(balData);
       setLeaveTypes(typesData);
       setMyRequests(myReqData);
-      setColleagues(colleaguesData.filter((c) => c.id !== user?.id));
+      setColleagues((Array.isArray(colleaguesData) ? colleaguesData : []).filter((c) => c.id !== user?.id));
       setMyCompOffs(compOffData);
       setMyEncashments(encashData);
 
@@ -716,11 +716,11 @@ export const LeavePortalPage: React.FC = () => {
 
   // Filtered requests for the active table
   const displayedRequests = useMemo(() => {
-    let source = myRequests;
+    let source = Array.isArray(myRequests) ? myRequests : [];
     if (activeTab === 'APPROVALS') {
-      source = pendingApprovals;
+      source = Array.isArray(pendingApprovals) ? pendingApprovals : [];
     } else if (activeTab === 'ALL_ACTIVITY') {
-      source = allRequests;
+      source = Array.isArray(allRequests) ? allRequests : [];
     }
 
     return source.filter((req) => {
@@ -738,7 +738,8 @@ export const LeavePortalPage: React.FC = () => {
 
   // Filtered Comp-Off claims
   const displayedCompOffs = useMemo(() => {
-    return myCompOffs.filter((item) => {
+    const list = Array.isArray(myCompOffs) ? myCompOffs : [];
+    return list.filter((item) => {
       const matchesSearch =
         (item.reason || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (item.employeeName || '').toLowerCase().includes(searchQuery.toLowerCase());
@@ -749,7 +750,8 @@ export const LeavePortalPage: React.FC = () => {
 
   // Filtered Encashment requests
   const displayedEncashments = useMemo(() => {
-    return myEncashments.filter((item) => {
+    const list = Array.isArray(myEncashments) ? myEncashments : [];
+    return list.filter((item) => {
       const matchesSearch =
         (item.reason || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (item.leaveTypeName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -761,7 +763,8 @@ export const LeavePortalPage: React.FC = () => {
 
   // Overall totals calculation
   const totalAvailableAcrossTypes = useMemo(() => {
-    return balances.reduce((sum, b) => sum + (Number(b.availableDays) || 0), 0);
+    const list = Array.isArray(balances) ? balances : [];
+    return list.reduce((sum, b) => sum + (Number(b.availableDays) || 0), 0);
   }, [balances]);
 
   const totalUsedAcrossTypes = useMemo(() => {

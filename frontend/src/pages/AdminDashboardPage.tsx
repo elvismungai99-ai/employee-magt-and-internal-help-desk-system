@@ -124,12 +124,20 @@ export const AdminDashboardPage: React.FC = () => {
       if (accrualRes) setLastAccrual(accrualRes);
       if (slaRes) setLastSla(slaRes);
       if (outboxRes) setOutboxPage(outboxRes);
-      if (usersRes) setUsers(usersRes);
-      if (pendingRes) setPendingUsers(pendingRes);
-      if (compOffRes) setPendingCompOffs(compOffRes);
-      if (encashRes) setPendingEncashments(encashRes);
+      if (usersRes && Array.isArray(usersRes)) setUsers(usersRes);
+      if (pendingRes && Array.isArray(pendingRes)) setPendingUsers(pendingRes);
+      if (compOffRes && Array.isArray(compOffRes)) setPendingCompOffs(compOffRes);
+      if (encashRes && Array.isArray(encashRes)) setPendingEncashments(encashRes);
       if (execRes) setExecutiveSummary(execRes);
-      if (auditRes) setAuditLogs(auditRes);
+      if (auditRes) {
+        if (Array.isArray(auditRes)) {
+          setAuditLogs(auditRes);
+        } else if ((auditRes as any).content && Array.isArray((auditRes as any).content)) {
+          setAuditLogs((auditRes as any).content);
+        } else {
+          setAuditLogs([]);
+        }
+      }
     } catch (err: any) {
       if (!isSilent) {
         setPageAlert({
@@ -471,13 +479,14 @@ export const AdminDashboardPage: React.FC = () => {
     });
   };
 
-  const eligibleManagers = users.filter((u) =>
-    u.roles.some((r) =>
-      ['LINE_MANAGER', 'HR_ADMIN', 'ROLE_LINE_MANAGER', 'ROLE_HR_ADMIN', 'MANAGER'].includes(r)
+  const safeUsers = Array.isArray(users) ? users : [];
+  const eligibleManagers = safeUsers.filter((u) =>
+    Array.isArray(u.roles) && u.roles.some((r) =>
+      ['LINE_MANAGER', 'HR_ADMIN', 'ROLE_LINE_MANAGER', 'ROLE_HR_ADMIN', 'MANAGER'].includes(typeof r === 'string' ? r : (r as any)?.name)
     )
   );
 
-  const filteredAdminUsers = users.filter((u) => {
+  const filteredAdminUsers = safeUsers.filter((u) => {
     const matchesStatus = !adminUserStatusFilter || u.status === adminUserStatusFilter;
     const q = adminUserSearch.toLowerCase().trim();
     const matchesQuery = !q || (
@@ -492,9 +501,10 @@ export const AdminDashboardPage: React.FC = () => {
     return matchesStatus && matchesQuery;
   });
 
-  const filteredAuditLogs = auditLogs.filter((log) => {
-    const actorMatch = !auditActorFilter || log.actorEmail.toLowerCase().includes(auditActorFilter.toLowerCase().trim());
-    const actionMatch = !auditActionFilter || log.action.toLowerCase().includes(auditActionFilter.toLowerCase().trim());
+  const safeAuditLogs = Array.isArray(auditLogs) ? auditLogs : [];
+  const filteredAuditLogs = safeAuditLogs.filter((log) => {
+    const actorMatch = !auditActorFilter || Boolean(log.actorEmail && log.actorEmail.toLowerCase().includes(auditActorFilter.toLowerCase().trim()));
+    const actionMatch = !auditActionFilter || Boolean(log.action && log.action.toLowerCase().includes(auditActionFilter.toLowerCase().trim()));
     return actorMatch && actionMatch;
   });
 
@@ -643,7 +653,7 @@ export const AdminDashboardPage: React.FC = () => {
           <span className={`px-2 py-0.5 rounded-full text-[10px] ${
             activeAdminTab === 'AUDIT_LOGS' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700 font-bold'
           }`}>
-            {auditLogs.length}
+            {Array.isArray(auditLogs) ? auditLogs.length : 0}
           </span>
         </button>
       </div>

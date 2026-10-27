@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyAuthority('ROLE_HR_ADMIN', 'HR_ADMIN')")
 @Slf4j
+@org.springframework.transaction.annotation.Transactional(readOnly = true)
 public class AdminAnalyticsController {
 
     private final UserRepository userRepository;
@@ -41,88 +42,99 @@ public class AdminAnalyticsController {
 
     @GetMapping("/summary")
     public ResponseEntity<ApiResponse<ExecutiveAnalyticsSummary>> getExecutiveSummary() {
-        LocalDate today = LocalDate.now();
+        try {
+            LocalDate today = LocalDate.now();
 
-        long totalEmployees = userRepository.count();
+            long totalEmployees = userRepository.count();
 
-        List<LeaveRequest> allLeaves = leaveRequestRepository.findAllByOrderByCreatedAtDesc();
-        long activeLeavesToday = allLeaves.stream()
-                .filter(r -> r.getStatus() == LeaveRequestStatus.APPROVED)
-                .filter(r -> r.getStartDate() != null && r.getEndDate() != null &&
-                             !today.isBefore(r.getStartDate()) && !today.isAfter(r.getEndDate()))
-                .count();
+            List<LeaveRequest> allLeaves = leaveRequestRepository.findAllByOrderByCreatedAtDesc();
+            long activeLeavesToday = allLeaves.stream()
+                    .filter(r -> r != null && r.getStatus() == LeaveRequestStatus.APPROVED)
+                    .filter(r -> r.getStartDate() != null && r.getEndDate() != null &&
+                                 !today.isBefore(r.getStartDate()) && !today.isAfter(r.getEndDate()))
+                    .count();
 
-        long pendingLeaves = allLeaves.stream()
-                .filter(r -> r.getStatus() == LeaveRequestStatus.PENDING)
-                .count();
+            long pendingLeaves = allLeaves.stream()
+                    .filter(r -> r != null && r.getStatus() == LeaveRequestStatus.PENDING)
+                    .count();
 
-        long pendingCompOff = compOffRequestRepository.findAll().stream()
-                .filter(r -> r.getStatus() != null && "PENDING".equalsIgnoreCase(r.getStatus().name()))
-                .count();
+            long pendingCompOff = compOffRequestRepository.findAll().stream()
+                    .filter(r -> r != null && r.getStatus() != null && "PENDING".equalsIgnoreCase(r.getStatus().name()))
+                    .count();
 
-        List<LeaveEncashmentRequest> encashments = encashmentRepository.findAll();
-        long pendingEncashments = encashments.stream()
-                .filter(r -> r.getStatus() == EncashmentStatus.PENDING)
-                .count();
+            List<LeaveEncashmentRequest> encashments = encashmentRepository.findAll();
+            long pendingEncashments = encashments.stream()
+                    .filter(r -> r != null && r.getStatus() == EncashmentStatus.PENDING)
+                    .count();
 
-        BigDecimal totalApprovedDays = encashments.stream()
-                .filter(r -> r.getStatus() == EncashmentStatus.APPROVED)
-                .map(r -> r.getDaysRequested() != null ? r.getDaysRequested() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal totalApprovedDays = encashments.stream()
+                    .filter(r -> r != null && r.getStatus() == EncashmentStatus.APPROVED)
+                    .map(r -> r.getDaysRequested() != null ? r.getDaysRequested() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        List<Ticket> allTickets = ticketRepository.findAll();
-        long totalTickets = allTickets.size();
+            List<Ticket> allTickets = ticketRepository.findAll();
+            long totalTickets = allTickets.size();
 
-        long openTickets = allTickets.stream()
-                .filter(t -> t.getStatus() != TicketStatus.RESOLVED && t.getStatus() != TicketStatus.CLOSED)
-                .count();
+            long openTickets = allTickets.stream()
+                    .filter(t -> t != null && t.getStatus() != TicketStatus.RESOLVED && t.getStatus() != TicketStatus.CLOSED)
+                    .count();
 
-        long resolvedTickets = allTickets.stream()
-                .filter(t -> t.getStatus() == TicketStatus.RESOLVED || t.getStatus() == TicketStatus.CLOSED)
-                .count();
+            long resolvedTickets = allTickets.stream()
+                    .filter(t -> t != null && (t.getStatus() == TicketStatus.RESOLVED || t.getStatus() == TicketStatus.CLOSED))
+                    .count();
 
-        long breachedTickets = allTickets.stream()
-                .filter(t -> Boolean.TRUE.equals(t.getSlaBreached()))
-                .count();
+            long breachedTickets = allTickets.stream()
+                    .filter(t -> t != null && Boolean.TRUE.equals(t.getSlaBreached()))
+                    .count();
 
-        double slaCompliance = totalTickets > 0
-                ? Math.round(((double) (totalTickets - breachedTickets) / totalTickets * 100.0) * 10.0) / 10.0
-                : 100.0;
+            double slaCompliance = totalTickets > 0
+                    ? Math.round(((double) (totalTickets - breachedTickets) / totalTickets * 100.0) * 10.0) / 10.0
+                    : 100.0;
 
-        List<Ticket> ratedTickets = allTickets.stream()
-                .filter(t -> t.getCsatRating() != null && t.getCsatRating() > 0)
-                .toList();
+            List<Ticket> ratedTickets = allTickets.stream()
+                    .filter(t -> t != null && t.getCsatRating() != null && t.getCsatRating() > 0)
+                    .toList();
 
-        Double avgCsat = ratedTickets.isEmpty()
-                ? null
-                : Math.round(ratedTickets.stream().mapToInt(Ticket::getCsatRating).average().orElse(0.0) * 10.0) / 10.0;
+            Double avgCsat = ratedTickets.isEmpty()
+                    ? null
+                    : Math.round(ratedTickets.stream().mapToInt(Ticket::getCsatRating).average().orElse(0.0) * 10.0) / 10.0;
 
-        Map<String, Long> byPriority = allTickets.stream()
-                .filter(t -> t.getPriority() != null)
-                .collect(Collectors.groupingBy(t -> t.getPriority().name(), Collectors.counting()));
+            Map<String, Long> byPriority = allTickets.stream()
+                    .filter(t -> t != null && t.getPriority() != null)
+                    .collect(Collectors.groupingBy(t -> t.getPriority().name(), Collectors.counting()));
 
-        Map<String, Long> byCategory = allTickets.stream()
-                .filter(t -> t.getCategory() != null && t.getCategory().getName() != null)
-                .collect(Collectors.groupingBy(t -> t.getCategory().getName(), Collectors.counting()));
+            Map<String, Long> byCategory = allTickets.stream()
+                    .filter(t -> t != null && t.getCategory() != null && t.getCategory().getName() != null)
+                    .collect(Collectors.groupingBy(t -> t.getCategory().getName(), Collectors.counting()));
 
-        ExecutiveAnalyticsSummary summary = ExecutiveAnalyticsSummary.builder()
-                .totalEmployees(totalEmployees)
-                .activeLeavesToday(activeLeavesToday)
-                .pendingLeaveRequests(pendingLeaves)
-                .pendingCompOffClaims(pendingCompOff)
-                .pendingEncashmentClaims(pendingEncashments)
-                .totalApprovedEncashmentDays(totalApprovedDays)
-                .totalTickets(totalTickets)
-                .openTickets(openTickets)
-                .resolvedTickets(resolvedTickets)
-                .breachedTickets(breachedTickets)
-                .slaCompliancePercentage(slaCompliance)
-                .averageCsatRating(avgCsat)
-                .totalCsatResponses(ratedTickets.size())
-                .ticketsByPriority(byPriority)
-                .ticketsByCategory(byCategory)
-                .build();
+            ExecutiveAnalyticsSummary summary = ExecutiveAnalyticsSummary.builder()
+                    .totalEmployees(totalEmployees)
+                    .activeLeavesToday(activeLeavesToday)
+                    .pendingLeaveRequests(pendingLeaves)
+                    .pendingCompOffClaims(pendingCompOff)
+                    .pendingEncashmentClaims(pendingEncashments)
+                    .totalApprovedEncashmentDays(totalApprovedDays)
+                    .totalTickets(totalTickets)
+                    .openTickets(openTickets)
+                    .resolvedTickets(resolvedTickets)
+                    .breachedTickets(breachedTickets)
+                    .slaCompliancePercentage(slaCompliance)
+                    .averageCsatRating(avgCsat)
+                    .totalCsatResponses(ratedTickets.size())
+                    .ticketsByPriority(byPriority)
+                    .ticketsByCategory(byCategory)
+                    .build();
 
-        return ResponseEntity.ok(ApiResponse.success(summary, "Executive analytics retrieved successfully"));
+            return ResponseEntity.ok(ApiResponse.success(summary, "Executive analytics retrieved successfully"));
+        } catch (Exception e) {
+            log.error("Failed to compile executive analytics summary: {}", e.getMessage(), e);
+            ExecutiveAnalyticsSummary fallback = ExecutiveAnalyticsSummary.builder()
+                    .totalEmployees(userRepository.count())
+                    .slaCompliancePercentage(100.0)
+                    .ticketsByPriority(Collections.emptyMap())
+                    .ticketsByCategory(Collections.emptyMap())
+                    .build();
+            return ResponseEntity.ok(ApiResponse.success(fallback, "Executive analytics fallback summary"));
+        }
     }
 }

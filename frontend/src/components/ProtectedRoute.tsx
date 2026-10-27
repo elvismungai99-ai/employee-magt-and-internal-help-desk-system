@@ -69,8 +69,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
   }
 
   if (allowedRoles && allowedRoles.length > 0 && !hasAnyRole(allowedRoles)) {
-    const formatRoleTitle = (r: string) => {
-      const clean = r.replace(/^ROLE_/, '').toUpperCase();
+    const formatRoleTitle = (r: any) => {
+      const roleStr = typeof r === 'string' ? r : (r?.name || '');
+      const clean = (roleStr || '').replace(/^ROLE_/, '').toUpperCase();
       if (clean === 'HR_ADMIN') return 'HR Administrator';
       if (clean === 'LINE_MANAGER') return 'Line Manager';
       if (clean === 'SUPPORT_AGENT') return 'Support Agent';

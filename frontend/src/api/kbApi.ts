@@ -7,13 +7,17 @@ export const kbApi = {
     if (query) params.append('query', query);
     if (categoryId) params.append('categoryId', categoryId);
     const res = await apiClient.get<ApiResponse<KnowledgeBaseArticle[]>>(`/api/helpdesk/kb?${params.toString()}`);
-    return res.data.data;
+    return Array.isArray(res.data?.data) ? res.data.data : [];
   },
 
   getDeflectionSuggestions: async (query: string): Promise<KnowledgeBaseArticle[]> => {
     if (!query || query.trim().length < 3) return [];
     const res = await apiClient.get<ApiResponse<KnowledgeBaseArticle[]>>(`/api/helpdesk/kb/deflection?query=${encodeURIComponent(query)}`);
-    return res.data.data;
+    return Array.isArray(res.data?.data) ? res.data.data : [];
+  },
+
+  getSuggestions: async (query: string): Promise<KnowledgeBaseArticle[]> => {
+    return kbApi.getDeflectionSuggestions(query);
   },
 
   getArticleById: async (id: string, incrementView: boolean = true): Promise<KnowledgeBaseArticle> => {

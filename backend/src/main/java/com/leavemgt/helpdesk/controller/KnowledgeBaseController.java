@@ -26,8 +26,10 @@ public class KnowledgeBaseController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<ArticleResponse>>> getArticles(
             @RequestParam(required = false) String query,
-            @RequestParam(required = false) UUID categoryId) {
-        List<ArticleResponse> articles = kbService.getArticles(query, categoryId);
+            @RequestParam(required = false) String categoryId,
+            @RequestParam(required = false) String category) {
+        String cat = (categoryId != null && !categoryId.isBlank()) ? categoryId : category;
+        List<ArticleResponse> articles = kbService.getArticles(query, cat);
         return ResponseEntity.ok(ApiResponse.success(articles, "Articles retrieved successfully"));
     }
 

@@ -97,7 +97,7 @@ export const Navbar: React.FC = () => {
                       {user.employeeCode}
                     </span>
                     <span className="text-[10px] bg-[#e3f4f1] text-[#0e4a5c] px-2 py-0.5 rounded font-semibold border border-teal-200/80">
-                      {roles[0]?.replace('ROLE_', '') || 'EMPLOYEE'}
+                      {(typeof roles?.[0] === 'string' ? roles[0] : (roles?.[0] as any)?.name || 'EMPLOYEE').replace('ROLE_', '')}
                     </span>
                   </div>
                 </div>

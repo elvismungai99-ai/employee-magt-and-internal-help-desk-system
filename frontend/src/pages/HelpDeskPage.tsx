@@ -79,12 +79,13 @@ export const HelpDeskPage: React.FC = () => {
     setIsLoadingArticles(true);
     try {
       const data = await kbApi.getArticles(
-        kbCategoryFilter === 'ALL' ? undefined : kbCategoryFilter,
-        kbSearch.trim() || undefined
+        kbSearch.trim() || undefined,
+        kbCategoryFilter === 'ALL' ? undefined : kbCategoryFilter
       );
-      setArticles(data);
+      setArticles(Array.isArray(data) ? data : []);
     } catch (err: any) {
       console.error('Failed to load KB articles', err);
+      setArticles([]);
     } finally {
       setIsLoadingArticles(false);
     }
@@ -453,7 +454,7 @@ export const HelpDeskPage: React.FC = () => {
                       : 'bg-white dark:bg-[#11222b] border border-teal-200/90 dark:border-[#1e3845] text-slate-700 dark:text-slate-300 hover:text-[#0d2836] dark:hover:text-white hover:bg-[#f0f9f8] dark:hover:bg-[#162b36] font-medium'
                   }`}
                 >
-                  {st.replace('_', ' ')}
+                  {(st || '').replace(/_/g, ' ')}
                 </button>
               ))}
             </div>
@@ -559,7 +560,7 @@ export const HelpDeskPage: React.FC = () => {
                       : 'bg-white dark:bg-[#11222b] border border-teal-200/90 dark:border-[#1e3845] text-slate-700 dark:text-slate-300 hover:text-[#0d2836] dark:hover:text-white hover:bg-[#f0f9f8] dark:hover:bg-[#162b36] font-medium'
                   }`}
                 >
-                  {cat.replace('_', ' ')}
+                  {(cat || '').replace(/_/g, ' ')}
                 </button>
               ))}
             </div>
@@ -600,11 +601,11 @@ export const HelpDeskPage: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold text-[#0e4a5c] dark:text-[#38bdf8] bg-[#e3f4f1] dark:bg-[rgba(14,74,92,0.4)] px-2 py-0.5 rounded border border-teal-200/70 dark:border-[#1e3845]">
-                        {art.category.replace('_', ' ')}
+                        {((art.categoryName || (art as any).category || 'General') as string).replace(/_/g, ' ')}
                       </span>
                       <span className="text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
                         <ThumbsUp className="h-3 w-3" />
-                        {art.helpfulVotes || 0}
+                        {art.helpfulCount || (art as any).helpfulVotes || 0}
                       </span>
                     </div>
                     <h3 className="font-bold text-[#0d2836] dark:text-slate-100 text-sm line-clamp-1">
@@ -1140,7 +1141,7 @@ export const HelpDeskPage: React.FC = () => {
           <div className="space-y-4">
             <div className="flex items-center justify-between text-xs pb-3 border-b border-teal-100 dark:border-[#1e3845]">
               <span className="font-bold text-[#0e4a5c] dark:text-[#38bdf8] bg-[#e3f4f1] dark:bg-[rgba(14,74,92,0.4)] px-2.5 py-0.5 rounded border border-teal-200/70 dark:border-[#1e3845]">
-                {selectedArticle.category.replace('_', ' ')}
+                {((selectedArticle.categoryName || (selectedArticle as any).category || 'General') as string).replace(/_/g, ' ')}
               </span>
               <span className="text-slate-400 dark:text-slate-500">
                 {selectedArticle.viewCount || 0} views

@@ -277,7 +277,7 @@ export const AgentQueuePage: React.FC = () => {
                   : 'bg-white dark:bg-[#11222b] border border-teal-200/90 dark:border-[#1e3845] text-slate-700 dark:text-slate-300 hover:text-[#0d2836] dark:hover:text-white hover:bg-[#f0f9f8] dark:hover:bg-[#162b36] font-medium'
               }`}
             >
-              {st.replace('_', ' ')}
+              {(st || '').replace(/_/g, ' ')}
             </button>
           ))}
         </div>

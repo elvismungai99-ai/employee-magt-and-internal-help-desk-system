@@ -50,7 +50,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   if (status) {
     let badgeClasses = 'bg-slate-100 text-slate-700 border-slate-200';
     let dotColor = 'bg-slate-400';
-    let label = status.replace(/_/g, ' ');
+    let label = (typeof status === 'string' ? status : String(status || '')).replace(/_/g, ' ');
 
     switch (status) {
       // Positive/Approved/Resolved

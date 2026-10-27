@@ -25,15 +25,33 @@ public class KnowledgeBaseService {
 
     @Transactional(readOnly = true)
     public List<ArticleResponse> getArticles(String query, UUID categoryId) {
+        return getArticles(query, categoryId != null ? categoryId.toString() : null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ArticleResponse> getArticles(String query, String categoryParam) {
+        UUID categoryId = null;
+        if (categoryParam != null && !categoryParam.trim().isEmpty() && !categoryParam.equalsIgnoreCase("ALL")) {
+            try {
+                categoryId = UUID.fromString(categoryParam.trim());
+            } catch (IllegalArgumentException e) {
+                var catOpt = categoryRepository.findByCode(categoryParam.trim().toUpperCase())
+                        .or(() -> categoryRepository.findByName(categoryParam.trim()));
+                if (catOpt.isPresent()) {
+                    categoryId = catOpt.get().getId();
+                }
+            }
+        }
+        final UUID finalCategoryId = categoryId;
         if (query != null && !query.trim().isEmpty()) {
             return articleRepository.searchPublished(query.trim()).stream()
-                    .filter(a -> categoryId == null || (a.getCategory() != null && a.getCategory().getId().equals(categoryId)))
+                    .filter(a -> finalCategoryId == null || (a.getCategory() != null && a.getCategory().getId().equals(finalCategoryId)))
                     .map(this::mapToResponse)
                     .collect(Collectors.toList());
         }
 
-        if (categoryId != null) {
-            return articleRepository.findByCategoryId(categoryId).stream()
+        if (finalCategoryId != null) {
+            return articleRepository.findByCategoryId(finalCategoryId).stream()
                     .map(this::mapToResponse)
                     .collect(Collectors.toList());
         }
@@ -151,17 +169,19 @@ public class KnowledgeBaseService {
     }
 
     public ArticleResponse mapToResponse(KnowledgeBaseArticle a) {
+        String catName = a.getCategory() != null ? a.getCategory().getName() : "General";
         return ArticleResponse.builder()
                 .id(a.getId())
                 .title(a.getTitle())
                 .slug(a.getSlug())
                 .content(a.getContent())
                 .categoryId(a.getCategory() != null ? a.getCategory().getId() : null)
-                .categoryName(a.getCategory() != null ? a.getCategory().getName() : null)
+                .categoryName(catName)
+                .category(catName)
                 .tags(a.getTags())
                 .isPublished(a.getIsPublished())
-                .viewCount(a.getViewCount())
-                .helpfulCount(a.getHelpfulCount())
+                .viewCount(a.getViewCount() != null ? a.getViewCount() : 0)
+                .helpfulCount(a.getHelpfulCount() != null ? a.getHelpfulCount() : 0)
                 .createdAt(a.getCreatedAt())
                 .updatedAt(a.getUpdatedAt())
                 .build();

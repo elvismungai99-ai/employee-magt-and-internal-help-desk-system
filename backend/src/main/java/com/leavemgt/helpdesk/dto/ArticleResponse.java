@@ -17,6 +17,7 @@ public class ArticleResponse {
     private String content;
     private UUID categoryId;
     private String categoryName;
+    private String category;
     private String tags;
     private Boolean isPublished;
     private Integer viewCount;

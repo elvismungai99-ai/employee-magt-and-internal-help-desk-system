@@ -387,10 +387,12 @@ export interface KnowledgeBaseArticle {
   content: string;
   categoryId?: string;
   categoryName?: string;
+  category?: string;
   tags?: string;
   isPublished: boolean;
   viewCount: number;
   helpfulCount: number;
+  helpfulVotes?: number;
   createdAt: string;
   updatedAt?: string;
 }

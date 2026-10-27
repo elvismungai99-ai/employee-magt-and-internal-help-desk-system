@@ -221,7 +221,7 @@ export const DashboardPage: React.FC = () => {
             </span>
           </Link>
 
-          {/* Step 4: Knowledge and Administration */}
+          {/* Step 4: Policy and Administration */}
           <Link 
             to={hasRole('HR_ADMIN') ? '/admin' : (hasRole('SUPPORT_AGENT') ? '/agent-queue' : '/leave')}
             className="bg-white rounded-2xl border border-teal-100 p-6 shadow-xs hover:border-teal-300 hover:shadow-sm transition space-y-3 group block"
@@ -230,10 +230,10 @@ export const DashboardPage: React.FC = () => {
               <ShieldCheck className="w-5 h-5" />
             </div>
             <h3 className="font-bold text-base text-[#0d2836]">
-              Knowledge and announcements
+              Policy and administration
             </h3>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-              Find reliable statutory policies, entitlement guidelines, organization standards, and timely workplace updates in one unified home.
+              Access company policies, approval workflows, administrative controls, and compliance standards in one unified home.
             </p>
             <span className="text-xs font-semibold text-[#0e4a5c] inline-flex items-center gap-1 group-hover:underline pt-1">
               {hasRole('HR_ADMIN') ? 'Access admin center &rarr;' : 'Explore guidelines &rarr;'}
@@ -313,7 +313,7 @@ export const DashboardPage: React.FC = () => {
                 For employees
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Spend less time wondering who to ask, what is pending, or where the latest guidance lives. Self-service tools give you immediate answers.
+                Spend less time wondering who to ask, what is pending, or where the latest guidance lives. Dedicated tools give you immediate answers and tracking.
               </p>
             </div>
             <Link

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { helpdeskApi } from '../api/helpdeskApi';
 import { leaveApi } from '../api/leaveApi';
-import { kbApi } from '../api/kbApi';
 import { 
   CreateTicketDto, 
   LeaveRequest,
@@ -11,10 +10,9 @@ import {
   TicketCategory, 
   TicketComment, 
   TicketPriority, 
-  TicketStatus,
-  KnowledgeBaseArticle
+  TicketStatus
 } from '../types';
-import { Search, Clock, AlertTriangle, Plus, Paperclip, RefreshCw, BookOpen, ThumbsUp, Star, Sparkles, ExternalLink } from 'lucide-react';
+import { Search, Clock, AlertTriangle, Plus, Paperclip, RefreshCw, Star } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
 import { Modal } from '../components/Modal';
 import { Alert } from '../components/Alert';
@@ -60,36 +58,10 @@ export const HelpDeskPage: React.FC = () => {
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
 
-  // Tab & Knowledge Base (KB) State
-  const [activeTab, setActiveTab] = useState<'TICKETS' | 'KB'>('TICKETS');
-  const [articles, setArticles] = useState<KnowledgeBaseArticle[]>([]);
-  const [kbCategoryFilter, setKbCategoryFilter] = useState<string>('ALL');
-  const [kbSearch, setKbSearch] = useState<string>('');
-  const [selectedArticle, setSelectedArticle] = useState<KnowledgeBaseArticle | null>(null);
-  const [isArticleModalOpen, setIsArticleModalOpen] = useState(false);
-  const [isLoadingArticles, setIsLoadingArticles] = useState(false);
-  const [suggestedDeflections, setSuggestedDeflections] = useState<KnowledgeBaseArticle[]>([]);
-
   // CSAT Rating State
   const [csatRating, setCsatRating] = useState<number>(5);
   const [csatFeedback, setCsatFeedback] = useState<string>('');
   const [isSubmittingCsat, setIsSubmittingCsat] = useState(false);
-
-  const loadArticles = async () => {
-    setIsLoadingArticles(true);
-    try {
-      const data = await kbApi.getArticles(
-        kbSearch.trim() || undefined,
-        kbCategoryFilter === 'ALL' ? undefined : kbCategoryFilter
-      );
-      setArticles(Array.isArray(data) ? data : []);
-    } catch (err: any) {
-      console.error('Failed to load KB articles', err);
-      setArticles([]);
-    } finally {
-      setIsLoadingArticles(false);
-    }
-  };
 
   const loadData = async () => {
     setIsLoading(true);
@@ -119,32 +91,7 @@ export const HelpDeskPage: React.FC = () => {
 
   useEffect(() => {
     loadData();
-    loadArticles();
   }, []);
-
-  useEffect(() => {
-    if (activeTab === 'KB') {
-      loadArticles();
-    }
-  }, [kbCategoryFilter, kbSearch, activeTab]);
-
-  // Real-time deflection suggestion search when user types ticket title
-  useEffect(() => {
-    const query = createForm.title.trim();
-    if (query.length >= 3) {
-      const timeout = setTimeout(async () => {
-        try {
-          const suggestions = await kbApi.getSuggestions(query);
-          setSuggestedDeflections(suggestions.slice(0, 3));
-        } catch {
-          setSuggestedDeflections([]);
-        }
-      }, 300);
-      return () => clearTimeout(timeout);
-    } else {
-      setSuggestedDeflections([]);
-    }
-  }, [createForm.title]);
 
   const handleOpenDetail = async (ticket: Ticket) => {
     try {
@@ -158,17 +105,6 @@ export const HelpDeskPage: React.FC = () => {
       setCsatRating(ticket.csatRating || 5);
       setCsatFeedback(ticket.csatFeedback || '');
       setIsDetailModalOpen(true);
-    }
-  };
-
-  const handleVoteArticle = async (articleId: string) => {
-    try {
-      const updated = await kbApi.voteHelpful(articleId);
-      setSelectedArticle(updated);
-      setArticles((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
-      setActionAlert({ type: 'success', message: 'Thank you for your feedback!' });
-    } catch (err: any) {
-      setActionAlert({ type: 'error', message: 'Failed to record helpful vote.' });
     }
   };
 
@@ -405,230 +341,109 @@ export const HelpDeskPage: React.FC = () => {
         />
       )}
 
-      {/* Top View Selector: Tickets vs Knowledge Base */}
-      <div className="flex items-center gap-3 border-b border-teal-100 dark:border-[#1e3845] pb-2">
-        <button
-          type="button"
-          onClick={() => setActiveTab('TICKETS')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-            activeTab === 'TICKETS'
-              ? 'bg-[#0e4a5c] text-white shadow-xs'
-              : 'bg-white dark:bg-[#11222b] text-slate-700 dark:text-slate-300 border border-teal-200/80 dark:border-[#1e3845] hover:bg-[#f0f9f8] dark:hover:bg-[#162b36]'
-          }`}
-        >
-          <span>Support Tickets</span>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'TICKETS' ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
-            {tickets.length}
-          </span>
-        </button>
+      {/* Filter Tabs and Search Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+          {['ALL', 'NEW', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].map((st) => (
+            <button
+              key={st}
+              onClick={() => setStatusFilter(st)}
+              className={`px-3 py-1.5 rounded-xl transition text-xs cursor-pointer ${
+                statusFilter === st
+                  ? 'bg-[#0e4a5c] text-white font-bold shadow-2xs'
+                  : 'bg-white dark:bg-[#11222b] border border-teal-200/90 dark:border-[#1e3845] text-slate-700 dark:text-slate-300 hover:text-[#0d2836] dark:hover:text-white hover:bg-[#f0f9f8] dark:hover:bg-[#162b36] font-medium'
+              }`}
+            >
+              {(st || '').replace(/_/g, ' ')}
+            </button>
+          ))}
+        </div>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('KB')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-            activeTab === 'KB'
-              ? 'bg-[#0e4a5c] text-white shadow-xs'
-              : 'bg-white dark:bg-[#11222b] text-slate-700 dark:text-slate-300 border border-teal-200/80 dark:border-[#1e3845] hover:bg-[#f0f9f8] dark:hover:bg-[#162b36]'
-          }`}
-        >
-          <BookOpen className="h-3.5 w-3.5" />
-          <span>Knowledge Base &amp; Self-Service</span>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'KB' ? 'bg-white/20 text-white' : 'bg-[#e3f4f1] text-[#0e4a5c] dark:bg-[rgba(14,74,92,0.4)] dark:text-[#38bdf8] font-bold'}`}>
-            {articles.length}
-          </span>
-        </button>
+        {/* Search Input Bar */}
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search tickets by title, ID, or agent..."
+            className="w-full sm:w-64 rounded-xl border border-teal-200/90 dark:border-[#1e3845] bg-white dark:bg-[#0d1b22] py-1.5 pl-8 pr-3 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#0e4a5c] dark:focus:border-[#38bdf8] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c] dark:focus:ring-[#38bdf8]"
+          />
+        </div>
       </div>
 
-      {activeTab === 'TICKETS' ? (
-        <>
-          {/* Filter Tabs and Search Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-              {['ALL', 'NEW', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].map((st) => (
-                <button
-                  key={st}
-                  onClick={() => setStatusFilter(st)}
-                  className={`px-3 py-1.5 rounded-xl transition text-xs cursor-pointer ${
-                    statusFilter === st
-                      ? 'bg-[#0e4a5c] text-white font-bold shadow-2xs'
-                      : 'bg-white dark:bg-[#11222b] border border-teal-200/90 dark:border-[#1e3845] text-slate-700 dark:text-slate-300 hover:text-[#0d2836] dark:hover:text-white hover:bg-[#f0f9f8] dark:hover:bg-[#162b36] font-medium'
-                  }`}
-                >
-                  {(st || '').replace(/_/g, ' ')}
-                </button>
-              ))}
-            </div>
-
-            {/* Search Input Bar */}
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search tickets by title, ID, or agent..."
-                className="w-full sm:w-64 rounded-xl border border-teal-200/90 dark:border-[#1e3845] bg-white dark:bg-[#0d1b22] py-1.5 pl-8 pr-3 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#0e4a5c] dark:focus:border-[#38bdf8] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c] dark:focus:ring-[#38bdf8]"
-              />
-            </div>
+      {/* Tickets List */}
+      <div className="bg-white dark:bg-[#11222b] rounded-2xl border border-teal-100 dark:border-[#1e3845] overflow-hidden shadow-2xs">
+        {isLoading ? (
+          <div className="p-6">
+            <TableSkeleton rows={4} cols={5} />
           </div>
-
-          {/* Tickets List */}
-          <div className="bg-white dark:bg-[#11222b] rounded-2xl border border-teal-100 dark:border-[#1e3845] overflow-hidden shadow-2xs">
-            {isLoading ? (
-              <div className="p-6">
-                <TableSkeleton rows={4} cols={5} />
-              </div>
-            ) : filteredTickets.length === 0 ? (
-              <div className="p-12 text-center text-slate-500 dark:text-slate-400">
-                <p className="font-bold text-[#0d2836] dark:text-slate-100 text-sm">No tickets found</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Have an issue? Click "New Ticket" to notify the support team.</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-teal-50 dark:divide-[#1e3845]">
-                {filteredTickets.map((t) => (
-                  <div
-                    key={t.id}
-                    onClick={() => handleOpenDetail(t)}
-                    className="p-5 hover:bg-[#f6faf8] dark:hover:bg-[#162b36] transition cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4"
-                  >
-                    <div className="space-y-1.5 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-xs font-bold text-[#0e4a5c] dark:text-[#38bdf8] bg-[#e3f4f1] dark:bg-[rgba(14,74,92,0.4)] px-2 py-0.5 rounded border border-teal-200/70 dark:border-[#1e3845]">
-                          {t.ticketNumber}
-                        </span>
-                        <h3 className="font-bold text-[#0d2836] dark:text-slate-100 text-base">{t.title}</h3>
-                        <StatusBadge status={t.status} />
-                        <StatusBadge priority={t.priority} />
-                        {renderSlaBadge(t)}
-                        {t.csatRating && (
-                          <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-2 py-0.5 rounded flex items-center gap-1">
-                            <Star className="h-3 w-3 fill-amber-400 text-amber-500" />
-                            <span>CSAT: {t.csatRating}/5</span>
-                          </span>
-                        )}
-                        {t.leaveRequestSummary && (
-                          <span className="text-[11px] font-semibold text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/60 px-2 py-0.5 rounded">
-                            Linked: {t.leaveRequestSummary}
-                          </span>
-                        )}
-                      </div>
-
-                      <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-1">{t.description}</p>
-
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                        <span>Category: <strong className="text-slate-800 dark:text-slate-200">{t.categoryName || 'General'}</strong></span>
-                        {t.queueName && <span>Queue: <strong className="text-slate-800 dark:text-slate-200">{t.queueName}</strong></span>}
-                        {t.assignedAgentName ? (
-                          <span className="text-[#0e4a5c] dark:text-[#38bdf8] font-semibold">Assigned: {t.assignedAgentName}</span>
-                        ) : (
-                          <span className="text-slate-400 dark:text-slate-500 italic">Unassigned</span>
-                        )}
-                        {(t.totalPausedMinutes ?? 0) > 0 && (
-                          <span className="text-slate-500 dark:text-slate-400 text-[11px]">
-                            Paused time: {t.totalPausedMinutes}m
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="text-right text-xs text-slate-400 dark:text-slate-500 flex flex-col items-end gap-1 shrink-0">
-                      <span className="font-medium text-slate-500 dark:text-slate-400">{t.createdAt ? new Date(t.createdAt).toLocaleDateString() : ''}</span>
-                      {t.slaDueAt && (
-                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-50 dark:bg-[#0e1c24] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#1e3845]">
-                          Target: {new Date(t.slaDueAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+        ) : filteredTickets.length === 0 ? (
+          <div className="p-12 text-center text-slate-500 dark:text-slate-400">
+            <p className="font-bold text-[#0d2836] dark:text-slate-100 text-sm">No tickets found</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Have an issue? Click "New Ticket" to notify the support team.</p>
           </div>
-        </>
-      ) : (
-        /* Knowledge Base View */
-        <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-              {['ALL', 'LEAVE_POLICY', 'BENEFITS', 'IT_SUPPORT', 'PAYROLL'].map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setKbCategoryFilter(cat)}
-                  className={`px-3 py-1.5 rounded-xl transition text-xs cursor-pointer ${
-                    kbCategoryFilter === cat
-                      ? 'bg-[#0e4a5c] text-white font-bold shadow-2xs'
-                      : 'bg-white dark:bg-[#11222b] border border-teal-200/90 dark:border-[#1e3845] text-slate-700 dark:text-slate-300 hover:text-[#0d2836] dark:hover:text-white hover:bg-[#f0f9f8] dark:hover:bg-[#162b36] font-medium'
-                  }`}
-                >
-                  {(cat || '').replace(/_/g, ' ')}
-                </button>
-              ))}
-            </div>
-
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
-              <input
-                type="text"
-                value={kbSearch}
-                onChange={(e) => setKbSearch(e.target.value)}
-                placeholder="Search articles & guides..."
-                className="w-full sm:w-64 rounded-xl border border-teal-200/90 dark:border-[#1e3845] bg-white dark:bg-[#0d1b22] py-1.5 pl-8 pr-3 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:border-[#0e4a5c] dark:focus:border-[#38bdf8] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c] dark:focus:ring-[#38bdf8]"
-              />
-            </div>
-          </div>
-
-          {isLoadingArticles ? (
-            <div className="p-8 bg-white dark:bg-[#11222b] rounded-2xl border border-teal-100 dark:border-[#1e3845]">
-              <TableSkeleton rows={3} cols={3} />
-            </div>
-          ) : articles.length === 0 ? (
-            <div className="bg-white dark:bg-[#11222b] rounded-2xl border border-teal-100 dark:border-[#1e3845] p-12 text-center text-slate-500 dark:text-slate-400">
-              <BookOpen className="h-8 w-8 mx-auto text-teal-600 mb-2 opacity-50" />
-              <p className="font-bold text-[#0d2836] dark:text-slate-100 text-sm">No articles match your criteria</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Try another search keyword or select ALL categories.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {articles.map((art) => (
-                <div
-                  key={art.id}
-                  onClick={() => {
-                    setSelectedArticle(art);
-                    setIsArticleModalOpen(true);
-                  }}
-                  className="bg-white dark:bg-[#11222b] rounded-2xl border border-teal-100 dark:border-[#1e3845] p-5 hover:border-teal-400 dark:hover:border-teal-600 transition shadow-2xs hover:shadow-sm cursor-pointer flex flex-col justify-between"
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-[#0e4a5c] dark:text-[#38bdf8] bg-[#e3f4f1] dark:bg-[rgba(14,74,92,0.4)] px-2 py-0.5 rounded border border-teal-200/70 dark:border-[#1e3845]">
-                        {((art.categoryName || (art as any).category || 'General') as string).replace(/_/g, ' ')}
-                      </span>
-                      <span className="text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
-                        <ThumbsUp className="h-3 w-3" />
-                        {art.helpfulCount || (art as any).helpfulVotes || 0}
-                      </span>
-                    </div>
-                    <h3 className="font-bold text-[#0d2836] dark:text-slate-100 text-sm line-clamp-1">
-                      {art.title}
-                    </h3>
-                    <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-3 leading-relaxed">
-                      {art.content}
-                    </p>
-                  </div>
-                  <div className="pt-3 mt-3 border-t border-teal-50 dark:border-[#1e3845] flex items-center justify-between text-xs">
-                    <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                      {art.viewCount || 0} views
+        ) : (
+          <div className="divide-y divide-teal-50 dark:divide-[#1e3845]">
+            {filteredTickets.map((t) => (
+              <div
+                key={t.id}
+                onClick={() => handleOpenDetail(t)}
+                className="p-5 hover:bg-[#f6faf8] dark:hover:bg-[#162b36] transition cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4"
+              >
+                <div className="space-y-1.5 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-xs font-bold text-[#0e4a5c] dark:text-[#38bdf8] bg-[#e3f4f1] dark:bg-[rgba(14,74,92,0.4)] px-2 py-0.5 rounded border border-teal-200/70 dark:border-[#1e3845]">
+                      {t.ticketNumber}
                     </span>
-                    <span className="text-xs font-bold text-[#0e4a5c] dark:text-[#38bdf8] hover:underline flex items-center gap-1">
-                      Read Guide &rarr;
-                    </span>
+                    <h3 className="font-bold text-[#0d2836] dark:text-slate-100 text-base">{t.title}</h3>
+                    <StatusBadge status={t.status} />
+                    <StatusBadge priority={t.priority} />
+                    {renderSlaBadge(t)}
+                    {t.csatRating && (
+                      <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-2 py-0.5 rounded flex items-center gap-1">
+                        <Star className="h-3 w-3 fill-amber-400 text-amber-500" />
+                        <span>CSAT: {t.csatRating}/5</span>
+                      </span>
+                    )}
+                    {t.leaveRequestSummary && (
+                      <span className="text-[11px] font-semibold text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/60 px-2 py-0.5 rounded">
+                        Linked: {t.leaveRequestSummary}
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-1">{t.description}</p>
+
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                    <span>Category: <strong className="text-slate-800 dark:text-slate-200">{t.categoryName || 'General'}</strong></span>
+                    {t.queueName && <span>Queue: <strong className="text-slate-800 dark:text-slate-200">{t.queueName}</strong></span>}
+                    {t.assignedAgentName ? (
+                      <span className="text-[#0e4a5c] dark:text-[#38bdf8] font-semibold">Assigned: {t.assignedAgentName}</span>
+                    ) : (
+                      <span className="text-slate-400 dark:text-slate-500 italic">Unassigned</span>
+                    )}
+                    {(t.totalPausedMinutes ?? 0) > 0 && (
+                      <span className="text-slate-500 dark:text-slate-400 text-[11px]">
+                        Paused time: {t.totalPausedMinutes}m
+                      </span>
+                    )}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+
+                <div className="text-right text-xs text-slate-400 dark:text-slate-500 flex flex-col items-end gap-1 shrink-0">
+                  <span className="font-medium text-slate-500 dark:text-slate-400">{t.createdAt ? new Date(t.createdAt).toLocaleDateString() : ''}</span>
+                  {t.slaDueAt && (
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-50 dark:bg-[#0e1c24] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#1e3845]">
+                      Target: {new Date(t.slaDueAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Create Ticket Modal */}
       <Modal
@@ -735,41 +550,6 @@ export const HelpDeskPage: React.FC = () => {
               className="block w-full px-3 py-2 border border-teal-200 dark:border-[#1e3845] rounded-xl text-xs focus:ring-1 focus:ring-[#0e4a5c] dark:focus:border-[#38bdf8] focus:border-[#0e4a5c] dark:focus:ring-[#38bdf8] bg-white dark:bg-[#0d1b22] text-[#0d2836] dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500"
             />
           </div>
-
-          {/* Real-time Pre-submission Self-Service Deflection */}
-          {suggestedDeflections.length > 0 && (
-            <div className="rounded-xl border border-teal-300 dark:border-teal-700 bg-[#f0f9f8] dark:bg-[rgba(14,74,92,0.3)] p-3 space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-[#0e4a5c] dark:text-[#38bdf8]">
-                <Sparkles className="h-4 w-4" />
-                <span>Instant Self-Help: Do any of these articles solve your issue?</span>
-              </div>
-              <div className="space-y-1.5">
-                {suggestedDeflections.map((art) => (
-                  <button
-                    key={art.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedArticle(art);
-                      setIsArticleModalOpen(true);
-                    }}
-                    className="w-full text-left p-2.5 rounded-lg bg-white dark:bg-[#11222b] hover:bg-teal-50 dark:hover:bg-[#162b36] border border-teal-200 dark:border-[#1e3845] text-xs transition flex items-center justify-between group cursor-pointer"
-                  >
-                    <div className="flex-1 pr-2">
-                      <span className="font-semibold text-slate-800 dark:text-slate-200 block group-hover:text-[#0e4a5c] dark:group-hover:text-[#38bdf8]">
-                        {art.title}
-                      </span>
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
-                        {art.content}
-                      </span>
-                    </div>
-                    <span className="text-xs font-bold text-[#0e4a5c] dark:text-[#38bdf8] shrink-0 flex items-center gap-1">
-                      Read <ExternalLink className="h-3 w-3" />
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           <div>
             <label className="block text-xs font-bold text-[#0d2836] dark:text-slate-100 mb-1">
@@ -1125,53 +905,6 @@ export const HelpDeskPage: React.FC = () => {
                   </div>
                 </form>
               )}
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Knowledge Base Article Modal */}
-      {selectedArticle && (
-        <Modal
-          isOpen={isArticleModalOpen}
-          onClose={() => setIsArticleModalOpen(false)}
-          title={selectedArticle.title}
-          maxWidth="2xl"
-        >
-          <div className="space-y-4">
-            <div className="flex items-center justify-between text-xs pb-3 border-b border-teal-100 dark:border-[#1e3845]">
-              <span className="font-bold text-[#0e4a5c] dark:text-[#38bdf8] bg-[#e3f4f1] dark:bg-[rgba(14,74,92,0.4)] px-2.5 py-0.5 rounded border border-teal-200/70 dark:border-[#1e3845]">
-                {((selectedArticle.categoryName || (selectedArticle as any).category || 'General') as string).replace(/_/g, ' ')}
-              </span>
-              <span className="text-slate-400 dark:text-slate-500">
-                {selectedArticle.viewCount || 0} views
-              </span>
-            </div>
-
-            <div className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto pr-2 bg-[#fafcfb] dark:bg-[#0d1b22] p-4 rounded-xl border border-teal-100/70 dark:border-[#1e3845]">
-              {selectedArticle.content}
-            </div>
-
-            <div className="pt-3 border-t border-teal-100 dark:border-[#1e3845] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500 dark:text-slate-400">Was this article helpful?</span>
-                <button
-                  type="button"
-                  onClick={() => handleVoteArticle(selectedArticle.id)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#e3f4f1] dark:bg-[rgba(14,74,92,0.4)] hover:bg-teal-100 dark:hover:bg-[rgba(14,74,92,0.6)] text-[#0e4a5c] dark:text-[#38bdf8] border border-teal-200 dark:border-[#1e3845] rounded-xl text-xs font-bold transition cursor-pointer"
-                >
-                  <ThumbsUp className="h-3.5 w-3.5" />
-                  <span>Yes ({selectedArticle.helpfulVotes || 0})</span>
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setIsArticleModalOpen(false)}
-                className="px-4 py-1.5 border border-teal-200 dark:border-[#1e3845] rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-[#f0f9f8] dark:hover:bg-[#162b36] transition cursor-pointer"
-              >
-                Close
-              </button>
             </div>
           </div>
         </Modal>

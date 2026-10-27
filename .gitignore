@@ -39,6 +39,7 @@ build/
 ### Local secrets & logs ###
 *.log
 src/main/resources/application-local.yml
+scratch/
 
 ### Frontend ###
 node_modules/

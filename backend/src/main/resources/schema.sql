@@ -351,7 +351,7 @@ CREATE TABLE IF NOT EXISTS leave.balance_transactions (
     description text,
     created_by uuid,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    CONSTRAINT balance_transactions_transaction_type_check CHECK (((transaction_type)::text = ANY ((ARRAY['SCHEDULED_ACCRUAL'::character varying, 'MANUAL_ADJUSTMENT'::character varying, 'DEDUCTION'::character varying, 'REVERSAL'::character varying, 'CARRYOVER_RESET'::character varying])::text[])))
+    CONSTRAINT balance_transactions_transaction_type_check CHECK (((transaction_type)::text = ANY ((ARRAY['SCHEDULED_ACCRUAL'::character varying, 'MANUAL_ADJUSTMENT'::character varying, 'DEDUCTION'::character varying, 'REVERSAL'::character varying, 'CARRYOVER_RESET'::character varying, 'COMP_OFF_CREDIT'::character varying, 'ENCASHMENT'::character varying])::text[])))
 );
 
 

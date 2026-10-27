@@ -166,7 +166,7 @@ CREATE TABLE public.leave_balances (
 CREATE TABLE public.balance_transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     leave_balance_id UUID NOT NULL REFERENCES public.leave_balances(id) ON DELETE CASCADE,
-    transaction_type VARCHAR(30) NOT NULL CHECK (transaction_type IN ('SCHEDULED_ACCRUAL', 'MANUAL_ADJUSTMENT', 'DEDUCTION', 'REVERSAL', 'CARRYOVER_RESET')),
+    transaction_type VARCHAR(30) NOT NULL CHECK (transaction_type IN ('SCHEDULED_ACCRUAL', 'MANUAL_ADJUSTMENT', 'DEDUCTION', 'REVERSAL', 'CARRYOVER_RESET', 'COMP_OFF_CREDIT', 'ENCASHMENT')),
     amount_days NUMERIC(5,2) NOT NULL,
     description TEXT,
     created_by UUID REFERENCES public.users(id) ON DELETE SET NULL,

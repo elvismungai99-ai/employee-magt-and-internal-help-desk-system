@@ -175,6 +175,17 @@ public class DataInitializer implements CommandLineRunner {
             }
         }
 
+        // Ensure balance_transactions check constraint permits all TransactionType values (including ENCASHMENT and COMP_OFF_CREDIT)
+        try {
+            jdbcTemplate.execute(
+                    "ALTER TABLE leave.balance_transactions DROP CONSTRAINT IF EXISTS balance_transactions_transaction_type_check; " +
+                    "ALTER TABLE leave.balance_transactions ADD CONSTRAINT balance_transactions_transaction_type_check " +
+                    "CHECK (transaction_type IN ('SCHEDULED_ACCRUAL', 'MANUAL_ADJUSTMENT', 'DEDUCTION', 'REVERSAL', 'CARRYOVER_RESET', 'COMP_OFF_CREDIT', 'ENCASHMENT'))"
+            );
+        } catch (Exception e) {
+            log.debug("Leave balance_transactions constraint patch skipped: {}", e.getMessage());
+        }
+
         // Safe check for public schema tables if ever present
         try {
             Integer hasPublicLeave = jdbcTemplate.queryForObject(
@@ -201,6 +212,33 @@ public class DataInitializer implements CommandLineRunner {
             }
         } catch (Exception e) {
             log.debug("Public out_of_office_records patch skipped: {}", e.getMessage());
+        }
+
+        try {
+            Integer hasPublicBt = jdbcTemplate.queryForObject(
+                    "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'balance_transactions'",
+                    Integer.class
+            );
+            if (hasPublicBt != null && hasPublicBt > 0) {
+                jdbcTemplate.execute(
+                        "ALTER TABLE public.balance_transactions DROP CONSTRAINT IF EXISTS balance_transactions_transaction_type_check; " +
+                        "ALTER TABLE public.balance_transactions ADD CONSTRAINT balance_transactions_transaction_type_check " +
+                        "CHECK (transaction_type IN ('SCHEDULED_ACCRUAL', 'MANUAL_ADJUSTMENT', 'DEDUCTION', 'REVERSAL', 'CARRYOVER_RESET', 'COMP_OFF_CREDIT', 'ENCASHMENT'))"
+                );
+            }
+        } catch (Exception e) {
+            log.debug("Public balance_transactions patch skipped: {}", e.getMessage());
+        }
+
+        // Ensure notifications channel check constraint permits WEBHOOK
+        try {
+            jdbcTemplate.execute(
+                    "ALTER TABLE platform.notifications DROP CONSTRAINT IF EXISTS notifications_channel_check; " +
+                    "ALTER TABLE platform.notifications ADD CONSTRAINT notifications_channel_check " +
+                    "CHECK (channel IN ('EMAIL', 'SLACK', 'WEBHOOK'))"
+            );
+        } catch (Exception e) {
+            log.debug("Platform notifications constraint patch skipped: {}", e.getMessage());
         }
     }
 

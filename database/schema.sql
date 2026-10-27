@@ -377,7 +377,7 @@ CREATE TABLE IF NOT EXISTS platform.notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     recipient_id UUID NOT NULL REFERENCES public.users(id),
     event_id UUID REFERENCES platform.event_outbox(id),
-    channel VARCHAR(20) NOT NULL CHECK (channel IN ('EMAIL', 'SLACK')),
+    channel VARCHAR(20) NOT NULL CHECK (channel IN ('EMAIL', 'SLACK', 'WEBHOOK')),
     message TEXT,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'SENT', 'FAILED')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,

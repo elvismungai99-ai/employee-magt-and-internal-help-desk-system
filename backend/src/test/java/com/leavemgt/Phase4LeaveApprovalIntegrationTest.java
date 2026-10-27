@@ -14,6 +14,8 @@ import com.leavemgt.identity.repository.RefreshTokenRepository;
 import com.leavemgt.identity.repository.ReportingHierarchyRepository;
 import com.leavemgt.identity.repository.UserRepository;
 import com.leavemgt.leave.dto.ApprovalDecisionRequest;
+import com.leavemgt.leave.dto.EncashmentDecisionRequest;
+import com.leavemgt.leave.dto.SubmitEncashmentRequest;
 import com.leavemgt.leave.dto.SubmitLeaveRequest;
 import com.leavemgt.leave.entity.*;
 import com.leavemgt.leave.repository.*;
@@ -79,6 +81,9 @@ class Phase4LeaveApprovalIntegrationTest {
 
     @Autowired
     private BalanceTransactionRepository balanceTransactionRepository;
+
+    @Autowired
+    private LeaveEncashmentRequestRepository leaveEncashmentRequestRepository;
 
     @Autowired
     private NotificationRepository notificationRepository;
@@ -532,6 +537,53 @@ class Phase4LeaveApprovalIntegrationTest {
                 .andExpect(jsonPath("$.data[*].employeeEmail", hasItem("p4.emp2@company.com")));
     }
 
+    @Test
+    @Order(14)
+    @DisplayName("14. Leave Encashment: Employee submits encashment request and HR Admin approves, inserting ENCASHMENT ledger transaction")
+    void testLeaveEncashmentSubmissionAndApproval() throws Exception {
+        SubmitEncashmentRequest submitReq = SubmitEncashmentRequest.builder()
+                .leaveTypeId(annualLeaveTypeId)
+                .daysRequested(new BigDecimal("2.00"))
+                .reason("Need year-end travel encashment")
+                .build();
+
+        MvcResult submitResult = mockMvc.perform(post("/api/leave/encashment/request")
+                        .header("Authorization", "Bearer " + employee1Token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(submitReq)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.status", equalTo("PENDING")))
+                .andExpect(jsonPath("$.data.daysRequested", equalTo(2.0)))
+                .andReturn();
+
+        JsonNode submitNode = objectMapper.readTree(submitResult.getResponse().getContentAsString());
+        UUID encashmentId = UUID.fromString(submitNode.path("data").path("id").asText());
+
+        EncashmentDecisionRequest decisionReq = EncashmentDecisionRequest.builder()
+                .comments("Approved encashment payout for employee")
+                .build();
+
+        mockMvc.perform(post("/api/leave/encashment/" + encashmentId + "/approve")
+                        .header("Authorization", "Bearer " + hrAdminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(decisionReq)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status", equalTo("APPROVED")))
+                .andExpect(jsonPath("$.data.comments", equalTo("Approved encashment payout for employee")));
+
+        // Verify that balance_transactions recorded an ENCASHMENT transaction
+        UUID balanceId = leaveBalanceRepository.findByUserIdAndLeaveTypeIdAndYear(employee1Id, annualLeaveTypeId, currentYear)
+                .orElseThrow().getId();
+
+        List<BalanceTransaction> txs = balanceTransactionRepository.findAll().stream()
+                .filter(t -> t.getLeaveBalance() != null && t.getLeaveBalance().getId().equals(balanceId))
+                .filter(t -> t.getTransactionType() == TransactionType.ENCASHMENT)
+                .toList();
+
+        assertThat(txs).isNotEmpty();
+        assertThat(txs.get(0).getAmountDays()).isEqualByComparingTo("2.00");
+    }
+
     private String obtainToken(String email, String password) throws Exception {
         LoginRequest req = LoginRequest.builder().email(email).password(password).build();
         MvcResult res = mockMvc.perform(post("/api/auth/login")
@@ -600,6 +652,9 @@ class Phase4LeaveApprovalIntegrationTest {
         if (!testUserIds.isEmpty()) {
             notificationRepository.deleteAll(notificationRepository.findAll().stream()
                     .filter(n -> n.getRecipient() != null && testUserIds.contains(n.getRecipient().getId()))
+                    .toList());
+            leaveEncashmentRequestRepository.deleteAll(leaveEncashmentRequestRepository.findAll().stream()
+                    .filter(e -> testUserIds.contains(e.getUser().getId()))
                     .toList());
             leaveApprovalRepository.deleteAllByRelatedUserIds(testUserIds);
             leaveRequestRepository.deleteAllByUserIdIn(testUserIds);

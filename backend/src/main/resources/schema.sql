@@ -501,7 +501,7 @@ CREATE TABLE IF NOT EXISTS platform.notifications (
     sent_at timestamp with time zone,
     message text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    CONSTRAINT notifications_channel_check CHECK (((channel)::text = ANY ((ARRAY['EMAIL'::character varying, 'SLACK'::character varying])::text[]))),
+    CONSTRAINT notifications_channel_check CHECK (((channel)::text = ANY ((ARRAY['EMAIL'::character varying, 'SLACK'::character varying, 'WEBHOOK'::character varying])::text[]))),
     CONSTRAINT notifications_status_check CHECK (((status)::text = ANY ((ARRAY['PENDING'::character varying, 'SENT'::character varying, 'FAILED'::character varying])::text[])))
 );
 

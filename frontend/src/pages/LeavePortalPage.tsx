@@ -252,13 +252,19 @@ export const LeavePortalPage: React.FC = () => {
     setIsCapacityModalOpen(true);
     setIsLoadingCapacity(true);
     try {
-      const data = await leaveApi.getTeamCapacity();
-      setTeamCapacity(data);
+      const today = new Date();
+      const nextMonth = new Date();
+      nextMonth.setDate(today.getDate() + 30);
+      const startStr = today.toISOString().split('T')[0];
+      const endStr = nextMonth.toISOString().split('T')[0];
+      const data = await leaveApi.getTeamCapacity(startStr, endStr);
+      setTeamCapacity(Array.isArray(data) ? data : []);
     } catch {
       setFeedback({
         type: 'error',
         message: 'Unable to load team capacity heatmap from server.',
       });
+      setTeamCapacity([]);
     } finally {
       setIsLoadingCapacity(false);
     }
@@ -2451,48 +2457,56 @@ export const LeavePortalPage: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-                {teamCapacity.map((day) => (
-                  <div
-                    key={day.date}
-                    className={`p-3 rounded-xl border text-xs transition flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
-                      day.isBottleneck
-                        ? 'bg-rose-50/70 border-rose-200 text-rose-950'
-                        : day.capacityPercentage < 100
-                        ? 'bg-amber-50/60 border-amber-200 text-amber-950'
-                        : 'bg-white border-teal-100 text-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="font-mono font-bold text-xs px-2 py-0.5 rounded bg-black/5">
-                        {day.date} ({day.dayOfWeek})
-                      </span>
-                      {day.isBottleneck && (
-                        <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-rose-200 text-rose-800">
-                          Bottleneck Alert
-                        </span>
-                      )}
-                    </div>
+                {teamCapacity.map((day) => {
+                  const absentList = day.absentEmployeeNames || day.onLeaveEmployees || [];
+                  const absentCount = day.absentEmployeesCount ?? day.onLeaveCount ?? absentList.length;
+                  const availableCount = day.availableCapacityCount ?? day.availableCount ?? 0;
+                  const totalMembers = day.totalActiveEmployees ?? day.totalDepartmentMembers ?? (availableCount + absentCount);
+                  const isBottleneck = day.isBottleneck ?? (day.capacityPercentage < 75);
 
-                    <div className="flex items-center gap-4">
-                      {day.absentEmployeesCount > 0 ? (
-                        <div className="text-[11px] text-slate-600">
-                          Absent: <strong className="font-semibold text-slate-800">{day.absentEmployeeNames.join(', ')}</strong>
+                  return (
+                    <div
+                      key={day.date}
+                      className={`p-3 rounded-xl border text-xs transition flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
+                        isBottleneck
+                          ? 'bg-rose-50/70 border-rose-200 text-rose-950'
+                          : day.capacityPercentage < 100
+                          ? 'bg-amber-50/60 border-amber-200 text-amber-950'
+                          : 'bg-white border-teal-100 text-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono font-bold text-xs px-2 py-0.5 rounded bg-black/5">
+                          {day.date} ({day.dayOfWeek})
+                        </span>
+                        {isBottleneck && (
+                          <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-rose-200 text-rose-800">
+                            Bottleneck Alert
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        {absentCount > 0 ? (
+                          <div className="text-[11px] text-slate-600">
+                            Absent: <strong className="font-semibold text-slate-800">{absentList.join(', ')}</strong>
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-emerald-700 font-semibold">Full Staffing (100%)</span>
+                        )}
+
+                        <div className="text-right">
+                          <span className={`font-extrabold text-xs ${isBottleneck ? 'text-rose-700' : 'text-[#0e4a5c]'}`}>
+                            {day.capacityPercentage}%
+                          </span>
+                          <span className="text-[10px] text-slate-400 block">
+                            ({availableCount}/{totalMembers} present)
+                          </span>
                         </div>
-                      ) : (
-                        <span className="text-[11px] text-emerald-700 font-semibold">Full Staffing (100%)</span>
-                      )}
-
-                      <div className="text-right">
-                        <span className={`font-extrabold text-xs ${day.isBottleneck ? 'text-rose-700' : 'text-[#0e4a5c]'}`}>
-                          {day.capacityPercentage}%
-                        </span>
-                        <span className="text-[10px] text-slate-400 block">
-                          ({day.availableCapacityCount}/{day.totalActiveEmployees} present)
-                        </span>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 

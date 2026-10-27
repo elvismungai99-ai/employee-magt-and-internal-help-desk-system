@@ -83,10 +83,13 @@ export const leaveApi = {
 
   // 3. Department Overlap Check
   getDepartmentOverlap: async (startDate: string, endDate: string, departmentId?: string): Promise<DepartmentOverlapItem[]> => {
-    let url = `/api/leave/requests/department-overlap?startDate=${startDate}&endDate=${endDate}`;
-    if (departmentId) url += `&departmentId=${departmentId}`;
-    const res = await apiClient.get<ApiResponse<DepartmentOverlapItem[]>>(url);
-    return res.data.data;
+    const params = new URLSearchParams();
+    if (startDate && startDate !== 'undefined' && startDate !== 'null') params.append('startDate', startDate);
+    if (endDate && endDate !== 'undefined' && endDate !== 'null') params.append('endDate', endDate);
+    if (departmentId && departmentId !== 'undefined' && departmentId !== 'null') params.append('departmentId', departmentId);
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    const res = await apiClient.get<ApiResponse<DepartmentOverlapItem[]>>(`/api/leave/requests/department-overlap${queryString}`);
+    return Array.isArray(res.data?.data) ? res.data.data : [];
   },
 
   // 6. External Calendar (.ics) Download
@@ -159,11 +162,14 @@ export const leaveApi = {
     return res.data.data;
   },
 
-  getTeamCapacity: async (startDate: string, endDate: string, departmentId?: string): Promise<TeamCapacityDay[]> => {
-    const params = new URLSearchParams({ startDate, endDate });
-    if (departmentId) params.append('departmentId', departmentId);
-    const res = await apiClient.get<ApiResponse<TeamCapacityDay[]>>(`/api/leave/requests/team-capacity?${params.toString()}`);
-    return res.data.data;
+  getTeamCapacity: async (startDate?: string, endDate?: string, departmentId?: string): Promise<TeamCapacityDay[]> => {
+    const params = new URLSearchParams();
+    if (startDate && startDate !== 'undefined' && startDate !== 'null') params.append('startDate', startDate);
+    if (endDate && endDate !== 'undefined' && endDate !== 'null') params.append('endDate', endDate);
+    if (departmentId && departmentId !== 'undefined' && departmentId !== 'null') params.append('departmentId', departmentId);
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    const res = await apiClient.get<ApiResponse<TeamCapacityDay[]>>(`/api/leave/requests/team-capacity${queryString}`);
+    return Array.isArray(res.data?.data) ? res.data.data : [];
   },
 
   downloadMyLeavesIcs: async (): Promise<void> => {

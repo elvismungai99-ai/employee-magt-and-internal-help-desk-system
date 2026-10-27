@@ -141,14 +141,23 @@ public class LeaveRequestController {
 
     @GetMapping("/department-overlap")
     public ResponseEntity<ApiResponse<List<DepartmentOverlapResponse>>> getDepartmentOverlap(
-            @RequestParam("startDate") @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam("endDate") @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestParam(value = "departmentId", required = false) UUID departmentId,
+            @RequestParam(value = "startDate", required = false) String startDateStr,
+            @RequestParam(value = "endDate", required = false) String endDateStr,
+            @RequestParam(value = "departmentId", required = false) String departmentIdStr,
             Authentication authentication) {
         UUID callerId = extractUserId(authentication);
         if (callerId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Unauthorized"));
         }
+
+        LocalDate startDate = parseDateOrDefault(startDateStr, LocalDate.now());
+        LocalDate endDate = parseDateOrDefault(endDateStr, startDate.plusDays(30));
+        if (startDate.isAfter(endDate)) {
+            LocalDate tmp = startDate;
+            startDate = endDate;
+            endDate = tmp;
+        }
+        UUID departmentId = parseUuidOrNull(departmentIdStr);
 
         List<DepartmentOverlapResponse> overlaps = leaveRequestService.getDepartmentOverlap(callerId, startDate, endDate, departmentId);
         return ResponseEntity.ok(ApiResponse.success(overlaps, "Department overlap retrieved successfully"));
@@ -156,14 +165,23 @@ public class LeaveRequestController {
 
     @GetMapping("/team-capacity")
     public ResponseEntity<ApiResponse<List<TeamCapacityDayResponse>>> getTeamCapacity(
-            @RequestParam("startDate") @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam("endDate") @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestParam(value = "departmentId", required = false) UUID departmentId,
+            @RequestParam(value = "startDate", required = false) String startDateStr,
+            @RequestParam(value = "endDate", required = false) String endDateStr,
+            @RequestParam(value = "departmentId", required = false) String departmentIdStr,
             Authentication authentication) {
         UUID callerId = extractUserId(authentication);
         if (callerId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Unauthorized"));
         }
+
+        LocalDate startDate = parseDateOrDefault(startDateStr, LocalDate.now());
+        LocalDate endDate = parseDateOrDefault(endDateStr, startDate.plusDays(30));
+        if (startDate.isAfter(endDate)) {
+            LocalDate tmp = startDate;
+            startDate = endDate;
+            endDate = tmp;
+        }
+        UUID departmentId = parseUuidOrNull(departmentIdStr);
 
         List<TeamCapacityDayResponse> capacity = leaveRequestService.getTeamCapacityHeatmap(callerId, startDate, endDate, departmentId);
         return ResponseEntity.ok(ApiResponse.success(capacity, "Team capacity retrieved successfully"));
@@ -229,5 +247,27 @@ public class LeaveRequestController {
         if (authentication == null) return false;
         return authentication.getAuthorities().stream()
                 .anyMatch(a -> "ROLE_HR_ADMIN".equals(a.getAuthority()) || "HR_ADMIN".equals(a.getAuthority()));
+    }
+
+    private LocalDate parseDateOrDefault(String dateStr, LocalDate defaultVal) {
+        if (dateStr == null || dateStr.isBlank() || dateStr.equalsIgnoreCase("undefined") || dateStr.equalsIgnoreCase("null")) {
+            return defaultVal;
+        }
+        try {
+            return LocalDate.parse(dateStr.trim());
+        } catch (Exception e) {
+            return defaultVal;
+        }
+    }
+
+    private UUID parseUuidOrNull(String uuidStr) {
+        if (uuidStr == null || uuidStr.isBlank() || uuidStr.equalsIgnoreCase("undefined") || uuidStr.equalsIgnoreCase("null")) {
+            return null;
+        }
+        try {
+            return UUID.fromString(uuidStr.trim());
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

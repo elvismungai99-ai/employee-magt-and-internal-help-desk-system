@@ -665,6 +665,18 @@ public class LeaveRequestService {
         User caller = userRepository.findById(callerId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + callerId));
 
+        if (startDate == null) {
+            startDate = LocalDate.now();
+        }
+        if (endDate == null) {
+            endDate = startDate.plusDays(30);
+        }
+        if (startDate.isAfter(endDate)) {
+            LocalDate tmp = startDate;
+            startDate = endDate;
+            endDate = tmp;
+        }
+
         UUID deptId = departmentId;
         if (deptId == null && caller.getDepartment() != null) {
             deptId = caller.getDepartment().getId();
@@ -680,9 +692,11 @@ public class LeaveRequestService {
         if (deptId != null) {
             overlappingRequests = leaveRequestRepository.findOverlappingDepartmentRequests(deptId, startDate, endDate, activeStatuses);
         } else {
+            final LocalDate sDate = startDate;
+            final LocalDate eDate = endDate;
             overlappingRequests = leaveRequestRepository.findAllByOrderByCreatedAtDesc().stream()
                     .filter(r -> activeStatuses.contains(r.getStatus()))
-                    .filter(r -> !r.getStartDate().isAfter(endDate) && !r.getEndDate().isBefore(startDate))
+                    .filter(r -> !r.getStartDate().isAfter(eDate) && !r.getEndDate().isBefore(sDate))
                     .collect(Collectors.toList());
         }
 
@@ -699,15 +713,21 @@ public class LeaveRequestService {
             int onLeaveCount = onLeaveNames.size();
             int availableCount = Math.max(0, totalMembers - onLeaveCount);
             double capacityPct = Math.round(((double) availableCount / totalMembers * 100.0) * 10.0) / 10.0;
+            boolean isBottleneck = capacityPct < 75.0;
 
             result.add(TeamCapacityDayResponse.builder()
                     .date(day)
                     .dayOfWeek(day.getDayOfWeek().name())
                     .totalDepartmentMembers(totalMembers)
+                    .totalActiveEmployees(totalMembers)
                     .onLeaveCount(onLeaveCount)
+                    .absentEmployeesCount(onLeaveCount)
                     .availableCount(availableCount)
+                    .availableCapacityCount(availableCount)
                     .capacityPercentage(capacityPct)
+                    .isBottleneck(isBottleneck)
                     .onLeaveEmployees(onLeaveNames)
+                    .absentEmployeeNames(onLeaveNames)
                     .build());
 
             curr = curr.plusDays(1);

@@ -456,8 +456,13 @@ export interface TeamCapacityDay {
   date: string;
   dayOfWeek: string;
   totalDepartmentMembers: number;
+  totalActiveEmployees?: number;
   onLeaveCount: number;
+  absentEmployeesCount?: number;
   availableCount: number;
+  availableCapacityCount?: number;
   capacityPercentage: number;
+  isBottleneck?: boolean;
   onLeaveEmployees: string[];
+  absentEmployeeNames?: string[];
 }

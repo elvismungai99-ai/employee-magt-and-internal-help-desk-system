@@ -1,20 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { 
-  Calendar, 
-  Users, 
-  LifeBuoy, 
-  ShieldCheck, 
-  LayoutGrid, 
-  ArrowRight, 
-  CheckCircle2, 
-  Clock, 
-  FileText,
-  Layers,
-  Inbox,
-  UserCheck
-} from 'lucide-react';
 
 export const DashboardPage: React.FC = () => {
   const { hasRole, hasAnyRole } = useAuth();
@@ -43,13 +29,13 @@ export const DashboardPage: React.FC = () => {
               to="/leave"
               className="px-5 py-2.5 bg-[#0e4a5c] hover:bg-[#083543] text-white text-sm font-semibold rounded-xl shadow-xs transition inline-flex items-center gap-2 cursor-pointer"
             >
-              <Calendar className="w-4 h-4" /> Request leave
+              Request leave &rarr;
             </Link>
             <Link
               to="/helpdesk"
               className="px-5 py-2.5 bg-white border border-teal-200 text-[#0e4a5c] hover:bg-[#f0f9f8] text-sm font-semibold rounded-xl shadow-xs transition inline-flex items-center gap-2 cursor-pointer"
             >
-              <LifeBuoy className="w-4 h-4" /> Get help
+              Get help &rarr;
             </Link>
           </div>
         </div>
@@ -66,9 +52,9 @@ export const DashboardPage: React.FC = () => {
                   Today at a glance
                 </h3>
               </div>
-              <div className="w-8 h-8 rounded-lg bg-[#eef7f6] text-[#0e4a5c] flex items-center justify-center">
-                <LayoutGrid className="w-4 h-4" />
-              </div>
+              <span className="text-[10px] font-mono font-bold text-[#0e4a5c] bg-[#eef7f6] px-2 py-0.5 rounded">
+                LIVE HUB
+              </span>
             </div>
 
             {/* Sub-cards: Illustrative Workflow Samples */}
@@ -169,9 +155,9 @@ export const DashboardPage: React.FC = () => {
             to="/leave"
             className="bg-white rounded-2xl border border-teal-100 p-6 shadow-xs hover:border-teal-300 hover:shadow-sm transition space-y-3 group block"
           >
-            <div className="w-9 h-9 rounded-xl bg-[#e3f4f1] text-[#0e4a5c] flex items-center justify-center group-hover:bg-[#0e4a5c] group-hover:text-white transition">
-              <Calendar className="w-5 h-5" />
-            </div>
+            <span className="font-mono text-[11px] font-bold text-[#0e4a5c] bg-[#e3f4f1] px-2.5 py-1 rounded-md tracking-wider inline-block">
+              PORTAL 01
+            </span>
             <h3 className="font-bold text-base text-[#0d2836]">
               Leave requests, made clear
             </h3>
@@ -188,9 +174,9 @@ export const DashboardPage: React.FC = () => {
             to={hasAnyRole(['LINE_MANAGER', 'HR_ADMIN']) ? '/approvals' : '/leave'}
             className="bg-white rounded-2xl border border-teal-100 p-6 shadow-xs hover:border-teal-300 hover:shadow-sm transition space-y-3 group block"
           >
-            <div className="w-9 h-9 rounded-xl bg-[#e3f4f1] text-[#0e4a5c] flex items-center justify-center group-hover:bg-[#0e4a5c] group-hover:text-white transition">
-              <Users className="w-5 h-5" />
-            </div>
+            <span className="font-mono text-[11px] font-bold text-[#0e4a5c] bg-[#e3f4f1] px-2.5 py-1 rounded-md tracking-wider inline-block">
+              PORTAL 02
+            </span>
             <h3 className="font-bold text-base text-[#0d2836]">
               Approvals and team calendars
             </h3>
@@ -207,9 +193,9 @@ export const DashboardPage: React.FC = () => {
             to="/helpdesk"
             className="bg-white rounded-2xl border border-teal-100 p-6 shadow-xs hover:border-teal-300 hover:shadow-sm transition space-y-3 group block"
           >
-            <div className="w-9 h-9 rounded-xl bg-[#e3f4f1] text-[#0e4a5c] flex items-center justify-center group-hover:bg-[#0e4a5c] group-hover:text-white transition">
-              <LifeBuoy className="w-5 h-5" />
-            </div>
+            <span className="font-mono text-[11px] font-bold text-[#0e4a5c] bg-[#e3f4f1] px-2.5 py-1 rounded-md tracking-wider inline-block">
+              PORTAL 03
+            </span>
             <h3 className="font-bold text-base text-[#0d2836]">
               Submit and track help tickets
             </h3>
@@ -226,9 +212,9 @@ export const DashboardPage: React.FC = () => {
             to={hasRole('HR_ADMIN') ? '/admin' : (hasRole('SUPPORT_AGENT') ? '/agent-queue' : '/leave')}
             className="bg-white rounded-2xl border border-teal-100 p-6 shadow-xs hover:border-teal-300 hover:shadow-sm transition space-y-3 group block"
           >
-            <div className="w-9 h-9 rounded-xl bg-[#e3f4f1] text-[#0e4a5c] flex items-center justify-center group-hover:bg-[#0e4a5c] group-hover:text-white transition">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
+            <span className="font-mono text-[11px] font-bold text-[#0e4a5c] bg-[#e3f4f1] px-2.5 py-1 rounded-md tracking-wider inline-block">
+              PORTAL 04
+            </span>
             <h3 className="font-bold text-base text-[#0d2836]">
               Policy and administration
             </h3>
@@ -374,7 +360,7 @@ export const DashboardPage: React.FC = () => {
           {/* Card A: Leave Section */}
           <div className="bg-white rounded-xl border border-teal-100 p-5 shadow-xs space-y-2">
             <div className="flex items-center gap-2 text-[#0e4a5c]">
-              <Calendar className="w-4 h-4" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#0e4a5c]" />
               <h4 className="font-bold text-xs uppercase tracking-wider text-[#0d2836]">
                 Leave Portal
               </h4>
@@ -390,7 +376,7 @@ export const DashboardPage: React.FC = () => {
           {/* Card B: Help Desk Section */}
           <div className="bg-white rounded-xl border border-teal-100 p-5 shadow-xs space-y-2">
             <div className="flex items-center gap-2 text-[#0e4a5c]">
-              <LifeBuoy className="w-4 h-4" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#0e4a5c]" />
               <h4 className="font-bold text-xs uppercase tracking-wider text-[#0d2836]">
                 Internal Help Desk
               </h4>
@@ -406,7 +392,7 @@ export const DashboardPage: React.FC = () => {
           {/* Card C: Manager Approvals */}
           <div className="bg-white rounded-xl border border-teal-100 p-5 shadow-xs space-y-2">
             <div className="flex items-center gap-2 text-[#0e4a5c]">
-              <UserCheck className="w-4 h-4" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#0e4a5c]" />
               <h4 className="font-bold text-xs uppercase tracking-wider text-[#0d2836]">
                 Manager Approvals
               </h4>
@@ -433,7 +419,7 @@ export const DashboardPage: React.FC = () => {
           {/* Card D: Support Agent Queue */}
           <div className="bg-white rounded-xl border border-teal-100 p-5 shadow-xs space-y-2">
             <div className="flex items-center gap-2 text-[#0e4a5c]">
-              <Inbox className="w-4 h-4" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#0e4a5c]" />
               <h4 className="font-bold text-xs uppercase tracking-wider text-[#0d2836]">
                 Agent Queue
               </h4>
@@ -460,7 +446,7 @@ export const DashboardPage: React.FC = () => {
           {/* Card E: Administration */}
           <div className="bg-white rounded-xl border border-teal-100 p-5 shadow-xs space-y-2">
             <div className="flex items-center gap-2 text-[#0e4a5c]">
-              <ShieldCheck className="w-4 h-4" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#0e4a5c]" />
               <h4 className="font-bold text-xs uppercase tracking-wider text-[#0d2836]">
                 Admin Console
               </h4>
@@ -487,7 +473,7 @@ export const DashboardPage: React.FC = () => {
           {/* Card F: Policy & Compliance */}
           <div className="bg-white rounded-xl border border-teal-100 p-5 shadow-xs space-y-2">
             <div className="flex items-center gap-2 text-[#0e4a5c]">
-              <FileText className="w-4 h-4" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#0e4a5c]" />
               <h4 className="font-bold text-xs uppercase tracking-wider text-[#0d2836]">
                 Statutory Compliance
               </h4>

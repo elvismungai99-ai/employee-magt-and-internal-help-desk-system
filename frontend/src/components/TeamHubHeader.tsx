@@ -13,7 +13,6 @@ import {
   CheckCircle2,
   Check,
   Clock,
-  Sparkles,
   Ticket
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';

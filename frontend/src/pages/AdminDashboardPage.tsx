@@ -22,11 +22,7 @@ import {
   Download,
   Check,
   X,
-  Briefcase,
-  Coins,
   FileSpreadsheet,
-  Activity,
-  TrendingUp,
   Star,
   ShieldCheck,
   ShieldAlert,
@@ -564,9 +560,9 @@ export const AdminDashboardPage: React.FC = () => {
                 {executiveSummary.totalActiveLeaves} on leave today
               </span>
             </div>
-            <div className="h-10 w-10 rounded-xl bg-[#e3f4f1] text-[#0e4a5c] flex items-center justify-center font-bold">
-              <Activity className="h-5 w-5" />
-            </div>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 uppercase">
+              WORKFORCE
+            </span>
           </div>
 
           <div className="bg-white rounded-2xl border border-teal-100 p-4 shadow-2xs flex items-center justify-between">
@@ -581,9 +577,9 @@ export const AdminDashboardPage: React.FC = () => {
                 {executiveSummary.totalApprovedLeaveDays} total days taken
               </span>
             </div>
-            <div className="h-10 w-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold">
-              <TrendingUp className="h-5 w-5" />
-            </div>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-teal-50 text-[#0e4a5c] uppercase">
+              UTILIZATION
+            </span>
           </div>
 
           <div className="bg-white rounded-2xl border border-teal-100 p-4 shadow-2xs flex items-center justify-between">
@@ -600,9 +596,11 @@ export const AdminDashboardPage: React.FC = () => {
                 {executiveSummary.breachedTicketsCount} breach(es) detected
               </span>
             </div>
-            <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
+            <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded uppercase ${
+              executiveSummary.slaCompliancePercentage >= 90 ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'
+            }`}>
+              TARGET &gt;90%
+            </span>
           </div>
 
           <div className="bg-white rounded-2xl border border-teal-100 p-4 shadow-2xs flex items-center justify-between">
@@ -611,16 +609,16 @@ export const AdminDashboardPage: React.FC = () => {
                 Help Desk CSAT
               </span>
               <span className="text-2xl font-black text-amber-600 mt-0.5 block flex items-center gap-1">
-                <Star className="h-5 w-5 fill-amber-400 text-amber-500" />
+                <Star className="h-4 w-4 fill-amber-400 text-amber-500" />
                 {executiveSummary.averageCsatRating ? `${executiveSummary.averageCsatRating} / 5.0` : 'N/A'}
               </span>
               <span className="text-[11px] text-slate-400">
                 {executiveSummary.totalCsatSurveys} rating(s) submitted
               </span>
             </div>
-            <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
-              <Star className="h-5 w-5 fill-amber-400" />
-            </div>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-800 uppercase">
+              CSAT
+            </span>
           </div>
         </div>
       )}
@@ -867,8 +865,8 @@ export const AdminDashboardPage: React.FC = () => {
             {/* Pending Comp-Off Claims Sub-Table */}
             {pendingCompOffs.length > 0 && (
               <div>
-                <h3 className="text-xs font-bold text-[#0d2836] mb-2 flex items-center gap-1.5">
-                  <Briefcase className="h-3.5 w-3.5 text-[#0e4a5c]" />
+                <h3 className="text-xs font-bold text-[#0d2836] mb-2 flex items-center gap-2">
+                  <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-50 text-[#0e4a5c] border border-teal-200">OVERTIME</span>
                   <span>Pending Compensatory Off Claims ({pendingCompOffs.length})</span>
                 </h3>
                 <div className="overflow-x-auto border border-teal-100 rounded-xl">
@@ -939,8 +937,8 @@ export const AdminDashboardPage: React.FC = () => {
             {/* Pending Encashment Requests Sub-Table */}
             {pendingEncashments.length > 0 && (
               <div>
-                <h3 className="text-xs font-bold text-[#0d2836] mb-2 flex items-center gap-1.5">
-                  <Coins className="h-3.5 w-3.5 text-[#0e4a5c]" />
+                <h3 className="text-xs font-bold text-[#0d2836] mb-2 flex items-center gap-2">
+                  <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-50 text-[#0e4a5c] border border-teal-200">PAYROLL</span>
                   <span>Pending Leave Encashment Requests ({pendingEncashments.length})</span>
                 </h3>
                 <div className="overflow-x-auto border border-teal-100 rounded-xl">

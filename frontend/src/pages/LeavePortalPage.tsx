@@ -4,8 +4,6 @@ import {
   Calendar as CalendarIcon,
   Clock,
   User,
-  Briefcase,
-  Building2,
   CheckCircle2,
   XCircle,
   AlertCircle,
@@ -26,7 +24,6 @@ import {
   Trash2,
   Paperclip,
   Download,
-  Coins,
   Users
 } from 'lucide-react';
 import { leaveApi } from '../api/leaveApi';
@@ -825,11 +822,11 @@ export const LeavePortalPage: React.FC = () => {
               </div>
               <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
                 <div className="flex items-center gap-1.5">
-                  <Briefcase className="h-3.5 w-3.5 text-teal-700" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal-600 inline-block" />
                   <span>{user?.jobTitle || 'Team Member'}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Building2 className="h-3.5 w-3.5 text-teal-700" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal-600 inline-block" />
                   <span>{user?.department?.name || 'Department'}</span>
                 </div>
                 {user?.manager && (
@@ -875,7 +872,6 @@ export const LeavePortalPage: React.FC = () => {
               onClick={() => setIsCompOffModalOpen(true)}
               className="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-white hover:bg-teal-50 px-3 py-2 text-xs font-semibold text-[#0e4a5c] shadow-2xs transition cursor-pointer"
             >
-              <Briefcase className="h-3.5 w-3.5" />
               <span>Claim Comp-Off</span>
             </button>
             <button
@@ -883,7 +879,6 @@ export const LeavePortalPage: React.FC = () => {
               onClick={() => setIsEncashmentModalOpen(true)}
               className="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-white hover:bg-teal-50 px-3 py-2 text-xs font-semibold text-[#0e4a5c] shadow-2xs transition cursor-pointer"
             >
-              <Coins className="h-3.5 w-3.5" />
               <span>Request Encashment</span>
             </button>
             <button
@@ -1460,7 +1455,6 @@ export const LeavePortalPage: React.FC = () => {
                   : 'text-slate-600 hover:text-[#0d2836] hover:bg-slate-100'
               }`}
             >
-              <Briefcase className="h-3.5 w-3.5" />
               <span>Comp-Off ({myCompOffs.length})</span>
             </button>
 
@@ -1473,7 +1467,6 @@ export const LeavePortalPage: React.FC = () => {
                   : 'text-slate-600 hover:text-[#0d2836] hover:bg-slate-100'
               }`}
             >
-              <Coins className="h-3.5 w-3.5" />
               <span>Encashment ({myEncashments.length})</span>
             </button>
           </div>

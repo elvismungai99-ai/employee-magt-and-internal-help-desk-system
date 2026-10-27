@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { helpdeskApi } from '../api/helpdeskApi';
 import { cannedResponseApi } from '../api/cannedResponseApi';
 import { SupportQueue, Ticket, TicketPriority, TicketStatus, CannedResponse } from '../types';
-import { Search, Clock, AlertTriangle, RefreshCw, CheckCircle2, Zap, Star } from 'lucide-react';
+import { Search, Clock, AlertTriangle, RefreshCw, CheckCircle2, Star } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
 import { Modal } from '../components/Modal';
 import { Alert } from '../components/Alert';
@@ -608,8 +608,8 @@ export const AgentQueuePage: React.FC = () => {
               <form onSubmit={handleAddComment} className="pt-2 space-y-2 border-t border-teal-100 dark:border-[#1e3845]">
                 {cannedResponses.length > 0 && (
                   <div className="flex items-center justify-between pb-1">
-                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1">
-                      <Zap className="h-3 w-3 text-amber-500" /> Canned Response Macro:
+                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">MACRO</span> Canned Response:
                     </span>
                     <select
                       onChange={(e) => {

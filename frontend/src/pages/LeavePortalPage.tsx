@@ -149,6 +149,7 @@ export const LeavePortalPage: React.FC = () => {
     documentType: '',
     documentNumber: '',
     medicalCertIssueDate: '',
+    employeeId: '',
   });
   const [applyError, setApplyError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -487,7 +488,8 @@ export const LeavePortalPage: React.FC = () => {
       setApplyError('Leave request must include at least one working day (Kenyan public holidays and weekends are excluded).');
       return;
     }
-    if (isInsufficient) {
+    const isProxyApplication = Boolean(applyForm.employeeId);
+    if (!isProxyApplication && isInsufficient) {
       setApplyError(`Insufficient balance. You requested ${requestedWorkingDays} day(s), but only have ${availableDays} available.`);
       return;
     }
@@ -503,6 +505,7 @@ export const LeavePortalPage: React.FC = () => {
         isHalfDay: applyForm.isHalfDay,
         halfDayPeriod: applyForm.isHalfDay ? applyForm.halfDayPeriod : undefined,
         delegateId: applyForm.delegateId || undefined,
+        employeeId: applyForm.employeeId || undefined,
         documentType: applyForm.documentType.trim() || undefined,
         documentNumber: applyForm.documentNumber.trim() || undefined,
         medicalCertIssueDate: applyForm.medicalCertIssueDate || undefined,
@@ -510,7 +513,9 @@ export const LeavePortalPage: React.FC = () => {
 
       setFeedback({
         type: 'success',
-        message: `Leave application for ${requestedWorkingDays} day(s) submitted successfully. Routed to line manager for approval.`,
+        message: isProxyApplication
+          ? `Leave application for ${requestedWorkingDays} day(s) submitted successfully on behalf of employee.`
+          : `Leave application for ${requestedWorkingDays} day(s) submitted successfully. Routed to line manager for approval.`,
       });
 
       setIsApplyModalOpen(false);
@@ -527,6 +532,7 @@ export const LeavePortalPage: React.FC = () => {
         documentType: '',
         documentNumber: '',
         medicalCertIssueDate: '',
+        employeeId: '',
       });
       setDepartmentOverlap([]);
 
@@ -1816,6 +1822,30 @@ export const LeavePortalPage: React.FC = () => {
               <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 flex items-start gap-2">
                 <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-rose-600" />
                 <span>{applyError}</span>
+              </div>
+            )}
+
+            {/* Optional Proxy Application for Managers & HR Admins */}
+            {hasAnyRole(['LINE_MANAGER', 'HR_ADMIN']) && (
+              <div>
+                <label className="block text-xs font-bold text-[#0d2836] mb-1">
+                  Applicant (Apply on behalf of)
+                </label>
+                <select
+                  value={applyForm.employeeId}
+                  onChange={(e) => setApplyForm({ ...applyForm, employeeId: e.target.value })}
+                  className="w-full rounded-xl border border-teal-200/90 bg-white px-3 py-2 text-xs text-slate-800 focus:border-[#0e4a5c] focus:outline-none focus:ring-1 focus:ring-[#0e4a5c]"
+                >
+                  <option value="">Myself ({user?.fullName || user?.email})</option>
+                  {colleagues.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.fullName || `${c.firstName} ${c.lastName}`} {c.employeeCode ? `[${c.employeeCode}] ` : ''}&mdash; {c.email} ({c.department?.name || 'Department'})
+                    </option>
+                  ))}
+                </select>
+                <span className="text-[10px] text-slate-500 mt-0.5 block">
+                  Select an employee to submit a leave request on their behalf, or keep "Myself" for your own leave.
+                </span>
               </div>
             )}
 

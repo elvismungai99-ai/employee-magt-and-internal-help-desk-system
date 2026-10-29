@@ -35,4 +35,10 @@ public class SubmitLeaveRequest {
     private String halfDayPeriod; // "MORNING" or "AFTERNOON"
 
     private UUID delegateId;
+
+    /**
+     * Optional target employee ID when a Line Manager or HR Admin
+     * submits a leave application on behalf of an employee.
+     */
+    private UUID employeeId;
 }

@@ -3,15 +3,24 @@ import { ApiResponse, AuthResponseData } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
-// Strictly In-Memory Access Token (never written to localStorage)
+const ACCESS_TOKEN_KEY = 'auth_access_token';
+
 let inMemoryAccessToken: string | null = null;
 let logoutCallback: (() => void) | null = null;
 
 export const setAccessToken = (token: string | null) => {
   inMemoryAccessToken = token;
+  if (token) {
+    sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
+  } else {
+    sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+  }
 };
 
 export const getAccessToken = (): string | null => {
+  if (!inMemoryAccessToken) {
+    inMemoryAccessToken = sessionStorage.getItem(ACCESS_TOKEN_KEY);
+  }
   return inMemoryAccessToken;
 };
 
@@ -50,8 +59,9 @@ export const apiClient = axios.create({
 // Request Interceptor: Attach Access Token
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    if (inMemoryAccessToken && config.headers) {
-      config.headers.Authorization = `Bearer ${inMemoryAccessToken}`;
+    const token = getAccessToken();
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
@@ -119,6 +129,9 @@ apiClient.interceptors.response.use(
         setAccessToken(null);
         setStoredRefreshToken(null);
         if (logoutCallback) logoutCallback();
+        if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+          window.location.href = '/login?expired=true';
+        }
         return Promise.reject(error);
       }
 
@@ -146,8 +159,9 @@ apiClient.interceptors.response.use(
         );
 
         const newAuth = refreshResponse.data.data;
+        const wasPersistent = !!localStorage.getItem(REFRESH_TOKEN_KEY);
         setAccessToken(newAuth.accessToken);
-        setStoredRefreshToken(newAuth.refreshToken);
+        setStoredRefreshToken(newAuth.refreshToken, wasPersistent);
 
         processQueue(null, newAuth.accessToken);
 
@@ -160,6 +174,9 @@ apiClient.interceptors.response.use(
         setAccessToken(null);
         setStoredRefreshToken(null);
         if (logoutCallback) logoutCallback();
+        if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+          window.location.href = '/login?expired=true';
+        }
         return Promise.reject(refreshErr);
       } finally {
         isRefreshing = false;

@@ -73,6 +73,7 @@ public class LeaveRequestService {
     private final UserRepository userRepository;
     private final EventPublisherService eventPublisherService;
     private final HolidayService holidayService;
+    private final LeaveBalanceService leaveBalanceService;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private com.leavemgt.platform.service.AuditLogService auditLogService;
@@ -85,7 +86,8 @@ public class LeaveRequestService {
                                ReportingHierarchyRepository reportingHierarchyRepository,
                                UserRepository userRepository,
                                EventPublisherService eventPublisherService,
-                               HolidayService holidayService) {
+                               HolidayService holidayService,
+                               LeaveBalanceService leaveBalanceService) {
         this.leaveRequestRepository = leaveRequestRepository;
         this.leaveApprovalRepository = leaveApprovalRepository;
         this.leaveBalanceRepository = leaveBalanceRepository;
@@ -95,10 +97,27 @@ public class LeaveRequestService {
         this.userRepository = userRepository;
         this.eventPublisherService = eventPublisherService;
         this.holidayService = holidayService;
+        this.leaveBalanceService = leaveBalanceService;
     }
 
     @Transactional
-    public LeaveRequestResponse submitRequest(SubmitLeaveRequest request, UUID employeeId) {
+    public LeaveRequestResponse submitRequest(SubmitLeaveRequest request, UUID callerId) {
+        return submitRequest(request, callerId, false);
+    }
+
+    @Transactional
+    public LeaveRequestResponse submitRequest(SubmitLeaveRequest request, UUID callerId, boolean isCallerHrAdmin) {
+        // Support applying on behalf of employee for Managers and HR Admins
+        UUID targetEmployeeId = callerId;
+        if (request.getEmployeeId() != null && !request.getEmployeeId().equals(callerId)) {
+            boolean isManager = reportingHierarchyRepository.existsByEmployeeIdAndManagerIdAndIsActiveTrue(request.getEmployeeId(), callerId);
+            if (!isCallerHrAdmin && !isManager) {
+                throw new AccessDeniedException("You are not authorized to apply for leave on behalf of this employee");
+            }
+            targetEmployeeId = request.getEmployeeId();
+        }
+
+        final UUID employeeId = targetEmployeeId;
         // 1. Validate employee
         User employee = userRepository.findById(employeeId)
                 .orElseThrow(() -> new IllegalArgumentException("Employee not found with ID: " + employeeId));
@@ -191,17 +210,27 @@ public class LeaveRequestService {
                     .findFirst()
                     .orElse(null);
             if (manager == null) {
-                throw new IllegalArgumentException("Cannot submit leave request: No active direct manager assigned in reporting hierarchy");
+                // If target employee is the HR Admin or only admin, route to any active admin or caller
+                manager = userRepository.findAll().stream()
+                        .filter(u -> "ACTIVE".equalsIgnoreCase(u.getStatus()))
+                        .filter(u -> u.getRoles().stream().anyMatch(r -> "HR_ADMIN".equalsIgnoreCase(r.getName()) || "ROLE_HR_ADMIN".equalsIgnoreCase(r.getName())))
+                        .findFirst()
+                        .orElse(employee);
             }
-            log.info("No direct manager assigned for employee {}; routing approval to HR Admin {}",
+            log.info("No direct manager assigned for employee {}; routing approval to {}",
                     employee.getEmail(), manager.getEmail());
         }
 
-        // 7. Balance check & pessimistic hold
+        // 7. Balance check & pessimistic hold (auto-initializing if first time accessing this year)
         int year = startDate.getYear();
         LeaveBalance balance = leaveBalanceRepository.findByUserIdAndLeaveTypeIdAndYearWithLock(
                 employeeId, leaveType.getId(), year)
-                .orElseThrow(() -> new IllegalArgumentException("No leave balance record found for " + leaveType.getName() + " in year " + year));
+                .orElseGet(() -> {
+                    leaveBalanceService.initializeBalancesForUser(employee, year);
+                    return leaveBalanceRepository.findByUserIdAndLeaveTypeIdAndYearWithLock(
+                            employeeId, leaveType.getId(), year)
+                            .orElseThrow(() -> new IllegalArgumentException("No leave balance record found for " + leaveType.getName() + " in year " + year));
+                });
 
         BigDecimal availableDays = balance.getAccruedDays().add(balance.getCarriedOverDays())
                 .subtract(balance.getUsedDays())

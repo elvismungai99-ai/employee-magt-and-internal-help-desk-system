@@ -42,7 +42,8 @@ public class LeaveRequestController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Unauthorized"));
         }
 
-        LeaveRequestResponse response = leaveRequestService.submitRequest(request, callerId);
+        boolean isHrAdmin = isHrAdmin(authentication);
+        LeaveRequestResponse response = leaveRequestService.submitRequest(request, callerId, isHrAdmin);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Leave request submitted successfully"));
     }

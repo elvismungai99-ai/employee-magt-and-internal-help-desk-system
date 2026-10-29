@@ -23,6 +23,10 @@ export const LoginPage: React.FC = () => {
     } catch {
       // Ignore
     }
+
+    if (typeof window !== 'undefined' && window.location.search.includes('expired=true')) {
+      setError('Your session has expired. Please sign in again to continue.');
+    }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

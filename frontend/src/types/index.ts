@@ -144,6 +144,10 @@ export interface SubmitLeaveRequestDto {
   isHalfDay?: boolean;
   halfDayPeriod?: 'MORNING' | 'AFTERNOON';
   delegateId?: string;
+  employeeId?: string;
+  documentType?: string;
+  documentNumber?: string;
+  medicalCertIssueDate?: string;
 }
 
 export interface DepartmentOverlapItem {

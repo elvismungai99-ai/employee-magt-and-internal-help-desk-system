@@ -16,4 +16,9 @@ public interface LeaveEncashmentRequestRepository extends JpaRepository<LeaveEnc
     List<LeaveEncashmentRequest> findByStatusOrderByCreatedAtDesc(EncashmentStatus status);
 
     List<LeaveEncashmentRequest> findAllByOrderByCreatedAtDesc();
+
+    long countByStatus(EncashmentStatus status);
+
+    @org.springframework.data.jpa.repository.Query("SELECT COALESCE(SUM(e.daysRequested), 0) FROM LeaveEncashmentRequest e WHERE e.status = :status")
+    java.math.BigDecimal sumDaysRequestedByStatus(@org.springframework.data.repository.query.Param("status") EncashmentStatus status);
 }

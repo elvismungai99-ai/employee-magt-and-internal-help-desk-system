@@ -38,5 +38,8 @@ public interface ReportingHierarchyRepository extends JpaRepository<ReportingHie
     @Query("SELECT rh FROM ReportingHierarchy rh WHERE rh.manager.id = :managerId AND rh.isActive = true AND rh.relationshipType = :type AND (rh.effectiveTo IS NULL OR rh.effectiveTo >= :today) ORDER BY rh.employee.firstName ASC, rh.employee.lastName ASC")
     List<ReportingHierarchy> findActiveSubordinatesForManagerAndType(@Param("managerId") UUID managerId, @Param("type") RelationshipType type, @Param("today") LocalDate today);
 
+    @Query("SELECT rh FROM ReportingHierarchy rh JOIN FETCH rh.employee JOIN FETCH rh.manager WHERE rh.isActive = true AND (rh.effectiveTo IS NULL OR rh.effectiveTo >= :today) ORDER BY rh.effectiveFrom DESC")
+    List<ReportingHierarchy> findAllActiveHierarchiesWithUsers(@Param("today") LocalDate today);
+
     boolean existsByEmployeeIdAndManagerIdAndIsActiveTrue(UUID employeeId, UUID managerId);
 }

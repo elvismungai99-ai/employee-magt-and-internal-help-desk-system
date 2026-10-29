@@ -144,9 +144,10 @@ public class AuthService {
             department = departmentRepository.findByCode("HR").orElse(null);
         }
 
-        String employeeCode = "EMP-" + (10000 + new Random().nextInt(90000));
+        java.security.SecureRandom secureRandom = new java.security.SecureRandom();
+        String employeeCode = "EMP-" + (10000 + secureRandom.nextInt(90000));
         while (userRepository.existsByEmployeeCode(employeeCode)) {
-            employeeCode = "EMP-" + (10000 + new Random().nextInt(90000));
+            employeeCode = "EMP-" + (10000 + secureRandom.nextInt(90000));
         }
 
         User user = User.builder()
@@ -178,16 +179,19 @@ public class AuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request, String clientIp) {
-        String rateLimitKey = clientIp + ":" + request.getEmail().toLowerCase().trim();
+        String normalizedEmail = request.getEmail().toLowerCase().trim();
+        String rateLimitKey = clientIp + ":" + normalizedEmail;
+        String accountLimitKey = "acct:" + normalizedEmail;
 
-        if (loginRateLimiter.isBlocked(rateLimitKey)) {
+        if (loginRateLimiter.isBlocked(rateLimitKey) || loginRateLimiter.isBlocked(accountLimitKey)) {
             throw new RateLimitExceededException("Too many failed login attempts. Please try again in 15 minutes.");
         }
 
-        Optional<User> userOpt = userRepository.findByEmail(request.getEmail().toLowerCase().trim());
+        Optional<User> userOpt = userRepository.findByEmail(normalizedEmail);
 
         if (userOpt.isEmpty() || !passwordEncoder.matches(request.getPassword(), userOpt.get().getPasswordHash())) {
             loginRateLimiter.recordFailedAttempt(rateLimitKey);
+            loginRateLimiter.recordFailedAttempt(accountLimitKey);
             throw new BadCredentialsException("Invalid email or password");
         }
 
@@ -205,6 +209,7 @@ public class AuthService {
 
         // Reset rate limiter on successful authentication
         loginRateLimiter.reset(rateLimitKey);
+        loginRateLimiter.reset(accountLimitKey);
 
         return buildAuthResponse(user);
     }

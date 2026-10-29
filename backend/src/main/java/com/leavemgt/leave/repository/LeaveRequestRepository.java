@@ -19,6 +19,21 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, UUID
 
     List<LeaveRequest> findAllByOrderByCreatedAtDesc();
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT lr FROM LeaveRequest lr WHERE lr.id = :id")
+    java.util.Optional<LeaveRequest> findByIdWithLock(@Param("id") UUID id);
+
+    @Query("SELECT lr FROM LeaveRequest lr WHERE lr.status IN :activeStatuses " +
+           "AND lr.startDate <= :endDate AND lr.endDate >= :startDate")
+    List<LeaveRequest> findAllOverlappingRequests(@Param("startDate") LocalDate startDate,
+                                                  @Param("endDate") LocalDate endDate,
+                                                  @Param("activeStatuses") Collection<LeaveRequestStatus> activeStatuses);
+
+    long countByStatus(LeaveRequestStatus status);
+
+    @Query("SELECT COUNT(lr) FROM LeaveRequest lr WHERE lr.status = :status AND lr.startDate <= :today AND lr.endDate >= :today")
+    long countActiveLeavesOnDate(@Param("status") LeaveRequestStatus status, @Param("today") LocalDate today);
+
     @Query("SELECT lr FROM LeaveRequest lr WHERE lr.user.id = :userId " +
            "AND lr.status IN :activeStatuses " +
            "AND lr.startDate <= :endDate AND lr.endDate >= :startDate")

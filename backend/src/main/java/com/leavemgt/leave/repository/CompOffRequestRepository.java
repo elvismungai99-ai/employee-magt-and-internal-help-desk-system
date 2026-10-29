@@ -19,5 +19,7 @@ public interface CompOffRequestRepository extends JpaRepository<CompOffRequest, 
 
     List<CompOffRequest> findAllByOrderByCreatedAtDesc();
 
+    long countByStatus(CompOffStatus status);
+
     boolean existsByUserIdAndWorkedDateAndStatusIn(UUID userId, LocalDate workedDate, Collection<CompOffStatus> statuses);
 }

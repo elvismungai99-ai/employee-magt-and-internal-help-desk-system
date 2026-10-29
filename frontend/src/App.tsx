@@ -1,20 +1,29 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { LeavePortalPage } from './pages/LeavePortalPage';
-import { ManagerApprovalsPage } from './pages/ManagerApprovalsPage';
-import { HelpDeskPage } from './pages/HelpDeskPage';
-import { AgentQueuePage } from './pages/AgentQueuePage';
-import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { TeamHubLayout } from './components/TeamHubLayout';
 
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+const LeavePortalPage = lazy(() => import('./pages/LeavePortalPage').then((m) => ({ default: m.LeavePortalPage })));
+const ManagerApprovalsPage = lazy(() => import('./pages/ManagerApprovalsPage').then((m) => ({ default: m.ManagerApprovalsPage })));
+const HelpDeskPage = lazy(() => import('./pages/HelpDeskPage').then((m) => ({ default: m.HelpDeskPage })));
+const AgentQueuePage = lazy(() => import('./pages/AgentQueuePage').then((m) => ({ default: m.AgentQueuePage })));
+const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })));
+
+const PageLoader: React.FC = () => (
+  <div className="flex min-h-[50vh] items-center justify-center">
+    <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#0e4a5c] border-t-transparent" />
+  </div>
+);
+
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <TeamHubLayout>{children}</TeamHubLayout>
+  <TeamHubLayout>
+    <Suspense fallback={<PageLoader />}>{children}</Suspense>
+  </TeamHubLayout>
 );
 
 export default function App() {

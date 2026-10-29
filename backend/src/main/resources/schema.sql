@@ -1431,3 +1431,11 @@ CREATE TABLE IF NOT EXISTS platform.audit_logs (
     details TEXT,
     ip_address VARCHAR(50)
 );
+
+-- High-Scale Workforce & Concurrency Indexes
+CREATE INDEX IF NOT EXISTS idx_leave_approvals_approver_status ON leave.leave_approvals USING btree (approver_id, status);
+CREATE INDEX IF NOT EXISTS idx_comp_off_user_status ON leave.comp_off_requests USING btree (user_id, status);
+CREATE INDEX IF NOT EXISTS idx_encashment_user_status ON leave.leave_encashment_requests USING btree (user_id, status);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON platform.audit_logs USING btree (timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_actor ON platform.audit_logs USING btree (actor_id, entity_type);
+CREATE INDEX IF NOT EXISTS idx_users_status ON identity.users USING btree (status);

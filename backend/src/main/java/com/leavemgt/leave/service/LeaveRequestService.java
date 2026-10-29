@@ -203,20 +203,11 @@ public class LeaveRequestService {
             manager = hierarchyList.get(0).getManager();
         } else {
             // Graceful fallback to HR Admin when direct manager is unassigned
-            manager = userRepository.findAll().stream()
-                    .filter(u -> "ACTIVE".equalsIgnoreCase(u.getStatus()))
-                    .filter(u -> u.getRoles().stream().anyMatch(r -> "HR_ADMIN".equalsIgnoreCase(r.getName()) || "ROLE_HR_ADMIN".equalsIgnoreCase(r.getName())))
+            List<User> activeHrAdmins = userRepository.findActiveByRoleName("HR_ADMIN");
+            manager = activeHrAdmins.stream()
                     .filter(u -> !u.getId().equals(employeeId))
                     .findFirst()
-                    .orElse(null);
-            if (manager == null) {
-                // If target employee is the HR Admin or only admin, route to any active admin or caller
-                manager = userRepository.findAll().stream()
-                        .filter(u -> "ACTIVE".equalsIgnoreCase(u.getStatus()))
-                        .filter(u -> u.getRoles().stream().anyMatch(r -> "HR_ADMIN".equalsIgnoreCase(r.getName()) || "ROLE_HR_ADMIN".equalsIgnoreCase(r.getName())))
-                        .findFirst()
-                        .orElse(employee);
-            }
+                    .orElseGet(() -> activeHrAdmins.isEmpty() ? employee : activeHrAdmins.get(0));
             log.info("No direct manager assigned for employee {}; routing approval to {}",
                     employee.getEmail(), manager.getEmail());
         }
@@ -313,7 +304,7 @@ public class LeaveRequestService {
 
     @Transactional
     public LeaveRequestResponse approveRequest(UUID requestId, ApprovalDecisionRequest decision, UUID callerId, boolean isHrAdmin) {
-        LeaveRequest request = leaveRequestRepository.findById(requestId)
+        LeaveRequest request = leaveRequestRepository.findByIdWithLock(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("Leave request not found: " + requestId));
 
         if (request.getStatus() != LeaveRequestStatus.PENDING) {
@@ -432,7 +423,7 @@ public class LeaveRequestService {
 
     @Transactional
     public LeaveRequestResponse rejectRequest(UUID requestId, ApprovalDecisionRequest decision, UUID callerId, boolean isHrAdmin) {
-        LeaveRequest request = leaveRequestRepository.findById(requestId)
+        LeaveRequest request = leaveRequestRepository.findByIdWithLock(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("Leave request not found: " + requestId));
 
         if (request.getStatus() != LeaveRequestStatus.PENDING) {
@@ -493,7 +484,7 @@ public class LeaveRequestService {
 
     @Transactional
     public LeaveRequestResponse cancelRequest(UUID requestId, UUID callerId) {
-        LeaveRequest request = leaveRequestRepository.findById(requestId)
+        LeaveRequest request = leaveRequestRepository.findByIdWithLock(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("Leave request not found: " + requestId));
 
         if (!request.getUser().getId().equals(callerId)) {
@@ -721,12 +712,7 @@ public class LeaveRequestService {
         if (deptId != null) {
             overlappingRequests = leaveRequestRepository.findOverlappingDepartmentRequests(deptId, startDate, endDate, activeStatuses);
         } else {
-            final LocalDate sDate = startDate;
-            final LocalDate eDate = endDate;
-            overlappingRequests = leaveRequestRepository.findAllByOrderByCreatedAtDesc().stream()
-                    .filter(r -> activeStatuses.contains(r.getStatus()))
-                    .filter(r -> !r.getStartDate().isAfter(eDate) && !r.getEndDate().isBefore(sDate))
-                    .collect(Collectors.toList());
+            overlappingRequests = leaveRequestRepository.findAllOverlappingRequests(startDate, endDate, activeStatuses);
         }
 
         List<TeamCapacityDayResponse> result = new java.util.ArrayList<>();

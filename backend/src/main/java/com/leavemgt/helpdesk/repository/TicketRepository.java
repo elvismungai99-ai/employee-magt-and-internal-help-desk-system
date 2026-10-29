@@ -16,6 +16,9 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID> {
 
     Optional<Ticket> findByTicketNumber(String ticketNumber);
 
+    @Query("SELECT t FROM Ticket t LEFT JOIN FETCH t.category")
+    List<Ticket> findAllWithCategory();
+
     List<Ticket> findByRequesterIdOrderByCreatedAtDesc(UUID requesterId);
 
     List<Ticket> findByQueueIdOrderByCreatedAtDesc(UUID queueId);

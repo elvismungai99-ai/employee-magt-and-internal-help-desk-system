@@ -138,24 +138,38 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public List<UserProfileResponse> getAllUsers() {
-        return userRepository.findAll().stream()
-                .map(this::mapToUserProfileResponse)
+        Map<UUID, ReportingHierarchy> managerMap = buildActiveManagerMap();
+        return userRepository.findAllWithRolesAndDepartment().stream()
+                .map(u -> mapToUserProfileResponse(u, managerMap.get(u.getId()), true))
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public List<UserProfileResponse> getAllActiveUsers() {
-        return userRepository.findAll().stream()
-                .filter(u -> "ACTIVE".equalsIgnoreCase(u.getStatus()))
-                .map(this::mapToUserProfileResponse)
+        Map<UUID, ReportingHierarchy> managerMap = buildActiveManagerMap();
+        return userRepository.findAllByStatusWithRolesAndDepartment("ACTIVE").stream()
+                .map(u -> mapToUserProfileResponse(u, managerMap.get(u.getId()), true))
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public List<UserProfileResponse> getPendingRegistrations() {
-        return userRepository.findByStatusOrderByCreatedAtDesc("PENDING_APPROVAL").stream()
-                .map(this::mapToUserProfileResponse)
+        return userRepository.findAllByStatusWithRolesAndDepartment("PENDING_APPROVAL").stream()
+                .map(u -> mapToUserProfileResponse(u, null, true))
                 .collect(Collectors.toList());
+    }
+
+    private Map<UUID, ReportingHierarchy> buildActiveManagerMap() {
+        List<ReportingHierarchy> allActive = hierarchyRepository.findAllActiveHierarchiesWithUsers(LocalDate.now());
+        Map<UUID, ReportingHierarchy> map = new HashMap<>();
+        for (ReportingHierarchy rh : allActive) {
+            UUID empId = rh.getEmployee().getId();
+            ReportingHierarchy existing = map.get(empId);
+            if (existing == null || (existing.getRelationshipType() != RelationshipType.DIRECT && rh.getRelationshipType() == RelationshipType.DIRECT)) {
+                map.put(empId, rh);
+            }
+        }
+        return map;
     }
 
     @Transactional
@@ -204,6 +218,11 @@ public class UserService {
     }
 
     private UserProfileResponse mapToUserProfileResponse(User user) {
+        Optional<ReportingHierarchy> hierarchyOpt = hierarchyRepository.findCurrentManagerForEmployee(user.getId());
+        return mapToUserProfileResponse(user, hierarchyOpt.orElse(null), true);
+    }
+
+    private UserProfileResponse mapToUserProfileResponse(User user, ReportingHierarchy resolvedHierarchy, boolean hierarchyPreloaded) {
         UserProfileResponse.DepartmentDto deptDto = null;
         if (user.getDepartment() != null) {
             deptDto = UserProfileResponse.DepartmentDto.builder()
@@ -224,15 +243,15 @@ public class UserService {
                 .collect(Collectors.toList());
 
         UserProfileResponse.ManagerSummaryDto managerDto = null;
-        Optional<ReportingHierarchy> hierarchyOpt = hierarchyRepository.findCurrentManagerForEmployee(user.getId());
-        if (hierarchyOpt.isPresent()) {
-            User manager = hierarchyOpt.get().getManager();
+        ReportingHierarchy rh = hierarchyPreloaded ? resolvedHierarchy : hierarchyRepository.findCurrentManagerForEmployee(user.getId()).orElse(null);
+        if (rh != null && rh.getManager() != null) {
+            User manager = rh.getManager();
             managerDto = UserProfileResponse.ManagerSummaryDto.builder()
                     .id(manager.getId())
                     .fullName(manager.getFullName())
                     .email(manager.getEmail())
-                    .relationshipType(hierarchyOpt.get().getRelationshipType() != null ? hierarchyOpt.get().getRelationshipType().name() : null)
-                    .effectiveFrom(hierarchyOpt.get().getEffectiveFrom())
+                    .relationshipType(rh.getRelationshipType() != null ? rh.getRelationshipType().name() : null)
+                    .effectiveFrom(rh.getEffectiveFrom())
                     .build();
         }
 

@@ -47,32 +47,18 @@ public class AdminAnalyticsController {
 
             long totalEmployees = userRepository.count();
 
-            List<LeaveRequest> allLeaves = leaveRequestRepository.findAllByOrderByCreatedAtDesc();
-            long activeLeavesToday = allLeaves.stream()
-                    .filter(r -> r != null && r.getStatus() == LeaveRequestStatus.APPROVED)
-                    .filter(r -> r.getStartDate() != null && r.getEndDate() != null &&
-                                 !today.isBefore(r.getStartDate()) && !today.isAfter(r.getEndDate()))
-                    .count();
+            long activeLeavesToday = leaveRequestRepository.countActiveLeavesOnDate(LeaveRequestStatus.APPROVED, today);
+            long pendingLeaves = leaveRequestRepository.countByStatus(LeaveRequestStatus.PENDING);
 
-            long pendingLeaves = allLeaves.stream()
-                    .filter(r -> r != null && r.getStatus() == LeaveRequestStatus.PENDING)
-                    .count();
+            long pendingCompOff = compOffRequestRepository.countByStatus(com.leavemgt.leave.entity.CompOffStatus.PENDING);
 
-            long pendingCompOff = compOffRequestRepository.findAll().stream()
-                    .filter(r -> r != null && r.getStatus() != null && "PENDING".equalsIgnoreCase(r.getStatus().name()))
-                    .count();
+            long pendingEncashments = encashmentRepository.countByStatus(EncashmentStatus.PENDING);
+            BigDecimal totalApprovedDays = encashmentRepository.sumDaysRequestedByStatus(EncashmentStatus.APPROVED);
+            if (totalApprovedDays == null) {
+                totalApprovedDays = BigDecimal.ZERO;
+            }
 
-            List<LeaveEncashmentRequest> encashments = encashmentRepository.findAll();
-            long pendingEncashments = encashments.stream()
-                    .filter(r -> r != null && r.getStatus() == EncashmentStatus.PENDING)
-                    .count();
-
-            BigDecimal totalApprovedDays = encashments.stream()
-                    .filter(r -> r != null && r.getStatus() == EncashmentStatus.APPROVED)
-                    .map(r -> r.getDaysRequested() != null ? r.getDaysRequested() : BigDecimal.ZERO)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            List<Ticket> allTickets = ticketRepository.findAll();
+            List<Ticket> allTickets = ticketRepository.findAllWithCategory();
             long totalTickets = allTickets.size();
 
             long openTickets = allTickets.stream()

@@ -205,15 +205,20 @@ public class TicketService {
 
     @Transactional(readOnly = true)
     public List<TicketResponse> getMyTickets(UUID requesterId) {
-        return ticketRepository.findByRequesterIdOrderByCreatedAtDesc(requesterId).stream()
-                .map(ticket -> {
-                    // Strips internal notes completely for requester view
-                    List<TicketCommentResponse> publicComments = ticketCommentRepository
-                            .findByTicketIdAndIsInternalNoteFalseOrderByCreatedAtAsc(ticket.getId()).stream()
-                            .map(this::mapComment)
-                            .collect(Collectors.toList());
-                    return mapTicket(ticket, publicComments);
-                })
+        List<Ticket> myTickets = ticketRepository.findByRequesterIdOrderByCreatedAtDesc(requesterId);
+        if (myTickets.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<UUID> ticketIds = myTickets.stream().map(Ticket::getId).collect(Collectors.toList());
+        Map<UUID, List<TicketCommentResponse>> commentsByTicket = ticketCommentRepository
+                .findByTicketIdInAndIsInternalNoteFalseOrderByCreatedAtAsc(ticketIds).stream()
+                .collect(Collectors.groupingBy(
+                        c -> c.getTicket().getId(),
+                        Collectors.mapping(this::mapComment, Collectors.toList())
+                ));
+
+        return myTickets.stream()
+                .map(ticket -> mapTicket(ticket, commentsByTicket.getOrDefault(ticket.getId(), Collections.emptyList())))
                 .collect(Collectors.toList());
     }
 

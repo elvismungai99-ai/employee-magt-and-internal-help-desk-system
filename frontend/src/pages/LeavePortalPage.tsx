@@ -450,9 +450,14 @@ export const LeavePortalPage: React.FC = () => {
       startDate: calendarSelectedStart || '',
       endDate: calendarSelectedEnd || calendarSelectedStart || '',
       reason: '',
+      attachmentUrl: '',
       isHalfDay: false,
       halfDayPeriod: 'MORNING',
       delegateId: '',
+      documentType: '',
+      documentNumber: '',
+      medicalCertIssueDate: '',
+      employeeId: '',
     });
     setApplyError(null);
     setIsApplyModalOpen(true);
@@ -899,7 +904,12 @@ export const LeavePortalPage: React.FC = () => {
                   isHalfDay: false,
                   halfDayPeriod: 'MORNING',
                   delegateId: '',
+                  documentType: '',
+                  documentNumber: '',
+                  medicalCertIssueDate: '',
+                  employeeId: '',
                 });
+                setApplyError(null);
                 setIsApplyModalOpen(true);
               }}
               className="inline-flex items-center gap-2 rounded-xl bg-[#0e4a5c] hover:bg-[#083543] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition cursor-pointer"
@@ -999,10 +1009,16 @@ export const LeavePortalPage: React.FC = () => {
                           startDate: calendarSelectedStart || '',
                           endDate: calendarSelectedEnd || calendarSelectedStart || '',
                           reason: '',
+                          attachmentUrl: '',
                           isHalfDay: false,
                           halfDayPeriod: 'MORNING',
                           delegateId: '',
+                          documentType: '',
+                          documentNumber: '',
+                          medicalCertIssueDate: '',
+                          employeeId: '',
                         });
+                        setApplyError(null);
                         setIsApplyModalOpen(true);
                       }}
                       className="text-xs font-bold text-[#0e4a5c] hover:text-[#083543] hover:underline cursor-pointer"
@@ -2119,6 +2135,20 @@ export const LeavePortalPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Validation warnings before submit */}
+            {applyForm.startDate && (applyForm.isHalfDay || applyForm.endDate) && requestedWorkingDays === 0 && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800 flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
+                <span>The selected date range falls on weekends or statutory public holidays (0 working days requested). Please select dates containing working days.</span>
+              </div>
+            )}
+            {!applyForm.employeeId && isInsufficient && requestedWorkingDays > 0 && (
+              <div className="rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-800 flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+                <span>Insufficient balance: You have requested {requestedWorkingDays} day(s), but only have {availableDays} day(s) available for this leave category.</span>
+              </div>
+            )}
+
             {/* Actions */}
             <div className="flex justify-end gap-2.5 pt-2 border-t border-teal-50">
               <button
@@ -2130,7 +2160,7 @@ export const LeavePortalPage: React.FC = () => {
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting || isInsufficient}
+                disabled={isSubmitting}
                 className="flex items-center gap-1.5 rounded-xl bg-[#0e4a5c] hover:bg-[#083543] px-5 py-2 text-xs font-bold text-white shadow-xs disabled:opacity-50 cursor-pointer"
               >
                 {isSubmitting ? 'Submitting...' : 'Submit Leave Request'}

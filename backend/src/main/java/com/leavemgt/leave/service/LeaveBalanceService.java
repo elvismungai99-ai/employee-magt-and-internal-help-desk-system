@@ -60,21 +60,23 @@ public class LeaveBalanceService {
             }
             if (policyOpt.isPresent()) {
                 entitledDays = policyOpt.get().getAnnualAllowance();
+            } else {
+                String code = leaveType.getCode() != null ? leaveType.getCode().toUpperCase() : "";
+                if (code.contains("ANNUAL")) entitledDays = new BigDecimal("21.00");
+                else if (code.contains("SICK")) entitledDays = new BigDecimal("30.00");
+                else if (code.contains("MATERNITY")) entitledDays = new BigDecimal("90.00");
+                else if (code.contains("PATERNITY")) entitledDays = new BigDecimal("14.00");
+                else if (code.contains("COMPASSIONATE")) entitledDays = new BigDecimal("5.00");
+                else if (code.contains("STUDY")) entitledDays = new BigDecimal("10.00");
+                else entitledDays = new BigDecimal("14.00");
             }
 
-            BigDecimal initialAccrued = BigDecimal.ZERO;
+            BigDecimal initialAccrued = entitledDays;
             if (policyOpt.isPresent()) {
                 BigDecimal accrualRate = policyOpt.get().getMonthlyAccrualRate();
-                if (accrualRate == null || accrualRate.compareTo(BigDecimal.ZERO) <= 0) {
-                    // For lump-sum/event-based leaves (e.g. Maternity 90d, Sick 30d, Paternity 14d, Casual 10d),
-                    // the annual allowance is granted upfront upon initialization.
+                if (accrualRate != null && accrualRate.compareTo(BigDecimal.ZERO) > 0) {
+                    // Grant full annual entitlement upfront so employees can schedule vacation across the calendar year
                     initialAccrued = entitledDays;
-                } else {
-                    // For monthly-accruing leaves (e.g. Annual Leave 21d with 1.75/month rate):
-                    // Credit accrued days up to the current calendar month of registration.
-                    int currentMonth = java.time.LocalDate.now().getMonthValue();
-                    BigDecimal proratedAccrual = accrualRate.multiply(BigDecimal.valueOf(currentMonth));
-                    initialAccrued = proratedAccrual.min(entitledDays);
                 }
             }
 
@@ -110,25 +112,26 @@ public class LeaveBalanceService {
 
         // Self-heal any zero-accrual records that were registered prior to full policy initialization
         for (LeaveBalance b : balances) {
-            if (b.getAccruedDays().compareTo(BigDecimal.ZERO) == 0
-                    && b.getUsedDays().compareTo(BigDecimal.ZERO) == 0
-                    && b.getPendingDays().compareTo(BigDecimal.ZERO) == 0) {
+            if ((b.getAccruedDays() == null || b.getAccruedDays().compareTo(BigDecimal.ZERO) == 0)
+                    && (b.getUsedDays() == null || b.getUsedDays().compareTo(BigDecimal.ZERO) == 0)
+                    && (b.getPendingDays() == null || b.getPendingDays().compareTo(BigDecimal.ZERO) == 0)) {
                 Optional<LeavePolicy> policyOpt = policyRepository.findByLeaveTypeIdAndEffectiveYearAndIsActiveTrue(b.getLeaveType().getId(), year);
                 if (policyOpt.isEmpty()) {
                     policyOpt = policyRepository.findFirstByLeaveTypeIdAndIsActiveTrueOrderByEffectiveYearDesc(b.getLeaveType().getId());
                 }
-                if (policyOpt.isPresent()) {
-                    BigDecimal rate = policyOpt.get().getMonthlyAccrualRate();
-                    if (rate == null || rate.compareTo(BigDecimal.ZERO) <= 0) {
-                        b.setAccruedDays(b.getEntitledDays());
-                        balanceRepository.save(b);
-                    } else {
-                        int currentMonth = java.time.LocalDate.now().getMonthValue();
-                        BigDecimal prorated = rate.multiply(BigDecimal.valueOf(currentMonth)).min(b.getEntitledDays());
-                        b.setAccruedDays(prorated);
-                        balanceRepository.save(b);
-                    }
-                }
+                BigDecimal allowance = policyOpt.map(LeavePolicy::getAnnualAllowance).orElseGet(() -> {
+                    String code = b.getLeaveType().getCode() != null ? b.getLeaveType().getCode().toUpperCase() : "";
+                    if (code.contains("ANNUAL")) return new BigDecimal("21.00");
+                    if (code.contains("SICK")) return new BigDecimal("30.00");
+                    if (code.contains("MATERNITY")) return new BigDecimal("90.00");
+                    if (code.contains("PATERNITY")) return new BigDecimal("14.00");
+                    if (code.contains("COMPASSIONATE")) return new BigDecimal("5.00");
+                    if (code.contains("STUDY")) return new BigDecimal("10.00");
+                    return new BigDecimal("14.00");
+                });
+                b.setEntitledDays(allowance);
+                b.setAccruedDays(allowance);
+                balanceRepository.save(b);
             }
         }
 
